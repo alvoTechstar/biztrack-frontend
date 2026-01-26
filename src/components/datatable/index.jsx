@@ -28,7 +28,7 @@ import {
 } from "../../utilities/Sharedfunctions.jsx";
 import TablePill from "./TablePill";
 import TableActions from "./TableActions";
-import CheckboxInput from "../input/CheckboxInput"
+import CheckboxInput from "../Input/CheckboxInput.jsx";
 import TablePagination from "./TablePagination";
 
 const StyledTableCell = styled(TableCell)(({ theme, isMobile, isTablet }) => ({
