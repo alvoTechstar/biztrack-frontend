@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { ShoppingCart, DollarSign, Smartphone, FileText, RefreshCw } from "lucide-react";
 import { useSelector } from "react-redux";
-import SearchInput from "../../../../components/input/SearchInput";
+import SearchInput from "../../../../components/Input/SearchInput";
 import { useNavigate } from "react-router-dom";
 
 // Import the new components
