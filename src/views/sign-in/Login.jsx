@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import TextInput from "../../components/Input/TextInput";
 import PasswordInput from "../../components/input/PasswordInput";
 import FormButton from "../../components/buttons/FormButton";
 import NaviButton from "../../components/buttons/Navibutton";
@@ -15,7 +14,7 @@ import Toaster from "../../components/Toaster";
 import axios from "axios";
 import OTPInput from "./ForgotPassword/OTPInput";
 import URLS from "../../utilities/Endpoints";
-
+import TextInput from "../../components/input/TextInput";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
