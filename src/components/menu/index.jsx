@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { MENU } from "../../config/Menu";
 import { X } from "lucide-react";
 import { useTheme } from "../theme/ThemeContext";
-import { normalizeRole } from "../../utilities/SharedFunctions.jsx";
+import { normalizeRole } from "../../utilities/Sharedfunctions.jsx";
 import URLS from "../../utilities/Endpoints";
 
 const DEFAULT_LOGO = "http://localhost:3000/assets/biztrack-logo.png";

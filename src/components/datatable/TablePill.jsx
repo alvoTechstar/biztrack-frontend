@@ -4,7 +4,7 @@ import "./table.css";
 import {
   formatPill,
   formatPillOutbound,
-} from "../../utilities/SharedFunctions.jsx";
+} from "../../utilities/Sharedfunctions.jsx";
 
 export default function TablePill({ state, page, type }) {
   // Ensure state is treated as a string

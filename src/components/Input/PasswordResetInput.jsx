@@ -2,7 +2,7 @@ import React from "react";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import PasswordInput from "./PasswordInput";
 import "./input.css";
-import { validatePassword } from "../../utilities/SharedFunctions.jsx";
+import { validatePassword } from "../../utilities/Sharedfunctions.jsx";
 
 const REQUIREMENTS = [
   { label: "A minimum of 12 characters", test: "length" },

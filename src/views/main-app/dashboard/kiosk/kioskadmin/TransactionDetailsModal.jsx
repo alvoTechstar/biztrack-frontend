@@ -14,7 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { CreditCard, User } from "lucide-react";
 import StatusBadge from "../../../reports/kiosk/shopkeeper/StatusBadge";
-import { formatCurrency } from "../../../../../utilities/SharedFunctions.jsx";
+import { formatCurrency } from "../../../../../utilities/Sharedfunctions.jsx";
 const TransactionDetailsModal = ({ open, onClose, transaction }) => {
   if (!transaction) return null;
 
