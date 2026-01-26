@@ -1,6 +1,6 @@
 import React from "react";
 // Import your custom SelectInput component
-import SelectInput from "../../../../../../components/input/SelectInput";
+import SelectInput from "../../../../../../components/Input/SelectInput";
 
 // Original mock data
 const mockReferralDepartments = [

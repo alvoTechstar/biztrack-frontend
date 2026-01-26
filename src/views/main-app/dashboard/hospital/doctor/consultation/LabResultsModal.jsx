@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Box, Typography } from "@mui/material";
 
 import TextInput from "../../../../../../components/Input/TextInput";
-import SelectInput from "../../../../../../components/input/SelectInput";
+import SelectInput from "../../../../../../components/Input/SelectInput";
 import AppFormButton from "../../../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../../../components/theme/ThemeContext";
 import TextBoxInput from "../../../../../../components/input/TextBoxInput";

@@ -1,5 +1,5 @@
 import React from 'react';
-import TextBoxInput from '../../../../../../components/input/TextBoxInput';
+import TextBoxInput from '../../../../../../components/Input/TextBoxInput';
 // import { useTheme } from "../../../../../../components/theme/ThemeContext";
 
 const SymptomsNotesSection = ({ 
