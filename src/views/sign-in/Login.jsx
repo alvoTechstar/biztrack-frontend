@@ -14,7 +14,7 @@ import Toaster from "../../components/Toaster";
 import axios from "axios";
 import OTPInput from "./ForgotPassword/OTPInput";
 import URLS from "../../utilities/Endpoints";
-import TextInput from "../../components/input/TextInput";
+import TextInput from "../../components/Input/TextInput";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

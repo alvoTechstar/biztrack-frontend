@@ -3,7 +3,7 @@ import { Box, IconButton, Typography } from '@mui/material'; // Removed TextFiel
 import { Add, Remove } from '@mui/icons-material';
 
 import AppFormButton from '../../../../../../components/buttons/AppFormButton';
-import TextInput from '../../../../../../components/input/TextInput';
+import TextInput from '../../../../../../components/Input/TextInput';
 import { useTheme } from '../../../../../../components/theme/ThemeContext';
 
 const PrescriptionSection = ({ prescriptions, setPrescriptions, disabled }) => {
