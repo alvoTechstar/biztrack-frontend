@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import SearchInput from '../../../components/Input/SearchInput';
 import DateRangeInput from '../../../components/Input/DateRangeInput';
-import FilterInput from '../../../components/input/FilterInput';
+import FilterInput from '../../../components/Input/FilterInput';
 import { useTheme } from '../../../components/theme/ThemeContext';
 
 const DebtControls = ({
