@@ -3,7 +3,7 @@ import { Box, Chip, Typography } from "@mui/material";
 import { Science } from "@mui/icons-material";
 
 // Import your custom SelectInput component
-import SelectInput from "../../../../../../components/input/SelectInput";
+import SelectInput from "../../../../../../components/Input/SelectInput";
 
 const mockLabTests = [
   { value: "Complete Blood Count (CBC)", label: "Complete Blood Count (CBC)" },

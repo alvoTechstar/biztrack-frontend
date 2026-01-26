@@ -5,7 +5,7 @@ import TextInput from "../../../../../../components/Input/TextInput";
 import SelectInput from "../../../../../../components/Input/SelectInput";
 import AppFormButton from "../../../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../../../components/theme/ThemeContext";
-import TextBoxInput from "../../../../../../components/input/TextBoxInput";
+import TextBoxInput from "../../../../../../components/Input/TextBoxInput";
 
 const modalStyle = {
   position: "absolute",

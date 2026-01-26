@@ -9,7 +9,7 @@ import VerveCard from "../../assets/card/safetoken.png";
 import Mastercard from '../../assets/card/mcidcheck.png';
 import Visa from '../../assets/card/Visa-Secure-Logo.png';
 import pciDssCard from '../../assets/card/pcidss.png';
-import CardNumberInput from '../input/CardNumberInput.jsx';
+import CardNumberInput from '../Input/CardNumberInput.jsx';
 import FormButton from '../buttons/FormButton.jsx';
 import { cardNumberValidation,  cvvValidation, expiryValidation } from "../../utilities/Sharedfunctions.jsx"; 
 import TextInput from '../Input/TextInput.jsx';

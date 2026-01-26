@@ -11,7 +11,7 @@ import {
   Backdrop,
 } from "@mui/material";
 import TextInput from "../../../../../components/Input/TextInput";
-import SelectInput from "../../../../../components/input/SelectInput";
+import SelectInput from "../../../../../components/Input/SelectInput";
 import AppFormButton from "../../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
 import Toaster from "../../../../../components/Toaster";
