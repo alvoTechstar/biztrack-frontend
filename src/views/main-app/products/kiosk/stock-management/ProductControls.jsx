@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import SearchInput from '../../../../../components/Input/SearchInput';
 import DateRangeInput from '../../../../../components/Input/DateRangeInput';
-import FilterInput from '../../../../../components/input/FilterInput';
+import FilterInput from '../../../../../components/Input/FilterInput';
 import AppFormButton from '../../../../../components/buttons/AppFormButton';
 import { PlusCircle } from 'lucide-react';
 import { useTheme } from '../../../../../components/theme/ThemeContext';
