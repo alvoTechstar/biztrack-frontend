@@ -13,7 +13,7 @@ import KpiCard from "./KpiCard";
 import RevenueChartCard from "./RevenueChartCard";
 import OrdersByCategoryChartCard from "./OrdersByCategoryChartCard";
 import RecentOrdersTable from "./recentOrdersTable";
-import DateRangeInput from "../../../../../components/input/DateRangeInput";
+import DateRangeInput from "../../../../../components/Input/DateRangeInput";
 import SearchInput from "../../../../../components/input/SearchInput";
 import dayjs from "dayjs";
 
