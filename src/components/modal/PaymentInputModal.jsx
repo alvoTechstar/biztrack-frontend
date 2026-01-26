@@ -11,7 +11,7 @@ import Visa from '../../assets/card/Visa-Secure-Logo.png';
 import pciDssCard from '../../assets/card/pcidss.png';
 import CardNumberInput from '../input/CardNumberInput.jsx';
 import FormButton from '../buttons/FormButton.jsx';
-import { cardNumberValidation,  cvvValidation, expiryValidation } from '../../utilities/SharedFunctions.jsx'; 
+import { cardNumberValidation,  cvvValidation, expiryValidation } from "../../utilities/Sharedfunctions.jsx"; 
 import TextInput from '../Input/TextInput.jsx';
 
 const PaymentInputModal = ({ open, onClose, footer, amount }) => {

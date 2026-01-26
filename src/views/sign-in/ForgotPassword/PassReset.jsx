@@ -5,7 +5,7 @@ import FormButton from "../../../components/buttons/FormButton";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import TextButton from "../../../components/buttons/TextButton";
 import PasswordResetInput from "../../../components/Input/PasswordResetInput";
-import { validatePassword } from "../../../utilities/SharedFunctions";
+import { validatePassword } from "../../../utilities/Sharedfunctions";
 
 export default function PassReset({
   input,
