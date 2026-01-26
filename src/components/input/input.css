@@ -1,0 +1,592 @@
+.text-input-container,
+.select-input-container {
+  margin-bottom: 18px;
+}
+
+.text-input-label {
+  color: #353f50;
+  font-family: "Averta-Bolder", sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.display-inline {
+  display: inline !important;
+}
+
+.text-input-container input {
+  min-width: -moz-available; /* WebKit-based browsers will ignore this. */
+  width: -webkit-fill-available; /* Mozilla-based browsers will ignore this. */
+  padding: 10px 12px;
+  background-color: #f8f8f8;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50;
+}
+
+.text-input-container input[type="color"] {
+  padding: 0px 12px;
+  border: 0px !important;
+  height: 43px;
+}
+
+.text-input-container textarea {
+  min-width: -moz-available; /* WebKit-based browsers will ignore this. */
+  width: -webkit-fill-available; /* Mozilla-based browsers will ignore this. */
+  padding: 14px 12px;
+  background-color: #f8f8f8 !important;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50 !important;
+  resize: none;
+}
+
+.text-input-blue {
+  background-color: #ebf8fe !important;
+  border: 1px solid #0275d8 !important;
+  color: #0275d8 !important;
+  font-family: "Averta-Bolder", sans-serif !important;
+}
+
+.text-input-orange {
+  background-color: #fef6cf !important;
+  border: 1px solid #af5f26 !important;
+  color: #af5f26 !important;
+  font-family: "Averta-Bolder", sans-serif !important;
+}
+
+.text-input {
+  display: flex;
+  align-items: center;
+  background-color: #f8f8f8 !important;
+  border-radius: 4px;
+  border: 1px solid transparent !important;
+}
+
+.text-input:focus-within {
+  border: 1px solid #9ca3af !important;
+}
+
+.text-input input {
+  max-width: -moz-available; /* WebKit-based browsers will ignore this. */
+  min-width: 80% !important;
+}
+
+.text-input-container input:focus {
+  outline: 1px solid #9ca3af !important;
+}
+
+.text-input input:focus {
+  outline: none !important;
+}
+
+.text-input-container input:disabled {
+  cursor: not-allowed;
+}
+
+.text-input-container input::placeholder {
+  font-family: "Averta-Bold", sans-serif;
+  color: #848f9f;
+}
+
+.text-input-container textarea:focus {
+  outline: 1px solid #9ca3af !important;
+}
+
+.text-input textarea:focus {
+  outline: none !important;
+}
+
+.text-input-container textarea:disabled {
+  cursor: not-allowed;
+}
+
+.text-input-container textarea::placeholder {
+  font-family: "Averta-Bold", sans-serif;
+  color: #848f9f;
+}
+
+.text-input-container-error {
+  border: 1px solid #dc4437 !important;
+}
+
+.text-input-container-error:focus-within {
+  border: 1px solid #dc4437 !important;
+}
+
+.text-input-container > .text-input-container-error:focus {
+  outline: none !important;
+}
+
+.text-input-error {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #dc4437;
+}
+
+.text-input-error svg {
+  height: 0.7em;
+  width: 0.7em;
+  margin-right: 5px;
+}
+
+.text-input-icon {
+  width: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0px 12px;
+  cursor: pointer;
+}
+
+.text-input-icon svg {
+  height: 0.7em;
+  width: 0.7em;
+  color: #5f738c;
+}
+
+.select-input-container > div {
+  min-width: -moz-available; /* WebKit-based browsers will ignore this. */
+  width: -webkit-fill-available; /* Mozilla-based browsers will ignore this. */
+  max-height: 48px;
+  padding: 11px 12px;
+  background-color: #f8f8f8 !important;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50 !important;
+}
+
+.select-input-container > div > fieldset {
+  border: none !important;
+  padding: 0 !important;
+}
+
+.search-input-container {
+  width: 16em;
+  margin-right: 10px;
+}
+
+.search-input-container input {
+  /* min-width: -moz-available; 
+  width: -webkit-fill-available; */
+  max-height: 45px;
+  padding: 8px 12px;
+  background-color: #f8f8f8 !important;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50 !important;
+}
+
+.search-input-icon {
+  width: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.search-input-icon svg {
+  height: 0.8em;
+  width: 0.8em;
+  color: #5f738c;
+}
+
+.search-input-icon-close {
+  width: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.search-input-icon-close svg {
+  height: 0.8em;
+  width: 0.8em;
+  color: #5f738c;
+}
+
+.search-input {
+  display: flex;
+  align-items: center;
+  background-color: #f8f8f8 !important;
+  border-radius: 4px;
+  border: 1px solid transparent !important;
+}
+
+.search-input:focus-within {
+  border: 1px solid #9ca3af !important;
+}
+
+.search-input input {
+  max-width: -moz-available; /* WebKit-based browsers will ignore this. */
+}
+
+.search-input-container input:focus {
+  outline: 1px solid #9ca3af !important;
+}
+
+.search-input input:focus {
+  outline: none !important;
+}
+
+.checkbox-input {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-input-span {
+  margin-left: 8px;
+  color: #353f50;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+}
+
+.MuiMenuItem-root {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  border-bottom: 1px solid #e1e6ed !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  background-color: transparent !important;
+}
+
+.MuiMenuItem-root:hover {
+  background-color: transparent !important;
+}
+
+.MuiMenuItem-root:first-child {
+  background-color: rgba(25, 118, 210, 0.08) !important;
+  color: inherit !important;
+}
+
+.MuiMenuItem-root:last-child {
+  border-bottom: none !important ;
+}
+
+.Mui-selected {
+  background-color: transparent !important;
+}
+
+.MuiMenu-list {
+  padding: 0 !important;
+}
+
+.MuiMenu-paper {
+  box-shadow: 0px 3px 10px 0px rgba(0, 0, 0, 0.15) !important;
+  max-height: 300px !important;
+}
+
+.MuiOutlinedInput-input {
+  padding: 0 !important;
+  color: #353f50 !important;
+  font-family: "Averta-Bold", sans-serif !important;
+  font-size: 12px !important;
+}
+
+.MuiCheckbox-root {
+  padding: 0 !important;
+  color: #9ca3af;
+}
+
+.MuiNativeSelect-select {
+  max-height: 150px !important;
+  min-height: 150px !important;
+}
+
+.File-Container {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #f8f8f8 !important;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50 !important;
+}
+
+.File-Flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.File-Text {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 20px;
+  display: block;
+}
+
+.File-Subtitle {
+  font-weight: normal;
+  color: #5f738c;
+}
+
+.File-Success {
+  color: #519e47 !important;
+}
+
+.File-Icon {
+  font-size: 20px !important;
+}
+
+.File-Icon-Delete {
+  color: #353f50 !important;
+}
+
+.File-Margin {
+  margin-bottom: 15px;
+}
+
+.filter-flex {
+  display: flex;
+}
+
+.filter-input {
+  margin: 0px 10px;
+}
+
+.filter-input button {
+  display: inline-flex;
+  min-width: 130px;
+  padding: 10px 14px;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 4px;
+  border: 1px solid #353f50;
+  background: #ffffff;
+  font-family: "Averta-Bolder", sans-serif;
+  color: #353f50;
+  font-size: 13px;
+}
+
+.filter-input button > svg {
+  height: 0.8em;
+  width: 0.8em;
+  margin-left: 5px;
+}
+
+.filter-date-input {
+  margin: 0px 10px;
+}
+
+.filter-date-input button {
+  display: inline-flex;
+  padding: 10px 14px;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 4px;
+  border: 1px solid #353f50;
+  background: #ffffff;
+  font-family: "Averta-Bolder", sans-serif;
+  color: #353f50;
+  font-size: 13px;
+}
+
+.filter-date-input button > svg {
+  height: 0.8em;
+  width: 0.8em;
+}
+
+.filter-date-options {
+  min-height: 200px;
+  margin: 10px 0;
+}
+
+.filter-date-options span {
+  display: block;
+  margin: 4px 0;
+  padding: 10px 8px;
+  font-family: "Averta-Bold", sans-serif;
+  color: #353f50;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-date-options-custom {
+  margin: 10px 0;
+}
+
+.filter-date-options-custom span {
+  display: block;
+  margin: 4px 0;
+  padding: 10px 8px;
+  font-family: "Averta-Bold", sans-serif;
+  color: #353f50;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-date-custom {
+  margin-top: 8px;
+  max-height: 45px;
+  padding: 8px 12px;
+  padding-top: 0px;
+  border: 1px solid #e1e6ed;
+  border-radius: 4px;
+  font-family: "Averta-Bold", sans-serif;
+  font-size: 12px;
+  line-height: 21px;
+  color: #353f50 !important;
+}
+
+.filter-popover {
+  padding: 12px 20px;
+  border-radius: 6px;
+  min-width: 185px;
+}
+
+.filter-popover-close {
+  cursor: pointer;
+  font-size: 1.1em !important;
+}
+
+.filter-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.filter-popover-title {
+  color: #353f50;
+  font-family: "Averta-Bolder", sans-serif;
+  font-size: 14px;
+  line-height: 24px; /* 150% */
+}
+
+.filter-options {
+  max-height: 170px;
+  min-height: 100px;
+  margin: 10px 0;
+  overflow: scroll;
+}
+
+.filter-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.filter-buttons button {
+  width: 75px;
+  padding: 9px 15px;
+}
+
+.filter-buttons button > span {
+  font-size: 12px;
+}
+
+.icon-button {
+  color: #353f50;
+  margin-right: 20px;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.MuiRadio-root {
+  padding: 0px !important;
+  padding-right: 5px !important;
+}
+
+.MuiTypography-root {
+  font-family: "Averta-Bold", sans-serif !important;
+  font-size: 12px !important;
+}
+
+.MuiFormControlLabel-root {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 9px !important;
+}
+
+.MuiStack-root > .MuiTextField-root {
+  min-width: auto !important;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  border: none !important;
+  padding: 0px !important;
+  bottom: auto !important;
+}
+
+.MuiDateRangeCalendar-root > div:first-child {
+  color: transparent !important;
+}
+
+.MuiStack-root {
+  overflow: hidden !important;
+}
+.MuiIconButton-root:hover{
+  background-color: transparent !important;
+}
+.MuiDateCalendar-root {
+  max-height: 150px !important;
+}
+
+.MuiPickersYear-yearButton{
+  font-family: "Averta-Bold", sans-serif !important;
+  font-size: 12px !important;
+}
+
+.MuiPickersYear-yearButton.Mui-selected{
+  color: #000 !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+
+@media only screen and (max-width: 480px) {
+  .search-input-container {
+    margin-bottom: 15px;
+    width: 100%;
+  }
+
+  .filter-input {
+    margin: 0;
+  }
+
+  .filter-input button {
+    width: 158px;
+  }
+
+  .filter-date-input {
+    margin-left: 0;
+    margin-bottom: 10px;
+  }
+}
+
+@media only screen and (max-width: 900px) {
+  .filter-input button{
+    min-width: auto;
+  }
+}

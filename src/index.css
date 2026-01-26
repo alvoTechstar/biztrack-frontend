@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+
+div[style*="pointer-events: none"][style*="z-index: 100000"][style*="bottom: 50%"][style*="letter-spacing: 5px"] {
+  display: none !important;
+}
+.MuiTableHead-root{
+  background-color: rgb(156, 154, 154) !important;
+}

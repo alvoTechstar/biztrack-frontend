@@ -1,0 +1,10 @@
+<svg id="Group_1481" data-name="Group 1481" xmlns="http://www.w3.org/2000/svg" width="31.259" height="21.153" viewBox="0 0 31.259 21.153">
+  <g id="cvv" transform="translate(0 2.125)">
+    <path id="Path_1500" data-name="Path 1500" d="M30.127,99.922v10.166a2.054,2.054,0,0,1-2.054,2.054H2.054A2.054,2.054,0,0,1,0,110.088V99.922Zm0,0" transform="translate(0.126 -93.114)" fill="#c7dcea"/>
+    <path id="Path_1501" data-name="Path 1501" d="M0,53.609H30.127V56.78H0Zm0,0" transform="translate(0 -49.973)" fill="#5897c0"/>
+    <path id="Path_1502" data-name="Path 1502" d="M28.073.5a2.054,2.054,0,0,1,2.054,2.054V4.136H0V2.554A2.054,2.054,0,0,1,2.054.5Zm0,0" transform="translate(0.126 -0.5)" fill="#c7dcea"/>
+    <path id="Path_1504" data-name="Path 1504" d="M70,186.449H92.794v3.423H70Zm0,0" transform="translate(-66.134 -176.203)" fill="#fff"/>
+  </g>
+  <circle id="Ellipse_77" data-name="Ellipse 77" cx="5.5" cy="5.5" r="5.5" transform="translate(20.259)" fill="#5897c0"/>
+  <text id="_123" data-name="123" transform="translate(22.259 7)" fill="rgba(255,255,255,0.84)" font-size="5" font-family="CeraPro-Medium, Cera Pro" font-weight="500"><tspan x="0" y="0">123</tspan></text>
+</svg>

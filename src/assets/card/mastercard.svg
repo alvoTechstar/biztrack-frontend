@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 40 20">
+  <g id="mastercard" transform="translate(-0.342 0.165)">
+    <rect id="Rectangle_1893" data-name="Rectangle 1893" width="40" height="20" transform="translate(0.342 -0.165)" fill="none"/>
+    <g id="Group_1600" data-name="Group 1600" transform="translate(3.343 3.835)">
+      <rect id="Rectangle_1894" data-name="Rectangle 1894" width="35" height="12" transform="translate(0)" fill="none"/>
+      <g id="mastercard-2" data-name="mastercard" transform="translate(6.075 -0.712)">
+        <path id="Path_1545" data-name="Path 1545" d="M27.451,14.507H21.46V3.85h5.991V14.507Z" transform="translate(-13.38 -2.4)" fill="#fe5f04"/>
+        <path id="Path_1546" data-name="Path 1546" d="M8.463,6.778A6.741,6.741,0,0,1,11.078,1.45,6.861,6.861,0,0,0,0,6.778a6.862,6.862,0,0,0,11.079,5.328A6.735,6.735,0,0,1,8.464,6.778Z" transform="translate(0 0)" fill="#ea001b"/>
+        <path id="Path_1547" data-name="Path 1547" d="M40.485,6.778a6.862,6.862,0,0,1-11.079,5.328,6.734,6.734,0,0,0,0-10.656A6.861,6.861,0,0,1,40.485,6.778Z" transform="translate(-18.334 0)" fill="#f79f1d"/>
+      </g>
+    </g>
+  </g>
+</svg>

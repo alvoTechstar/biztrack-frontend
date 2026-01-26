@@ -1,0 +1,21 @@
+.content-loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 50vh;
+}
+
+.content-loader-container span {
+  color: #353f50;
+  margin-top: 10px;
+  font-size: 18px;
+  line-height: normal;
+  font-family: "Averta-Bold", sans-serif;
+  text-align: center;
+}
+
+.content-loader-svg {
+  height: 50px !important;
+  width: 50px !important;
+}

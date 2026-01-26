@@ -1,0 +1,146 @@
+export const ROLE_MATRIX = [
+  {
+    id: 1,
+    role: "Super Admin",
+    permissions: [
+      "Login",
+      "Create and manage businesses",
+      "Create Business Admin (Kiosk Admin, Hotel Admin, Hospital Admin)",
+      "Create and manage roles for businesses",
+      "View and manage all business activities",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 2,
+    role: "Kiosk Admin",
+    permissions: [
+      "Login",
+      "Manage products",
+      "View sales reports",
+      "View dashboard and daily sales",
+      "Manage business details (e.g., location, contact)",
+      "Generate receipts for sales",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 3,
+    role: "Hotel Admin",
+    permissions: [
+      "Login",
+      "Manage menu (food and drinks)",
+      "Manage orders (view order details, customer info, and quantities)",
+      "View sales reports",
+      "View dashboard and daily sales",
+      "Manage staff roles (e.g., cashier, waiter)",
+      "Generate receipts for orders",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 4,
+    role: "Kiosk Shopkeeper",
+    permissions: [
+      "Login",
+      "Complete sales transactions (receive payments)",
+      "Generate and view receipts",
+      "View product list and prices",
+      "View sales reports",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 5,
+    role: "Hotel Waiter",
+    permissions: [
+      "Login",
+      "Create orders (food, drinks)",
+      "View orders and add quantity",
+      "Generate order receipts",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 6,
+    role: "Hotel Cashier",
+    permissions: [
+      "Login",
+      "Complete orders (payment via Mpesa or cash)",
+      "View and complete pending orders",
+      "Generate receipts for completed orders",
+      "View sales reports",
+      "View profile details and change own password",
+    ],
+  },
+
+  // Hospital Management Roles
+  {
+    id: 7,
+    role: "Hospital Admin",
+    permissions: [
+      "Login",
+      "Manage patients",
+      "Manage users (Doctor, Nurse, Lab Technician, Receptionist, Pharmacist)",
+      "Manage medicines",
+      "View all payments (consultation, lab, pharmacy)",
+      "View reports",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 8,
+    role: "Doctor",
+    permissions: [
+      "Login",
+      "View assigned patients",
+      "Record consultations",
+      "Request lab tests",
+      "Prescribe medication",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 9,
+    role: "Nurse",
+    permissions: [
+      "Login",
+      "View patient procedures",
+      "Record injections and observations",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 10,
+    role: "Lab Technician",
+    permissions: [
+      "Login",
+      "View lab test requests",
+      "Record lab results",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 11,
+    role: "Receptionist",
+    permissions: [
+      "Login",
+      "Register patients",
+      "Track patients in queue",
+      "Manage appointments",
+      "View profile details and change own password",
+    ],
+  },
+  {
+    id: 12,
+    role: "Pharmacist",
+    permissions: [
+      "Login",
+      "Manage prescriptions",
+      "Dispense medication",
+      "Receives payments for consultation and lab tests",
+      "Manage medicines (Add/Edit/Delete)",
+      "View profile details and change own password",
+    ],
+  },
+];

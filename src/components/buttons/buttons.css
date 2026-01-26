@@ -1,0 +1,178 @@
+.form-button-container {
+  margin-top: 35px;
+}
+
+.form-button-container button {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #ffffff;
+  background-color: #1f2937;
+  line-height: 24px;
+  font-size: 13px;
+  font-family: "Averta-Bold", sans-serif !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  height: 45px;
+  cursor: pointer;
+}
+
+.form-button-container button:disabled {
+  cursor: not-allowed;
+}
+
+.navi-button {
+  font-family: "Averta-Bolder", sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+  margin-top: 8px;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.text-button-container {
+  margin-top: 5px;
+  font-family: "Averta-Bolder", sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-button-container span {
+  margin-left: 5px;
+}
+
+.text-button-active {
+  cursor: pointer;
+  color: #1f2937;
+}
+
+.validation-container {
+  background: #f8f8f8;
+  border-radius: 4px;
+  padding: 25px 12px;
+  padding-bottom: 16px;
+  font-size: 13px;
+  line-height: 16px;
+  color: #5f738c;
+  margin: 16px 0;
+}
+
+.validation-container > div {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.validation-container svg {
+  height: 0.7em;
+  width: 0.7em;
+  margin-right: 10px;
+}
+
+.add-button {
+  border-radius: 8px;
+  min-width: 125px;
+  display: inline-flex;
+  padding: 7px 16px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.add-button svg {
+  fill: #ffffff;
+  margin-right: 8px;
+}
+
+.add-button span {
+  color: #fff;
+  font-size: 13px;
+  font-family: "Averta-Bolder", sans-serif;
+}
+
+.cancel {
+  background-color: #ffffff;
+  border: 1px solid #6b7280 !important;
+}
+
+.cancel svg {
+  fill: #1f2937;
+  margin-right: 8px;
+}
+
+.cancel span {
+  color: #353f50 !important;
+}
+
+.form-button {
+  border-radius: 8px;
+  width: 175px;
+  height: fit-content;
+  display: flex;
+  padding: 12px 24px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  margin: 0 auto;
+  border: 1px solid transparent;
+}
+
+.form-button:disabled {
+  cursor: not-allowed;
+}
+
+.form-button span {
+  color: #fff;
+  font-size: 13px;
+  font-family: "Averta-Bolder", sans-serif;
+}
+
+.pass-button {
+  border-radius: 8px;
+  width: 175px;
+  height: 100%;
+  display: flex;
+  padding: 8px 24px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  margin: 0 auto;
+  border: 1px solid #6b7280;
+  background-color: #ffffff;
+}
+.pass-button svg {
+  fill: #353f50;
+  margin-right: 8px;
+}
+
+.pass-button span {
+  color: #353f50;
+  font-size: 13px;
+  font-family: "Averta-Bold", sans-serif;
+}
+
+@media only screen and (max-width: 480px) {
+  .pass-button {
+    margin: inherit;
+    margin-bottom: 15px;
+  }
+}
+
+@media only screen and (max-width: 900px) {
+  .add-button {
+    min-width: auto;
+  }
+  .add-button span {
+    display: none;
+  }
+
+  .add-button svg {
+    margin-right: 0;
+  }
+}

@@ -1,0 +1,11 @@
+<svg id="cvv" xmlns="http://www.w3.org/2000/svg" width="30.127" height="19.028" viewBox="0 0 30.127 19.028">
+  <path id="Path_1500" data-name="Path 1500" d="M30.127,99.922v13.245c0,1.478-.92,2.676-2.054,2.676H2.054c-1.135,0-2.054-1.2-2.054-2.676V99.922Zm0,0" transform="translate(0 -96.816)" fill="#c7dcea"/>
+  <path id="Path_1502" data-name="Path 1502" d="M28.073.5a2.054,2.054,0,0,1,2.054,2.054V4.136H0V2.554A2.054,2.054,0,0,1,2.054.5Zm0,0" transform="translate(0 -0.5)" fill="#c7dcea"/>
+  <g id="Group_1482" data-name="Group 1482" transform="translate(3 13.875)">
+    <rect id="Rectangle_1879" data-name="Rectangle 1879" width="4" height="1.5" rx="0.2" fill="#78abcc"/>
+    <rect id="Rectangle_1884" data-name="Rectangle 1884" width="4" height="1.5" rx="0.2" transform="translate(6.397)" fill="#78abcc"/>
+    <rect id="Rectangle_1885" data-name="Rectangle 1885" width="4" height="1.5" rx="0.2" transform="translate(12.794)" fill="#78abcc"/>
+    <rect id="Rectangle_1886" data-name="Rectangle 1886" width="4" height="1.5" rx="0.2" transform="translate(19.191)" fill="#78abcc"/>
+  </g>
+  <rect id="Rectangle_1883" data-name="Rectangle 1883" width="9" height="4" rx="0.2" transform="translate(3 3.875)" fill="#fff"/>
+</svg>
