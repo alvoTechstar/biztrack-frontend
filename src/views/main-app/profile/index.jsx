@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
 import TextInput from "../../../components/Input/TextInput";
-import PasswordInput from "../../../components/input/PasswordInput";
 import AppFormButton from "../../../components/buttons/AppFormButton";
 import CloseIcon from "@mui/icons-material/Close";
 import IconButton from "@mui/material/IconButton";
