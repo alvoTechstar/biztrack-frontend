@@ -3,7 +3,7 @@ import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import "./forgotPassword.css";
 import TitleHeader from "../../../components/header/TitleHeader";
 import TextInput from "../../../components/Input/TextInput";
-import { validateEmail } from "../../../utilities/Sharedfunctions";
+import { validateEmail } from "../../../utilities/Sharedfunctions.jsx";
 import FormButton from "../../../components/buttons/FormButton";
 import TextButton from "../../../components/buttons/TextButton";
 
