@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../../components/modal/Modal";
 import PasswordInput from "../../../components/input/PasswordInput";
 import AppFormButton from "../../../components/buttons/AppFormButton";
-import { validatePassword } from "../../../utilities/SharedFunctions"; 
+import { validatePassword } from "../../../utilities/SharedFunctions.jsx"; 
 import { useTheme } from "../../../components/theme/ThemeContext";
 
 const ChangePassword = ({

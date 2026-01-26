@@ -11,7 +11,7 @@ import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
 import dayjs from "dayjs";
 import "./input.css";
 import AppFormButton from "../buttons/AppFormButton";
-import { getDateRange } from "../../utilities/SharedFunctions";
+import { getDateRange } from "../../utilities/SharedFunctions.jsx";
 
 const DATE_OPTIONS = [
   "Today",

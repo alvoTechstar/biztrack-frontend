@@ -13,7 +13,7 @@ import DebtDetailModal from "./DebtDetailModal";
 import PaymentOptionsModal from "./PaymentOptionsModal";
 import DebtDataTable from "./DebtDataTable";
 import { useSelector } from "react-redux";
-import { formatCurrency, formatDate } from "../../../utilities/SharedFunctions";
+import { formatCurrency, formatDate } from "../../../utilities/SharedFunctions.jsx";
 
 const DebtManagement = () => {
   const { primaryColor } = useTheme();

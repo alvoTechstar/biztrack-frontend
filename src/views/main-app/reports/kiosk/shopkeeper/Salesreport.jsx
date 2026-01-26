@@ -3,7 +3,7 @@ import { TrendingUp, ShoppingCart, DollarSign, Eye } from "lucide-react";
 import DataTable from "../../../../../components/datatable";
 import SummaryCard from "./SummaryCard";
 import StatusBadge from "./StatusBadge";
-import { formatCurrency, formatTime } from "../../../../../utilities/SharedFunctions";
+import { formatCurrency, formatTime } from "../../../../../utilities/SharedFunctions.jsx";
 
 // Custom function to show only first item + count
 const renderFirstItemWithCount = (items) => {

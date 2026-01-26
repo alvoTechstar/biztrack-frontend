@@ -9,7 +9,7 @@ import {
   formatString,
   formatValue,
   removeSubstring,
-} from "../../utilities/SharedFunctions";
+} from "../../utilities/SharedFunctions.jsx";
 
 const style = {
   position: "absolute",

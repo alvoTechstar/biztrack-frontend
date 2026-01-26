@@ -11,7 +11,7 @@ import { useActionModal } from '../../../../../hooks/useActionModal';
 import ActionModal from '../../../../../components/modal/ActionModal';
 import { GET, POST, PUT, DELETE } from "../../../../../services/DatabaseServiceImp";
 import URLS from '../../../../../utilities/Endpoints';
-import { formatDate, getInitials } from '../../../../../utilities/SharedFunctions';
+import { formatDate, getInitials } from '../../../../../utilities/SharedFunctions.jsx';
 import Toaster from '../../../../../components/Toaster';
 
 const UsersPage = () => {

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { DollarSign } from "lucide-react";
 import DataTable from "../../../../../components/datatable";
-import { formatCurrency } from "../../../../../utilities/SharedFunctions";
+import { formatCurrency } from "../../../../../utilities/SharedFunctions.jsx";
 const ProductSummary = ({ productSummary, color }) => {
 
   const productTableData = useMemo(() => {

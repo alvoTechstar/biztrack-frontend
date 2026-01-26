@@ -25,7 +25,7 @@ import {
   getFilteredTable,
   getFilters,
   searchFunction,
-} from "../../utilities/SharedFunctions";
+} from "../../utilities/SharedFunctions.jsx";
 import TablePill from "./TablePill";
 import TableActions from "./TableActions";
 import CheckboxInput from "../input/CheckboxInput"
