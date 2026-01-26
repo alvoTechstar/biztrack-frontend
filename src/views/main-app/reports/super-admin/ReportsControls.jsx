@@ -1,8 +1,8 @@
 // src/views/main-app/reports/super-admin/components/ReportsControls.jsx
 import React, { useCallback, useState } from "react";
-import SearchInput from "../../../../components/input/SearchInput";
-import DateRangeInput from "../../../../components/input/DateRangeInput";
-import FilterInput from "../../../../components/input/FilterInput";
+import SearchInput from "../../../../components/Input/SearchInput";
+import DateRangeInput from "../../../../components/Input/DateRangeInput";
+import FilterInput from "../../../../components/Input/FilterInput";
 import AppFormButton from "../../../../components/buttons/AppFormButton";
 import { FileText, Table } from "lucide-react";
 import { useTheme } from "../../../../components/theme/ThemeContext";

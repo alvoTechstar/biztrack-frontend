@@ -14,7 +14,7 @@ import RevenueChartCard from "./RevenueChartCard";
 import OrdersByCategoryChartCard from "./OrdersByCategoryChartCard";
 import RecentOrdersTable from "./recentOrdersTable";
 import DateRangeInput from "../../../../../components/Input/DateRangeInput";
-import SearchInput from "../../../../../components/input/SearchInput";
+import SearchInput from "../../../../../components/Input/SearchInput";
 import dayjs from "dayjs";
 
 // --- Sample Data (updated to include 'date' property) ---
