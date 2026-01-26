@@ -4,12 +4,8 @@ import {
   DollarSign, 
   AlertCircle, 
   TrendingDown,
-  CheckCircle,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight
 } from "lucide-react";
-import { formatCurrency } from "../../../../../utilities/SharedFunctions";
+import { formatCurrency } from "../../../../../utilities/Sharedfunctions.jsx";
 
 const ReportCards = ({ salesData, debtData }) => {
   const cards = [
