@@ -4,7 +4,7 @@ import "./forgotPassword.css";
 import TextInput from "../../../components/Input/TextInput";
 import FormButton from "../../../components/buttons/FormButton";
 import TextButton from "../../../components/buttons/TextButton";
-import TitleHeader from "../../../components/Header/TitleHeader";
+import TitleHeader from "../../../components/header/TitleHeader"
 
 export default function OTPInput({
   input,
