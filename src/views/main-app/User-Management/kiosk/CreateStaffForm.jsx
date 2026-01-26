@@ -4,7 +4,7 @@ import * as Yup from 'yup';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { useTheme } from '../../../../components/theme/ThemeContext';
 import TextInput from '../../../../components/Input/TextInput';
-import SelectInput from '../../../../components/input/SelectInput';
+import SelectInput from '../../../../components/Input/SelectInput';
 import AppFormButton from '../../../../components/buttons/AppFormButton';
 
 const CreateStaffForm = ({

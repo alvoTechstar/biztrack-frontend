@@ -4,11 +4,11 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { Building2 } from 'lucide-react';
 import { useTheme } from '../../../../../components/theme/ThemeContext';
 import TextInput from '../../../../../components/Input/TextInput';
-import SelectInput from '../../../../../components/input/SelectInput';
-import FileInput from '../../../../../components/input/FileInput';
-import TextBoxInput from '../../../../../components/input/TextBoxInput';
+import SelectInput from '../../../../../components/Input/SelectInput';
+import FileInput from '../../../../../components/Input/FileInput';
+import TextBoxInput from '../../../../../components/Input/TextBoxInput';
 import AppFormButton from '../../../../../components/buttons/AppFormButton';
-import ColorInput from '../../../../../components/input/ColorInput';
+import ColorInput from '../../../../../components/Input/ColorInput';
 import { businessValidationSchema } from '../../../../../utilities/validationSchemas';
 
 const CreateBusinessForm = ({
