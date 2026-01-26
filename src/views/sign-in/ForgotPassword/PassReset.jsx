@@ -1,6 +1,6 @@
 import React from "react";
 import "./forgotPassword.css";
-import TitleHeader from "../../../components/Header/TitleHeader";
+import TitleHeader from "../../../components/header/TitleHeader";
 import FormButton from "../../../components/buttons/FormButton";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import TextButton from "../../../components/buttons/TextButton";

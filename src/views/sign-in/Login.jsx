@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import PasswordInput from "../../components/input/PasswordInput";
+import PasswordInput from "../../components/Input/PasswordInput"
 import FormButton from "../../components/buttons/FormButton";
 import NaviButton from "../../components/buttons/Navibutton";
 import loginBg from "../../assets/Backgrounds/background.png";

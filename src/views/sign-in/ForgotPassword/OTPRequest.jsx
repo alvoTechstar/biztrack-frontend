@@ -1,7 +1,7 @@
 import React from "react";
 import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import "./forgotPassword.css";
-import TitleHeader from "../../../components/Header/TitleHeader";
+import TitleHeader from "../../../components/header/TitleHeader";
 import TextInput from "../../../components/Input/TextInput";
 import { validateEmail } from "../../../utilities/SharedFunctions";
 import FormButton from "../../../components/buttons/FormButton";
