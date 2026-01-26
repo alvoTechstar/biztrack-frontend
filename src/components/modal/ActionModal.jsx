@@ -1,6 +1,6 @@
 import React from 'react';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
-import TextBoxInput from '../input/TextBoxInput';
+import TextBoxInput from '../Input/TextBoxInput';
 import AppFormButton from '../buttons/AppFormButton';
 import "../../App.css";
 
