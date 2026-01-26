@@ -5,5 +5,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ["@json2csv/plainjs"],
   },
-  base: process.env.VITE_BASE_URL || "/biztrack-application",
+  base: process.env.VITE_BASE_URL || "/",
 });
