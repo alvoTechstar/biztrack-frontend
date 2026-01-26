@@ -13,7 +13,7 @@ import { format } from "date-fns";
 
 import AppFormButton from "../../../../components/buttons/AppFormButton";
 import TextInput from "../../../../components/Input/TextInput";
-import SelectInput from "../../../../components/input/SelectInput";
+import SelectInput from "../../../../components/Input/SelectInput";
 import { useTheme } from "../../../../components/theme/ThemeContext";
 import DateInput from "../../../../components/input/DateInput";
 

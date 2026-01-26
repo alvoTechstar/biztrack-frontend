@@ -12,7 +12,6 @@ import ReceptionHeader from "./ReceptionHeader";
 import NewQueue from "./NewQueue";
 import PatientRegistration from "./PatientRegistration";
 import QueueDataTable from "./QueueDataTable";
-import AppFormButton from "../../../../components/buttons/AppFormButton";
 import { STATUS_OPTIONS, initialPatientsData } from "./Constants";
 
 // Define main content views
