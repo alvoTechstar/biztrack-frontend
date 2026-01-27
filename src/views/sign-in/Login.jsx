@@ -14,6 +14,7 @@ import axios from "axios";
 import OTPInput from "./ForgotPassword/OTPInput";
 import URLS from "../../utilities/Endpoints";
 import TextInput from "../../components/Input/TextInput";
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -129,7 +130,12 @@ const Login = () => {
           return;
         }
         localStorage.setItem("token", token);
-        Cookies.set("token", token, { expires: 7 });
+        
+        // Set cookie using document.cookie
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7); // 7 days from now
+        document.cookie = `token=${token}; expires=${expires.toUTCString()}; path=/`;
+        
         localStorage.setItem("user", JSON.stringify(userData));
         dispatch(authActions.setAuth(userData));
         const dashboardRoute = getDashboardRoute(userData.role);
