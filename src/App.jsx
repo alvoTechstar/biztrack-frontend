@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
@@ -18,6 +18,43 @@ import Unauthorized from "./components/notfound/Unauthorized";
 
 import { routes } from "./config/routes";
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("App Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <p className="mb-4">Please refresh the page or try again later.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // ---------------------------------------------------
 // Protected layout that includes MainLayout + Sidebar
 // ---------------------------------------------------
@@ -27,23 +64,34 @@ const ThemedMainLayout = () => {
   const dispatch = useDispatch();
   const authState = useSelector((state) => state.auth.value);
 
-  // Load user from cookie if Redux is empty
+  // Load user from localStorage if Redux is empty
   useEffect(() => {
-    if (!authState) {
-      const userCookie = Cookies.get("user");
-      if (userCookie) {
-        try {
-          const parsedUser = JSON.parse(userCookie);
-          const cleanUser = parsedUser._doc || parsedUser;
-          dispatch(authActions.setAuth(cleanUser));
-        } catch (e) {
-          console.error("Error parsing user from cookie:", e);
-          Cookies.remove("user");
-          dispatch(authActions.setAuth(null));
+    const loadUser = async () => {
+      try {
+        if (!authState) {
+          // Try localStorage first
+          const userData = localStorage.getItem("user");
+          if (userData) {
+            const parsedUser = JSON.parse(userData);
+            const cleanUser = parsedUser._doc || parsedUser;
+            dispatch(authActions.setAuth(cleanUser));
+            
+            // Also set cookie for consistency
+            Cookies.set("user", JSON.stringify(cleanUser), { expires: 7 });
+          }
         }
+      } catch (error) {
+        console.error("Error loading user:", error);
+        // Clear invalid data
+        localStorage.removeItem("user");
+        Cookies.remove("user");
+        dispatch(authActions.setAuth(null));
+      } finally {
+        setIsLoadingAuth(false);
       }
-    }
-    setIsLoadingAuth(false);
+    };
+
+    loadUser();
   }, [authState, dispatch]);
 
   if (isLoadingAuth) {
@@ -63,7 +111,7 @@ const ThemedMainLayout = () => {
   }
 
   if (!authState) {
-    return <Navigate to="/login" replace />; // Redirect to /login if not authenticated
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -81,41 +129,55 @@ const ThemedMainLayout = () => {
 // ------------------------
 const App = () => {
   return (
-    <Provider store={store}>
-      <ThemeProvider>
-        <Router>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/login" replace />} /> {/* Redirect / to /login */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ForgotPassword />} />
-            <Route path="/otp" element={<OTPInput />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            <Route path="/not-found" element={<NotFound />} />
+    <ErrorBoundary>
+      <Provider store={store}>
+        <ThemeProvider>
+          <Router>
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center">
+                <ContentLoader
+                  state={true}
+                  loading={true}
+                  loadingText="Loading..."
+                  loadedText=""
+                  color="primary"
+                />
+              </div>
+            }>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ForgotPassword />} />
+                <Route path="/otp" element={<OTPInput />} />
+                <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/not-found" element={<NotFound />} />
 
-            {/* Protected Routes */}
-            <Route element={<ThemedMainLayout />}>
-              {routes
-                .filter((route) => route.isPrivate)
-                .map((route) => (
-                  <Route
-                    key={route.path}
-                    path={route.path.startsWith("/") ? route.path.substring(1) : route.path}
-                    element={
-                      <AppRoutes allowedRoles={route.allowedRoles}>
-                        {route.element}
-                      </AppRoutes>
-                    }
-                  />
-                ))}
-            </Route>
+                {/* Protected Routes */}
+                <Route element={<ThemedMainLayout />}>
+                  {routes
+                    .filter((route) => route.isPrivate)
+                    .map((route) => (
+                      <Route
+                        key={route.path}
+                        path={route.path}
+                        element={
+                          <AppRoutes allowedRoles={route.allowedRoles}>
+                            {route.element}
+                          </AppRoutes>
+                        }
+                      />
+                    ))}
+                </Route>
 
-            {/* Catch-all */}
-            {/* <Route path="*" element={<Navigate to="/not-found" replace />} /> */}
-          </Routes>
-        </Router>
-      </ThemeProvider>
-    </Provider>
+                {/* Catch-all route - IMPORTANT for Netlify */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Suspense>
+          </Router>
+        </ThemeProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 };
 
