@@ -56,11 +56,24 @@ export default function StockManagementPage() {
   // Toaster state
   const [toaster, setToaster] = useState({
     open: false,
-    state: null,
-    title: "",
-    message: "",
-    position: "right",
+    state: 'true',
+    title: '',
+    message: '',
   });
+
+  // Toaster functions
+  const showToasterMessage = useCallback((state, title, message) => {
+    setToaster({
+      open: true,
+      state: state ? 'true' : 'false',
+      title,
+      message,
+    });
+  }, []);
+
+  const handleCloseToaster = useCallback(() => {
+    setToaster((prev) => ({ ...prev, open: false }));
+  }, []);
 
   // Extract business information from user
   useEffect(() => {
@@ -70,19 +83,17 @@ export default function StockManagementPage() {
       const userBusinessName = currentUser.businessName;
 
       if (userBusinessId) {
-        // IMPORTANT: Use the numeric businessId (2) for API calls
-        // Your backend's getProductsByBusiness function queries by businessId, not businessUUID
         setBusinessInfo({
-          businessId: userBusinessId, // This should be 2 (numeric)
-          businessUUID: userBusinessUUID, // This is the UUID string
+          businessId: Number(userBusinessId),
+          businessUUID: userBusinessUUID,
           businessName: userBusinessName
         });
-        
+
         console.log('Business info set:', {
-          businessId: userBusinessId,
-          businessUUID: userBusinessUUID,
-          typeOfBusinessId: typeof userBusinessId,
-          isNumber: !isNaN(parseInt(userBusinessId))
+          businessId: Number(userBusinessId),
+          originalType: typeof userBusinessId,
+          parsedType: typeof Number(userBusinessId),
+          isNaN: isNaN(Number(userBusinessId))
         });
       } else {
         setErrorMessage("No business assigned to your account. Please contact administrator.");
@@ -90,21 +101,6 @@ export default function StockManagementPage() {
       }
     }
   }, [currentUser]);
-
-  // Toaster functions
-  const showToasterMessage = useCallback((state, title, message) => {
-    setToaster({
-      open: true,
-      state: state,
-      title,
-      message,
-      position: "right",
-    });
-  }, []);
-
-  const handleCloseToaster = useCallback(() => {
-    setToaster((prev) => ({ ...prev, open: false }));
-  }, []);
 
   // Load products
   const loadProducts = useCallback(async () => {
@@ -119,11 +115,9 @@ export default function StockManagementPage() {
     setErrorMessage(null);
 
     try {
-      // Use the numeric businessId (2) for the endpoint
-      // Your backend expects: /api/products/business/2
       const endpoint = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS.replace(':businessId', businessInfo.businessId);
       console.log('Fetching from endpoint:', endpoint);
-      
+
       const result = await GET(endpoint);
 
       if (!result) {
@@ -147,7 +141,7 @@ export default function StockManagementPage() {
         const stock = Number(product.stock) || 0;
         const threshold = Number(product.threshold) || 0;
         let status = 'Out of Stock';
-        
+
         if (stock > 0) {
           status = stock > threshold ? 'In Stock' : 'Low Stock';
         }
@@ -175,13 +169,17 @@ export default function StockManagementPage() {
       console.log(`Loaded ${fetchedProducts.length} products`);
       setProducts(fetchedProducts);
       setLoadedText(`${fetchedProducts.length} products loaded successfully`);
-      setTimeout(() => setLoading(false), 500);
+      showToasterMessage(true, 'Success', 'Products loaded successfully');
+      
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
 
     } catch (error) {
       console.error('Error fetching products:', error);
-      
+
       let userFriendlyMessage = 'Failed to load products';
-      
+
       if (error.message.includes('500')) {
         userFriendlyMessage = 'Server error. Please check the backend logs.';
         console.error('Server 500 error. This might be due to:');
@@ -193,12 +191,15 @@ export default function StockManagementPage() {
       } else {
         userFriendlyMessage = error.message || 'Failed to load products';
       }
-      
+
       setErrorMessage(userFriendlyMessage);
       setProducts([]);
       setLoadedText("Failed to load products");
-      setLoading(false);
-      showToasterMessage("error", "Load Error", userFriendlyMessage);
+      showToasterMessage(false, 'Error', userFriendlyMessage);
+      
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
     }
   }, [businessInfo, showToasterMessage]);
 
@@ -330,7 +331,7 @@ export default function StockManagementPage() {
       buyingPrice: product.buyingPrice || 0,
       price: product.price || 0,
       threshold: product.threshold || 0,
-      businessId: product.businessId || businessInfo.businessId,
+      businessId: Number(product.businessId) || Number(businessInfo.businessId),
       businessUUID: product.businessUUID || businessInfo.businessUUID,
     };
     
@@ -350,7 +351,7 @@ export default function StockManagementPage() {
     setErrorMessage(null);
   };
 
-  // API Operations
+  // API Operations - FIXED: Only close on success
   const saveEditedProduct = async (productData) => {
     setSubmitting(true);
     setOperationLoading(true);
@@ -361,17 +362,20 @@ export default function StockManagementPage() {
       const productId = productData._id || productData.id;
       const updateEndpoint = URLS.PRODUCTS.UPDATE_PRODUCT.replace(':id', productId);
       
-      // Include businessUUID in update data
       const updateData = {
         ...productData,
+        businessId: Number(businessInfo.businessId),
         businessUUID: businessInfo.businessUUID
       };
+
+      console.log('📤 Updating product with data:', updateData);
       
       const response = await PUT(updateEndpoint, updateData);
 
       if (response.success) {
         const updatedProductFromServer = response.product;
 
+        // ✅ Update product in state
         setProducts(prevProducts =>
           prevProducts.map(p =>
             p._id === productData._id ? {
@@ -382,20 +386,48 @@ export default function StockManagementPage() {
           )
         );
 
+        // ✅ Show success message
         setOperationLoadingText("Product updated successfully!");
+        showToasterMessage(true, 'Success', response.message || "Product updated successfully");
+        
+        // ✅ Wait to show success
         await new Promise(resolve => setTimeout(resolve, 1500));
-
+        
+        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
+        setOperationLoading(false);
+        setSubmitting(false);
         closeAllModals();
-        showToasterMessage("success", "Success", response.message || "Product updated successfully");
+        
       } else {
-        throw new Error(response.message || 'Failed to update product');
+        // ❌ ERROR: Show error but DON'T close modal
+        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        setErrorMessage(response.message || 'Failed to update product');
+        showToasterMessage(false, 'Update Error', response.message || 'Failed to update product');
+        
+        // Wait to show error message
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // ❌ RESET LOADING BUT STAY IN MODAL
+        setOperationLoading(false);
+        setSubmitting(false);
+        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to update product');
-      showToasterMessage("error", "Update Error", error.message || 'Failed to update product');
-    } finally {
-      setSubmitting(false);
+      console.error('❌ Update error:', error);
+      
+      // ❌ ERROR: Show error but DON'T close modal
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to update product';
+      setOperationLoadingText(`Error: ${errorMsg}`);
+      setErrorMessage(errorMsg);
+      showToasterMessage(false, 'Update Error', errorMsg);
+      
+      // Wait to show error message
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // ❌ RESET LOADING BUT STAY IN MODAL
       setOperationLoading(false);
+      setSubmitting(false);
+      // Don't close modal - keep it open for retry
     }
   };
 
@@ -415,6 +447,7 @@ export default function StockManagementPage() {
       if (response.success) {
         const updatedProductFromServer = response.product;
 
+        // ✅ Update product in state
         setProducts(prevProducts =>
           prevProducts.map(p =>
             p._id === restockData._id ? {
@@ -428,20 +461,46 @@ export default function StockManagementPage() {
           )
         );
 
+        // ✅ Show success message
         setOperationLoadingText("Product restocked successfully!");
+        showToasterMessage(true, 'Success', response.message || "Product restocked successfully");
+        
+        // ✅ Wait to show success
         await new Promise(resolve => setTimeout(resolve, 1500));
-
+        
+        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
+        setOperationLoading(false);
+        setSubmitting(false);
         closeAllModals();
-        showToasterMessage("success", "Success", response.message || "Product restocked successfully");
+        
       } else {
-        throw new Error(response.message || 'Failed to restock product');
+        // ❌ ERROR: Show error but DON'T close modal
+        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        setErrorMessage(response.message || 'Failed to restock product');
+        showToasterMessage(false, 'Restock Error', response.message || 'Failed to restock product');
+        
+        // Wait to show error message
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // ❌ RESET LOADING BUT STAY IN MODAL
+        setOperationLoading(false);
+        setSubmitting(false);
+        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to restock product');
-      showToasterMessage("error", "Restock Error", error.message || 'Failed to restock product');
-    } finally {
-      setSubmitting(false);
+      // ❌ ERROR: Show error but DON'T close modal
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to restock product';
+      setOperationLoadingText(`Error: ${errorMsg}`);
+      setErrorMessage(errorMsg);
+      showToasterMessage(false, 'Restock Error', errorMsg);
+      
+      // Wait to show error message
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // ❌ RESET LOADING BUT STAY IN MODAL
       setOperationLoading(false);
+      setSubmitting(false);
+      // Don't close modal - keep it open for retry
     }
   };
 
@@ -459,24 +518,51 @@ export default function StockManagementPage() {
       const response = await DELETE(deleteEndpoint);
 
       if (response.success) {
+        // ✅ Remove product from state
         setProducts(prevProducts =>
           prevProducts.filter(p => p._id !== productToDelete._id)
         );
 
+        // ✅ Show success message
         setOperationLoadingText("Product deleted successfully!");
+        showToasterMessage(true, 'Success', response.message || "Product deleted successfully");
+        
+        // ✅ Wait to show success
         await new Promise(resolve => setTimeout(resolve, 1500));
-
+        
+        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
+        setOperationLoading(false);
+        setSubmitting(false);
         closeAllModals();
-        showToasterMessage("success", "Success", response.message || "Product deleted successfully");
+        
       } else {
-        throw new Error(response.message || 'Failed to delete product');
+        // ❌ ERROR: Show error but DON'T close modal
+        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        setErrorMessage(response.message || 'Failed to delete product');
+        showToasterMessage(false, 'Delete Error', response.message || 'Failed to delete product');
+        
+        // Wait to show error message
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // ❌ RESET LOADING BUT STAY IN MODAL
+        setOperationLoading(false);
+        setSubmitting(false);
+        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to delete product');
-      showToasterMessage("error", "Delete Error", error.message || 'Failed to delete product');
-    } finally {
-      setSubmitting(false);
+      // ❌ ERROR: Show error but DON'T close modal
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to delete product';
+      setOperationLoadingText(`Error: ${errorMsg}`);
+      setErrorMessage(errorMsg);
+      showToasterMessage(false, 'Delete Error', errorMsg);
+      
+      // Wait to show error message
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // ❌ RESET LOADING BUT STAY IN MODAL
       setOperationLoading(false);
+      setSubmitting(false);
+      // Don't close modal - keep it open for retry
     }
   };
 
@@ -496,9 +582,15 @@ export default function StockManagementPage() {
         buyingPrice: parseFloat(newProductData.buyingPrice) || 0,
         price: parseFloat(newProductData.price) || 0,
         threshold: parseInt(newProductData.threshold) || 0,
-        businessId: businessInfo.businessId, // Use numeric businessId (2)
-        businessUUID: businessInfo.businessUUID // Also include businessUUID
+        businessId: Number(businessInfo.businessId),
+        businessUUID: businessInfo.businessUUID
       };
+
+      console.log('📤 Sending product data:', {
+        ...productData,
+        businessIdType: typeof productData.businessId,
+        businessIdValue: productData.businessId
+      });
 
       const createEndpoint = URLS.PRODUCTS.CREATE_PRODUCT;
       const response = await POST(createEndpoint, productData);
@@ -506,26 +598,59 @@ export default function StockManagementPage() {
       if (response.success) {
         const newProductFromServer = response.product;
 
+        // ✅ Add new product to state
         setProducts(prevProducts => [...prevProducts, {
           ...newProductFromServer,
           id: newProductFromServer._id,
           _id: newProductFromServer._id
         }]);
 
+        // ✅ Show success message
         setOperationLoadingText("Product added successfully!");
+        showToasterMessage(true, 'Success', response.message || "Product added successfully");
+        
+        // ✅ Wait to show success
         await new Promise(resolve => setTimeout(resolve, 1500));
-
+        
+        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
+        setOperationLoading(false);
+        setSubmitting(false);
         closeAllModals();
-        showToasterMessage("success", "Success", response.message || "Product added successfully");
+        
       } else {
-        throw new Error(response.message || 'Failed to add product');
+        // ❌ ERROR: Show error but DON'T close modal
+        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        setErrorMessage(response.message || 'Failed to add product');
+        showToasterMessage(false, 'Add Error', response.message || "Failed to add product");
+        
+        // Wait to show error message
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // ❌ RESET LOADING BUT STAY IN MODAL
+        setOperationLoading(false);
+        setSubmitting(false);
+        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to add product');
-      showToasterMessage("error", "Add Error", error.message || "Failed to add product");
-    } finally {
-      setSubmitting(false);
+      console.error('❌ Frontend error details:', {
+        message: error.message,
+        responseData: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // ❌ ERROR: Show error but DON'T close modal
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to add product';
+      setOperationLoadingText(`Error: ${errorMsg}`);
+      setErrorMessage(errorMsg);
+      showToasterMessage(false, 'Add Error', errorMsg);
+      
+      // Wait to show error message
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // ❌ RESET LOADING BUT STAY IN MODAL
       setOperationLoading(false);
+      setSubmitting(false);
+      // Don't close modal - keep it open for retry
     }
   };
 
@@ -552,7 +677,7 @@ export default function StockManagementPage() {
   const lowStockCount = products.filter((p) => p.status === "Low Stock").length;
   const outOfStockCount = products.filter((p) => p.status === "Out of Stock").length;
 
-  // Loading states
+  // Operation Loading State
   if (operationLoading) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -563,16 +688,26 @@ export default function StockManagementPage() {
                 state={true}
                 loading={true}
                 loadingText={operationLoadingText}
-                loadedText=""
+                loadedText={loadedText}
                 color={primaryColor}
               />
             </div>
           </div>
         </div>
+        
+        <Toaster
+          open={toaster.open}
+          state={toaster.state}
+          title={toaster.title}
+          message={toaster.message}
+          action={handleCloseToaster}
+          position="right"
+        />
       </div>
     );
   }
 
+  // Modal Loading State
   if (modalLoading) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -593,6 +728,7 @@ export default function StockManagementPage() {
     );
   }
 
+  // No Business ID State
   if (!businessInfo.businessId && !loading) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -615,6 +751,7 @@ export default function StockManagementPage() {
     );
   }
 
+  // Initial Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -641,6 +778,15 @@ export default function StockManagementPage() {
   if (isAnyModalOpen) {
     return (
       <>
+        <Toaster
+          open={toaster.open}
+          state={toaster.state}
+          title={toaster.title}
+          message={toaster.message}
+          action={handleCloseToaster}
+          position="right"
+        />
+
         {showProductFormModal && (
           <ProductFormModal
             show={showProductFormModal}
@@ -651,6 +797,7 @@ export default function StockManagementPage() {
             categories={categories}
             businessId={businessInfo.businessId}
             businessUUID={businessInfo.businessUUID}
+            errorMessage={errorMessage} // Pass error to form
           />
         )}
 
@@ -660,6 +807,7 @@ export default function StockManagementPage() {
             product={currentProduct}
             onClose={closeAllModals}
             onSave={saveRestockedProduct}
+            errorMessage={errorMessage} // Pass error to form
           />
         )}
 
@@ -674,21 +822,14 @@ export default function StockManagementPage() {
             cancelText="No, Keep Product"
             isLoading={submitting}
             itemName={productToDelete ? productToDelete.name : ""}
+            errorMessage={errorMessage} // Pass error to modal
           />
         )}
-
-        <Toaster
-          open={toaster.open}
-          state={toaster.state}
-          title={toaster.title}
-          message={toaster.message}
-          position={toaster.position}
-          action={handleCloseToaster}
-        />
       </>
     );
   }
 
+  // Main View - Only shown when no modals are open
   return (
     <div className="min-h-screen bg-white p-2">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 p-2">
@@ -755,8 +896,8 @@ export default function StockManagementPage() {
           state={toaster.state}
           title={toaster.title}
           message={toaster.message}
-          position={toaster.position}
           action={handleCloseToaster}
+          position="right"
         />
       </div>
     </div>
