@@ -1,23 +1,10 @@
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import { CreditCard } from "lucide-react";
-import StatusBadge from "./StatusBadge";
+import { X, CreditCard, ArrowLeft } from "lucide-react";
 import { formatCurrency } from "../../../../../utilities/Sharedfunctions.jsx";
 
 const TransactionDetailsModal = ({ open, onClose, transaction }) => {
-  if (!transaction) return null;
+  // Same pattern as DebtDetailModal - return null if not open
+  if (!open || !transaction) return null;
 
   // Safe date handling
   const transactionDate = transaction.timestamp || transaction.createdAt || new Date();
@@ -34,19 +21,23 @@ const TransactionDetailsModal = ({ open, onClose, transaction }) => {
     day: "numeric",
   });
 
-  const expectedPaymentDate = transaction.expectedPaymentDate
-    ? new Date(transaction.expectedPaymentDate).toLocaleDateString("en-US", {
+  const formatDate = (date) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-    : null;
+    });
+  };
 
-  const isDebtTransaction = transaction.paymentMethod === "Debt" || transaction.originalPaymentMethod === "Debt";
+  const isDebtTransaction = transaction.paymentMethod === "Debt" ||
+    transaction.paymentMethod === "debt" ||
+    transaction.originalPaymentMethod === "Debt" ||
+    transaction.originalPaymentMethod === "debt";
   const wasDebtPaid = transaction.debtPaid || (isDebtTransaction && transaction.status === "Completed");
 
-  // Calculate totals for verification
+  // Calculate totals
   const calculateItemTotal = (item) => {
     const quantity = item.quantity || 1;
     const price = item.price || item.unitPrice || item.product?.price || 0;
@@ -58,296 +49,287 @@ const TransactionDetailsModal = ({ open, onClose, transaction }) => {
     return transaction.items.reduce((total, item) => total + calculateItemTotal(item), 0);
   };
 
+  // Format quantity with unit
+  const formatQuantityWithUnit = (quantity, unit) => {
+    const formattedQuantity = Number(quantity).toFixed(2).replace(/\.?0+$/, '');
+    const displayUnit = unit || 'units';
+    return `${formattedQuantity} ${displayUnit}`;
+  };
+
+  // Helper for compact detail fields (same as DebtDetailModal)
+  const CompactDetailField = ({ label, value, className = "text-gray-800", isCurrency = false, isDate = false }) => (
+    <div>
+      <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 truncate">
+        {label}
+      </label>
+      <p className={`mt-0.5 text-sm font-semibold ${className}`}>
+        {isCurrency ? formatCurrency(value) : isDate ? formatDate(value) : value || "N/A"}
+      </p>
+    </div>
+  );
+
+  // Status badge
+  const getStatusBadge = (status) => {
+    const normalizedStatus = (status || "").toLowerCase();
+    switch (normalizedStatus) {
+      case "completed":
+        return "bg-green-100 text-green-700";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700";
+      case "failed":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  const getPaymentMethodBadge = (method) => {
+    const normalizedMethod = (method || "").toLowerCase();
+    switch (normalizedMethod) {
+      case "cash":
+        return "bg-green-100 text-green-700";
+      case "mpesa":
+      case "m-pesa":
+        return "bg-blue-100 text-blue-700";
+      case "debt":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  // Reverted to original container classes (no fixed inset or backdrop) - same as DebtDetailModal
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle className="flex justify-between items-center">
-        <div>
-          <Typography variant="h6">
+    <div className="bg-white rounded-lg shadow-xl border border-gray-100">
+      <div className="p-5 max-h-[85vh] overflow-y-auto">
+
+        {/* Header */}
+        <div className="flex justify-between items-center pb-4 border-b border-gray-100 mb-4">
+          <h3 className="text-lg font-bold text-gray-900">
             {isDebtTransaction ? "Debt Transaction Details" : "Transaction Details"}
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            ID: {transaction.transactionId || transaction._id || transaction.id || "N/A"}
-          </Typography>
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
+
+        {/* Main Content */}
+        <div className="space-y-6">
+
+          {/* Compact Primary Information */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-b pb-4 border-gray-100">
+            <CompactDetailField
+              label="Transaction ID"
+              value={transaction.transactionId || transaction._id || transaction.id}
+            />
+            <CompactDetailField
+              label="Date"
+              value={formattedDate}
+            />
+            <CompactDetailField
+              label="Time"
+              value={transactionTime}
+            />
             <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Date & Time
-              </Typography>
-              <Typography variant="body1">
-                {formattedDate} at {transactionTime}
-              </Typography>
+              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500">
+                Amount
+              </label>
+              <p className="mt-0.5 text-base font-bold text-gray-900">
+                {formatCurrency(transaction.total || transaction.totalAmount || calculateItemsTotal())}
+              </p>
             </div>
+          </div>
+
+          {/* Status & Payment Information */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+            {/* Status */}
             <div>
-              <Typography variant="subtitle2" color="textSecondary">
+              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500">
                 Status
-              </Typography>
-              <StatusBadge status={transaction.status} />
+              </label>
+              <span className={`inline-flex items-center px-3 py-0.5 text-xs font-semibold rounded-full mt-1 ${getStatusBadge(transaction.status)}`}>
+                {transaction.status || "Unknown"}
+              </span>
             </div>
+
+            {/* Payment Method */}
             <div>
-              <Typography variant="subtitle2" color="textSecondary">
+              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500">
                 Payment Method
-              </Typography>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={transaction.paymentMethod} type="payment" />
+              </label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center px-3 py-0.5 text-xs font-semibold rounded-full ${getPaymentMethodBadge(transaction.paymentMethod)}`}>
+                  {transaction.paymentMethod || "N/A"}
+                </span>
                 {isDebtTransaction && (
-                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                    Debt
+                  <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                    DEBT
                   </span>
                 )}
               </div>
             </div>
-            <div>
-              <Typography variant="subtitle2" color="textSecondary">
-                Total Amount
-              </Typography>
-              <Typography variant="h6" className="font-bold">
-                {formatCurrency(transaction.total || calculateItemsTotal())}
-              </Typography>
-            </div>
+
+            {/* Shopkeeper */}
+            {transaction.shopkeeperName && (
+              <CompactDetailField
+                label="Shopkeeper"
+                value={transaction.shopkeeperName}
+              />
+            )}
           </div>
 
           {/* Debt Information Box */}
           {isDebtTransaction && (
-            <div className={`mb-4 p-4 rounded-lg ${wasDebtPaid ? 'bg-green-50' : 'bg-red-50'}`}>
-              <div className="flex items-center gap-2 mb-2">
+            <div className={`p-4 rounded-lg ${wasDebtPaid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
                 <CreditCard className={`h-5 w-5 ${wasDebtPaid ? 'text-green-600' : 'text-red-600'}`} />
-                <Typography variant="subtitle1" className={`font-semibold ${wasDebtPaid ? 'text-green-800' : 'text-red-800'}`}>
+                <h3 className={`text-base font-semibold ${wasDebtPaid ? 'text-green-800' : 'text-red-800'}`}>
                   {wasDebtPaid ? '✓ Debt Recovered' : '⚠ Outstanding Debt'}
-                </Typography>
+                </h3>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {transaction.expectedPaymentDate && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Expected Payment Date
-                    </Typography>
-                    <Typography variant="body1">
-                      {expectedPaymentDate}
-                    </Typography>
-                  </div>
+                  <CompactDetailField
+                    label="Expected Payment Date"
+                    value={transaction.expectedPaymentDate}
+                    isDate={true}
+                  />
                 )}
-                
+
                 {wasDebtPaid && transaction.datePaid && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Date Paid
-                    </Typography>
-                    <Typography variant="body1">
-                      {new Date(transaction.datePaid).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </Typography>
-                  </div>
+                  <CompactDetailField
+                    label="Date Paid"
+                    value={transaction.datePaid}
+                    isDate={true}
+                  />
                 )}
-                
-                {!wasDebtPaid && transaction.status === "Pending" && transaction.expectedPaymentDate && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Days Remaining
-                    </Typography>
-                    <Typography variant="body1" className={Math.ceil((new Date(transaction.expectedPaymentDate) - new Date()) / (1000 * 60 * 60 * 24)) < 0 ? 'text-red-600 font-semibold' : ''}>
-                      {Math.ceil((new Date(transaction.expectedPaymentDate) - new Date()) / (1000 * 60 * 60 * 24))} days
-                    </Typography>
-                  </div>
-                )}
-                
+
                 {wasDebtPaid && transaction.debtPaymentMethod && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Payment Method Used
-                    </Typography>
-                    <Typography variant="body1">
-                      {transaction.debtPaymentMethod}
-                    </Typography>
-                  </div>
+                  <CompactDetailField
+                    label="Payment Method Used"
+                    value={transaction.debtPaymentMethod}
+                    className="capitalize"
+                  />
                 )}
               </div>
             </div>
           )}
 
+          {/* Customer Information */}
           {(transaction.customerName || transaction.phone || transaction.customerPhone) && (
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <Typography variant="subtitle1" className="font-semibold mb-2">
-                Customer Information
-              </Typography>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Customer Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {transaction.customerName && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Customer Name
-                    </Typography>
-                    <Typography variant="body1">
-                      {transaction.customerName}
-                    </Typography>
-                  </div>
+                  <CompactDetailField
+                    label="Customer Name"
+                    value={transaction.customerName}
+                  />
                 )}
                 {(transaction.phone || transaction.customerPhone) && (
-                  <div>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Phone Number
-                    </Typography>
-                    <Typography variant="body1">
-                      {transaction.phone || transaction.customerPhone}
-                    </Typography>
-                  </div>
+                  <CompactDetailField
+                    label="Phone Number"
+                    value={transaction.phone || transaction.customerPhone}
+                  />
                 )}
               </div>
             </div>
           )}
 
-          <div>
-            <Typography variant="subtitle1" className="font-semibold mb-2">
-              Items Purchased ({transaction.items?.length || 0})
-            </Typography>
-            
-            {(!transaction.items || transaction.items.length === 0) ? (
-              <div className="text-center py-4 text-gray-500">
-                No items in this transaction
-              </div>
-            ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell><Typography variant="subtitle2" className="font-semibold">Item Name</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="subtitle2" className="font-semibold">Quantity</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="subtitle2" className="font-semibold">Unit Price</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="subtitle2" className="font-semibold">Total Price</Typography></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {transaction.items.map((item, index) => {
-                    const itemName = item.productName || item.product?.productName || "Unknown Product";
-                    const quantity = item.quantity || 1;
-                    const unitPrice = item.price || item.unitPrice || item.product?.price || 0;
-                    const totalPrice = quantity * unitPrice;
+          {/* Items Information - Same table structure as DebtDetailModal */}
+          {transaction.items && transaction.items.length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                Items Purchased ({transaction.items.length})
+              </h3>
+              <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-1.5 text-xs font-medium text-gray-500">Item</th>
+                      <th className="text-left py-1.5 text-xs font-medium text-gray-500">Qty</th>
+                      <th className="text-right py-1.5 text-xs font-medium text-gray-500">Unit Price</th>
+                      <th className="text-right py-1.5 text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transaction.items.map((item, index) => {
+                      const itemName = item.productName || item.name || item.product?.productName || "Unknown Product";
+                      const quantity = item.quantity || 1;
+                      const unit = item.unit || 'units';
+                      const unitPrice = item.price || item.unitPrice || item.product?.price || 0;
+                      const totalPrice = quantity * unitPrice;
 
-                    return (
-                      <TableRow key={index} hover>
-                        <TableCell>
-                          <Typography variant="body2" className="font-medium">
-                            {itemName}
-                          </Typography>
-                          {item.product?.code && (
-                            <Typography variant="caption" color="textSecondary">
-                              Code: {item.product.code}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2">
-                            {quantity}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2">
-                            {formatCurrency(unitPrice)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" className="font-semibold">
+                      return (
+                        <tr key={index} className="border-b last:border-b-0">
+                          <td className="py-2 text-sm text-gray-900">{itemName}</td>
+                          <td className="py-2 text-sm text-gray-700 font-medium">
+                            {formatQuantityWithUnit(quantity, unit)}
+                          </td>
+                          <td className="py-2 text-sm text-gray-700 text-right">
+                            <div>{formatCurrency(unitPrice)}</div>
+                            <div className="text-xs text-gray-500">per {unit}</div>
+                          </td>
+                          <td className="py-2 text-sm font-semibold text-gray-900 text-right">
                             {formatCurrency(totalPrice)}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  
-                  {/* Subtotal Row */}
-                  <TableRow>
-                    <TableCell colSpan={3} align="right">
-                      <Typography variant="body1" className="font-semibold">
-                        Subtotal:
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body1" className="font-semibold">
-                        {formatCurrency(calculateItemsTotal())}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                  
-                  {/* Tax Row (if applicable) */}
-                  {transaction.taxAmount && transaction.taxAmount > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} align="right">
-                        <Typography variant="body1">
-                          Tax ({transaction.taxRate || 0}%):
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body1">
-                          {formatCurrency(transaction.taxAmount)}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  
-                  {/* Total Row */}
-                  <TableRow>
-                    <TableCell colSpan={3} align="right">
-                      <Typography variant="body1" className="font-semibold text-lg">
-                        Total:
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body1" className="font-semibold text-lg">
-                        {formatCurrency(transaction.total || calculateItemsTotal() + (transaction.taxAmount || 0))}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            )}
-          </div>
-
-          {transaction.paymentMethod === "Cash" && (
-            <div className="mt-4 p-4 bg-green-50 rounded-lg">
-              <Typography variant="subtitle2" color="textSecondary">
-                Cash Payment Details
-              </Typography>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Amount Paid
-                  </Typography>
-                  <Typography variant="body1">
-                    {formatCurrency(transaction.amountPaid || transaction.total)}
-                  </Typography>
-                </div>
-                <div>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Change Given
-                  </Typography>
-                  <Typography variant="body1">
-                    {formatCurrency(transaction.change || 0)}
-                  </Typography>
-                </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {/* Totals row */}
+                  <tfoot>
+                    <tr className="border-t border-gray-300">
+                      <td colSpan="3" className="py-2 text-sm font-semibold text-gray-900 text-right">
+                        Total Amount:
+                      </td>
+                      <td className="py-2 text-sm font-bold text-gray-900 text-right">
+                        {formatCurrency(transaction.total || transaction.totalAmount || calculateItemsTotal())}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           )}
 
+          {/* Cash Payment Details */}
+          {transaction.paymentMethod === "Cash" && (
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cash Payment Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CompactDetailField
+                  label="Amount Paid"
+                  value={transaction.amountPaid || transaction.total}
+                  isCurrency={true}
+                />
+                <CompactDetailField
+                  label="Change Given"
+                  value={transaction.change || 0}
+                  isCurrency={true}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
           {transaction.notes && (
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-              <Typography variant="subtitle2" color="textSecondary">
-                Additional Notes
-              </Typography>
-              <Typography variant="body2">{transaction.notes}</Typography>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-1">Notes</h4>
+              <p className="mt-1 text-sm text-gray-700 bg-gray-50 p-3 rounded-md border border-gray-200">
+                {transaction.notes}
+              </p>
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 

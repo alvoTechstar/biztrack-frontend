@@ -27,6 +27,13 @@ const DebtDetailModal = ({
         </div>
     );
 
+    // Format quantity with unit - NEW
+    const formatQuantityWithUnit = (quantity, unit) => {
+        const formattedQuantity = Number(quantity).toFixed(2).replace(/\.?0+$/, '');
+        const displayUnit = unit || 'units';
+        return `${formattedQuantity} ${displayUnit}`;
+    };
+
     return (
         // Reverted to original container classes (no fixed inset or backdrop)
         <div className="bg-white rounded-lg shadow-xl border border-gray-100">
@@ -127,12 +134,11 @@ const DebtDetailModal = ({
                         />
                     </div>
 
-                    {/* Items Information */}
-                    {/* Items Information */}
+                    {/* Items Information - UPDATED with units */}
                     {selectedDebt.items && selectedDebt.items.length > 0 && (
                         <div>
                             <h3 className="text-lg font-bold text-gray-900">
-                                Items Purchased
+                                Items Purchased ({selectedDebt.items.length})
                             </h3>
                             <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
                                 <table className="min-w-full">
@@ -145,25 +151,39 @@ const DebtDetailModal = ({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {selectedDebt.items.map((item, index) => (
-                                            <tr key={index} className="border-b last:border-b-0">
-                                                <td className="py-2 text-sm text-gray-900">{item.productName}</td>
-                                                <td className="py-2 text-sm text-gray-700">{item.quantity}</td>
-                                                <td className="py-2 text-sm text-gray-700 text-right">{formatCurrency(item.unitPrice)}</td>
-                                                <td className="py-2 text-sm font-semibold text-gray-900 text-right">
-                                                    {formatCurrency(item.totalPrice)}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {selectedDebt.items.map((item, index) => {
+                                            const quantity = item.quantity || 1;
+                                            const unit = item.unit || 'units';
+                                            const unitPrice = item.unitPrice || item.price || 0;
+                                            const totalPrice = item.totalPrice || (quantity * unitPrice);
+
+                                            return (
+                                                <tr key={index} className="border-b last:border-b-0">
+                                                    <td className="py-2 text-sm text-gray-900">
+                                                        {item.productName || 'Unknown Product'}
+                                                    </td>
+                                                    <td className="py-2 text-sm text-gray-700 font-medium">
+                                                        {formatQuantityWithUnit(quantity, unit)}
+                                                    </td>
+                                                    <td className="py-2 text-sm text-gray-700 text-right">
+                                                        <div>{formatCurrency(unitPrice)}</div>
+                                                        <div className="text-xs text-gray-500">per {unit}</div>
+                                                    </td>
+                                                    <td className="py-2 text-sm font-semibold text-gray-900 text-right">
+                                                        {formatCurrency(totalPrice)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
-                                    {/* Optional: Add a totals row */}
+                                    {/* Totals row */}
                                     <tfoot>
                                         <tr className="border-t border-gray-300">
                                             <td colSpan="3" className="py-2 text-sm font-semibold text-gray-900 text-right">
                                                 Total Amount:
                                             </td>
                                             <td className="py-2 text-sm font-bold text-gray-900 text-right">
-                                                {formatCurrency(selectedDebt.totalAmount)}
+                                                {formatCurrency(selectedDebt.totalAmount || selectedDebt.amount)}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -185,7 +205,7 @@ const DebtDetailModal = ({
                     )}
 
                     {/* Action Buttons */}
-                    <div className="pt-4 border-t border-gray-100 flex justify-center"> {/* Added flex and justify-center */}
+                    <div className="pt-4 border-t border-gray-100 flex justify-center">
                         {selectedDebt.status === "Pending" && (
                             <button
                                 onClick={() => {

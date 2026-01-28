@@ -30,6 +30,10 @@ export default function ShopkeeperReportsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [contentLoaded, setContentLoaded] = useState(false);
+  
+  // Add modal loading states like DebtManagement
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalLoadingText, setModalLoadingText] = useState("");
 
   // User data state
   const [userData, setUserData] = useState({
@@ -46,7 +50,6 @@ export default function ShopkeeperReportsPage() {
   useEffect(() => {
     console.log("🔍 Checking authentication status...");
 
-    // Set a timeout to show content even if authentication takes time
     const authTimeout = setTimeout(() => {
       if (loading) {
         console.log("⚠️ Authentication check taking too long, proceeding...");
@@ -54,7 +57,6 @@ export default function ShopkeeperReportsPage() {
       }
     }, 2000);
 
-    // Check if user is authenticated
     if (!currentUser || !token) {
       console.log("❌ User not authenticated, redirecting to login");
       setTimeout(() => {
@@ -71,7 +73,6 @@ export default function ShopkeeperReportsPage() {
       role: currentUser.role
     });
 
-    // Extract business information from user
     const businessId = currentUser.businessId;
     const businessUUID = currentUser.businessUUID;
 
@@ -90,7 +91,6 @@ export default function ShopkeeperReportsPage() {
       businessType: currentUser.businessType
     });
 
-    // Get shopkeeper information from user
     const shopkeeperInfo = {
       shopkeeperId: currentUser.id,
       shopkeeperName: `${currentUser.firstName} ${currentUser.lastName}`,
@@ -122,7 +122,6 @@ export default function ShopkeeperReportsPage() {
       setError(null);
       setContentLoaded(false);
 
-      // Check if user data is ready
       if (!userData.businessId) {
         console.log("⏳ Waiting for business data initialization...");
         setTimeout(() => {
@@ -134,20 +133,18 @@ export default function ShopkeeperReportsPage() {
 
       console.log('🔍 Fetching transactions for business:', userData.businessId);
 
-      // OPTION 1: Try to use business-specific endpoint
       let endpoint;
       if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_BUSINESS) {
         endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS.replace(
           ':businessId',
-          userData.businessId // This should be numeric like "2"
+          userData.businessId
         );
         console.log('🌐 Using business endpoint:', endpoint);
       } 
-      // OPTION 2: Fallback to old kiosk endpoint (but use businessId)
       else if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_KIOSK) {
         endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_KIOSK.replace(
           ':kioskId',
-          userData.businessId // Use businessId as kioskId
+          userData.businessId
         );
         console.log('🌐 Using kiosk endpoint with businessId:', endpoint);
       } else {
@@ -157,7 +154,6 @@ export default function ShopkeeperReportsPage() {
       const result = await GET(endpoint);
 
       if (!result || result.success === false) {
-        // If business endpoint fails, try to get all and filter client-side
         console.log('⚠️ Business endpoint failed, trying alternative...');
         await fetchAllTransactionsAndFilter();
         return;
@@ -173,19 +169,16 @@ export default function ShopkeeperReportsPage() {
       }, 500);
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      // Try alternative method
       await fetchAllTransactionsAndFilter();
     } finally {
       setLoading(false);
     }
   };
 
-  // Alternative method: fetch all transactions and filter
   const fetchAllTransactionsAndFilter = async () => {
     try {
       console.log('🔄 Trying to fetch all transactions and filter...');
       
-      // First check if we have a GET_ALL endpoint
       if (URLS.TRANSACTIONS?.GET_ALL_TRANSACTIONS) {
         const result = await GET(URLS.TRANSACTIONS.GET_ALL_TRANSACTIONS);
         
@@ -193,7 +186,6 @@ export default function ShopkeeperReportsPage() {
           const allTransactions = result.transactions || result.data || [];
           console.log('📋 All transactions loaded:', allTransactions.length);
           
-          // Filter by businessId
           const filteredTransactions = allTransactions.filter(t => 
             t.businessId === userData.businessId || 
             t.businessId?.toString() === userData.businessId?.toString()
@@ -208,8 +200,6 @@ export default function ShopkeeperReportsPage() {
         }
       }
       
-      // If no GET_ALL endpoint or it failed, try a different approach
-      // Since we can't get transactions, let's show empty state
       console.log('⚠️ No transactions available or endpoints not working');
       setTransactions([]);
       setTimeout(() => {
@@ -445,12 +435,26 @@ export default function ShopkeeperReportsPage() {
     return map;
   }, [transactions]);
 
+  // Same pattern as DebtManagement - open modal with loader
+  const openModalWithLoader = async (transaction) => {
+    setModalLoading(true);
+    setModalLoadingText("Loading transaction details...");
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setSelectedTransaction(transaction);
+    setModalLoading(false);
+    setModalOpen(true);
+  };
+
   const handleViewTransaction = (transactionId) => {
     const transaction = transactionsMap[transactionId];
     if (transaction) {
-      setSelectedTransaction(transaction);
-      setModalOpen(true);
+      openModalWithLoader(transaction);
     }
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedTransaction(null);
   };
 
   const handleRefresh = () => {
@@ -461,6 +465,28 @@ export default function ShopkeeperReportsPage() {
   // Combined loading state
   const isLoading = loading || !contentLoaded || (!userData.initialized && loading);
 
+  // MODAL LOADING STATE - like DebtManagement
+  if (modalLoading) {
+    return (
+      <div className="min-h-screen bg-white p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className='main-app-view'>
+            <div className="main-app-content-container">
+              <ContentLoader
+                state={true}
+                loading={true}
+                loadingText={modalLoadingText}
+                loadedText=""
+                color={primaryColor}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // INITIAL LOADING STATE
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -481,7 +507,7 @@ export default function ShopkeeperReportsPage() {
     );
   }
 
-  // Error state - no user or no business assigned
+  // ERROR STATE
   if (!userData.user || !userData.businessId) {
     return (
       <div className="min-h-screen bg-white p-8">
@@ -509,14 +535,26 @@ export default function ShopkeeperReportsPage() {
     );
   }
 
+  // MODAL VIEW - Same pattern as DebtManagement: when modal is open, show ONLY the modal
+  if (modalOpen && selectedTransaction) {
+    return (
+      <div className="min-h-screen bg-white p-1 sm:p-2 md:p-3 flex items-center justify-center">
+        <div className="w-full max-w-full mx-auto flex flex-col items-center justify-center">
+          <div className="w-full max-w-full md:max-w-4xl">
+            <TransactionDetailsModal
+              open={modalOpen}
+              onClose={handleCloseModal}
+              transaction={selectedTransaction}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // REPORTS VIEW - Normal reports page
   return (
     <div className="min-h-screen bg-white p-2">
-      <TransactionDetailsModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        transaction={selectedTransaction}
-      />
-
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
