@@ -122,6 +122,7 @@ const CreateStaffForm = ({
       }
     }
   }, [formik.values.firstName, formik.values.lastName, isEditing]);
+  
   const extractBusinessData = (business) => {
     if (!business) return null;
 
@@ -216,13 +217,13 @@ const CreateStaffForm = ({
   };
 
   return (
-    <div className="bg-white rounded-lg w-3/5 max-w-4xl mx-auto shadow-lg border border-gray-200 mb-8">
+    <div className="bg-white rounded-lg w-full max-w-4xl mx-auto shadow-lg border border-gray-200 mb-8">
       <div
-        className="flex items-center justify-between p-6 border-gray-200 bg-gray-50 rounded-t-lg"
+        className="flex items-center justify-between p-4 sm:p-6 border-gray-200 bg-gray-50 rounded-t-lg"
         style={{ borderBottom: `1px solid ${theme.borderColor || '#e5e7eb'}` }}
       >
         <h3
-          className="text-xl font-semibold"
+          className="text-lg sm:text-xl font-semibold"
           style={{ color: theme.textPrimary || '#1f2937' }}
         >
           {isEditing ? 'Edit Staff Member' : 'Add New Staff Member'}
@@ -243,9 +244,9 @@ const CreateStaffForm = ({
         </button>
       </div>
 
-      <form onSubmit={formik.handleSubmit} className="p-6">
+      <form onSubmit={formik.handleSubmit} className="p-4 sm:p-6">
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TextInput
               id="firstName"
               label="First Name"
@@ -274,6 +275,7 @@ const CreateStaffForm = ({
               errorMessage={getErrorMessage('lastName')}
             />
           </div>
+          
           <TextInput
             id="email"
             label="Email Address"
@@ -288,7 +290,8 @@ const CreateStaffForm = ({
             error={shouldShowError('email')}
             errorMessage={getErrorMessage('email')}
           />
-          <div className="grid grid-cols-2 gap-4">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SelectInput
               id="businessId"
               name="businessId"
@@ -329,7 +332,8 @@ const CreateStaffForm = ({
               }
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TextInput
               id="username"
               label="Username"
@@ -360,8 +364,9 @@ const CreateStaffForm = ({
             />
           </div>
         </div>
+        
         <div
-          className="flex gap-3 pt-6 border-t border-gray-200 mt-6"
+          className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200 mt-6"
           style={{ borderTopColor: theme.borderColor || '#e5e7eb' }}
         >
           <AppFormButton
@@ -372,6 +377,7 @@ const CreateStaffForm = ({
             action={() => setShowModal(false)}
             type="button"
             disabled={submitting}
+            fullWidthOnMobile={true}
           />
           <AppFormButton
             text={submitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add Staff Member')}
@@ -380,6 +386,7 @@ const CreateStaffForm = ({
             validation={formik.isValid && !submitting}
             action={formik.handleSubmit}
             type="submit"
+            fullWidthOnMobile={true}
           />
         </div>
       </form>

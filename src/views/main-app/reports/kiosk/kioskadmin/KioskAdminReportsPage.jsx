@@ -1,4 +1,22 @@
-import React, { useState } from "react";
+// kiosk-admin/KioskAdminReportsPage.jsx
+import React, { useState, useEffect, useMemo } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import {
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+  Users,
+  Package,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  MoreVertical,
+  Trophy,
+  Star,
+
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -18,130 +36,1146 @@ import {
   RadialBarChart,
   RadialBar,
 } from "recharts";
-import {
-  Download,
-  Printer,
-  FileText,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  ShoppingCart,
-  CreditCard,
-  DollarSign,
-  Package,
-  AlertTriangle,
-  CheckCircle,
-  Percent,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Activity,
-  Sparkles,
-  Target,
-  Trophy,
-  Star,
-  ChevronRight,
-  Filter,
-  MoreVertical,
-  Eye,
-  RefreshCw,
-  HelpCircle,
-} from "lucide-react";
 
-// Enhanced mock data with more realistic values
-const mockSalesData = {
-  totalRevenue: 485650,
-  previousRevenue: 412350,
-  transactionCount: 342,
-  previousTransactions: 298,
-  paymentMethods: [
-    { method: "M-Pesa", amount: 285430, count: 198, color: "#10B981" },
-    { method: "Cash", amount: 142850, count: 89, color: "#3B82F6" },
-    // { method: "Card", amount: 57370, count: 55, color: "#8B5CF6" },
-    // { method: "Bank Transfer", amount: 28000, count: 22, color: "#F59E0B" },
-  ],
-  dailyTrend: [
-    { day: "Mon", revenue: 65000, transactions: 45 },
-    { day: "Tue", revenue: 72000, transactions: 52 },
-    { day: "Wed", revenue: 81000, transactions: 58 },
-    { day: "Thu", revenue: 78500, transactions: 55 },
-    { day: "Fri", revenue: 95000, transactions: 68 },
-    { day: "Sat", revenue: 102000, transactions: 73 },
-    { day: "Sun", revenue: 83150, transactions: 59 },
-  ],
-};
+// Import API services
+import URLS from "../../../../../utilities/Endpoints";
+import { GET } from "../../../../../services/DatabaseServiceImp";
+import ContentLoader from "../../../../../components/Loader/ContentLoader.jsx";
+import { useTheme } from "../../../../../components/theme/ThemeContext.jsx";
 
-const mockProductData = [
-  { name: "Coca Cola 500ml", quantitySold: 145, revenue: 21750, stock: 120, category: "Beverages" },
-  { name: "Bread Loaf", quantitySold: 89, revenue: 13350, stock: 45, category: "Food" },
-  { name: "Milk 1L", quantitySold: 67, revenue: 8040, stock: 32, category: "Dairy" },
-  { name: "Rice 2kg", quantitySold: 34, revenue: 8500, stock: 28, category: "Grains" },
-  { name: "Cooking Oil 1L", quantitySold: 28, revenue: 9800, stock: 18, category: "Cooking" },
-  { name: "Sugar 1kg", quantitySold: 42, revenue: 6300, stock: 25, category: "Groceries" },
-  { name: "Tea Leaves 250g", quantitySold: 38, revenue: 5700, stock: 22, category: "Beverages" },
-  { name: "Soap Bar", quantitySold: 56, revenue: 6720, stock: 40, category: "Personal Care" },
-];
+// Import components
+import ReportHeader from "./ReportHeader";
+import ReportControls from "./ReportControls";
+import ReportStats from "./ReportStats";
+import SalesDashboard from "./SalesDashboard";
+import ProductsDashboard from "./ProductsDashboard";
+import DebtManagement from "../../../debtmanagement";
+import StaffDashboard from "./StaffDashboard";
 
-const mockDebtData = [
-  { customer: "John Kamau", amount: 2500, status: "Pending", date: "2024-01-15", days: 5, phone: "+254712345678" },
-  { customer: "Mary Wanjiku", amount: 1800, status: "Completed", date: "2024-01-10", days: 0, phone: "+254723456789" },
-  { customer: "Peter Otieno", amount: 3200, status: "Pending", date: "2024-01-20", days: 10, phone: "+254734567890" },
-  { customer: "Grace Njeri", amount: 950, status: "Completed", date: "2024-01-18", days: 0, phone: "+254745678901" },
-  { customer: "Samuel Omondi", amount: 4200, status: "Overdue", date: "2024-01-05", days: 15, phone: "+254756789012" },
-  { customer: "Esther Adhiambo", amount: 1500, status: "Pending", date: "2024-01-22", days: 2, phone: "+254767890123" },
-];
+// Import date utilities
+import { getDateRange as getDateRangeUtil } from "../../../../../utilities/Sharedfunctions.jsx";
 
-const mockStaffData = [
-  { name: "Alice Muthoni", transactions: 89, totalSales: 145630, avgSale: 1637, rating: 4.8, imageColor: "#3B82F6" },
-  { name: "David Kiprop", transactions: 76, totalSales: 125890, avgSale: 1656, rating: 4.5, imageColor: "#10B981" },
-  { name: "Sarah Achieng", transactions: 92, totalSales: 168420, avgSale: 1831, rating: 4.9, imageColor: "#8B5CF6" },
-  { name: "James Mwangi", transactions: 85, totalSales: 142760, avgSale: 1679, rating: 4.6, imageColor: "#F59E0B" },
-  { name: "Linda Chebet", transactions: 78, totalSales: 135420, avgSale: 1736, rating: 4.7, imageColor: "#EC4899" },
-];
-
+// Helper functions
 const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899", "#EF4444", "#06B6D4", "#84CC16"];
 
 const getInitials = (name) => {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase();
+  if (!name) return "??";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+};
+
+// Enhanced getDateRange function with more options
+const getDateRange = (period) => {
+  const now = new Date();
+  const start = new Date();
+  const end = new Date();
+
+  switch (period) {
+    case 'today':
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'yesterday':
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      break;
+    case 'week':
+      start.setDate(now.getDate() - 7);
+      break;
+    case '2weeks':
+      start.setDate(now.getDate() - 14);
+      break;
+    case 'month':
+      start.setMonth(now.getMonth() - 1);
+      break;
+    case '60days':
+      start.setDate(now.getDate() - 60);
+      break;
+    case 'quarter':
+      start.setMonth(now.getMonth() - 3);
+      break;
+    case 'year':
+      start.setFullYear(now.getFullYear() - 1);
+      break;
+    default:
+      start.setMonth(now.getMonth() - 1);
+  }
+
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
+    date: now.toISOString().split('T')[0]
+  };
 };
 
 export default function KioskAdminReportsPage() {
-  const [activeTab, setActiveTab] = useState(0);
-  const [dateFilter, setDateFilter] = useState("today");
-  const [customDateRange, setCustomDateRange] = useState({
-    start: "",
-    end: "",
-  });
-  const [viewMode, setViewMode] = useState("grid");
+  const navigate = useNavigate();
+  const currentUser = useSelector((state) => state.auth?.value);
+  const token = localStorage.getItem('token');
 
+  // States
+  const [activeTab, setActiveTab] = useState(0);
+  const [tabChanging, setTabChanging] = useState(false); // NEW: Track tab changes
+
+  // Initialize selectedDateRange with today's date by default
+  const [selectedDateRange, setSelectedDateRange] = useState(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return {
+      startDate: `${day}-${month}-${year}`,
+      endDate: `${day}-${month}-${year}`
+    };
+  });
+
+  const [selectedFilters, setSelectedFilters] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]); // ADDED: Filtered transactions state
+
+  const [loading, setLoading] = useState({
+    sales: true,
+    products: true,
+    debts: true,
+    staff: true,
+    overview: true
+  });
+
+  // New loading state for tab switching
+  const [operationLoading, setOperationLoading] = useState(false);
+  const [operationLoadingText, setOperationLoadingText] = useState("");
+
+  const [contentLoaded, setContentLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [viewingTransaction, setViewingTransaction] = useState(false);
+
+  // Data states
+  const [salesData, setSalesData] = useState({
+    totalRevenue: 0,
+    previousRevenue: 0,
+    transactionCount: 0,
+    previousTransactions: 0,
+    paymentMethods: [],
+    dailyTrend: []
+  });
+
+  const [productData, setProductData] = useState([]);
+  const [staffData, setStaffData] = useState([]);
+  const [kioskStats, setKioskStats] = useState({});
+  const [inventoryData, setInventoryData] = useState({});
+  const [userData, setUserData] = useState({
+    user: null,
+    businessId: null,
+    kioskId: null,
+    initialized: false
+  });
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return `${day}-${month}-${year}`;
+  }, []);
+
+  const theme = useTheme();
+  // Filter options for different tabs
+  const filterOptions = {
+    sales: [
+      { label: "Completed", value: "completed" },
+      { label: "Pending", value: "pending" },
+      { label: "Failed", value: "failed" },
+      { label: "Refunded", value: "refunded" },
+      { label: "Cash", value: "cash" },
+      { label: "Mpesa", value: "mpesa" },
+      { label: "Card", value: "card" }
+    ],
+    products: [
+      { label: "Low Stock", value: "low_stock" },
+      { label: "Out of Stock", value: "out_of_stock" },
+      { label: "Best Selling", value: "best_selling" },
+      { label: "By Category", value: "by_category" }
+    ],
+    staff: [
+      { label: "Top Performers", value: "top_performers" },
+      { label: "By Rating", value: "by_rating" },
+      { label: "Recent Activity", value: "recent_activity" }
+    ]
+  };
+
+  // Get current filter options based on active tab
+  const getCurrentFilterOptions = () => {
+    switch (activeTab) {
+      case 0: // Sales Dashboard
+        return filterOptions.sales;
+      case 1: // Product Analytics
+        return filterOptions.products;
+      case 3: // Staff Performance
+        return filterOptions.staff;
+      default:
+        return [];
+    }
+  };
+
+  // Helper functions
   const formatCurrency = (amount) => {
-    return `KSh ${amount.toLocaleString()}`;
+    if (!amount && amount !== 0) return 'KSh 0';
+    return `KSh ${parseFloat(amount).toLocaleString('en-KE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
   };
 
   const calculateGrowth = (current, previous) => {
-    if (previous === 0) return 100;
-    return ((current - previous) / previous * 100).toFixed(1);
+    if (!previous || previous === 0) return 0;
+    return parseFloat(((current - previous) / previous * 100).toFixed(1));
   };
 
-  const handleExport = (format) => {
-    console.log(`Exporting as ${format}`);
-    // Implementation would depend on your backend/export library
+  // Modified setActiveTab function to handle loading
+  const handleTabChange = (tabId) => {
+    if (tabId === activeTab) return; // Don't do anything if clicking same tab
+
+    setTabChanging(true);
+    setOperationLoading(true);
+
+    const tabNames = {
+      0: "Sales Dashboard",
+      1: "Product Analytics",
+      2: "Debt Management",
+      3: "Staff Performance"
+    };
+
+    setOperationLoadingText(`Loading ${tabNames[tabId] || 'data'}...`);
+
+    // Set timeout to hide loading after a short delay
+    setTimeout(() => {
+      setActiveTab(tabId);
+      setOperationLoading(false);
+      setTabChanging(false);
+    }, 300);
+  };
+
+  const fetchTransactions = async (businessId, filters = {}) => {
+    try {
+      let url = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS
+        .replace(':businessId', businessId);
+
+      const queryParams = new URLSearchParams();
+
+      // Set date filters only if provided
+      if (filters.startDate) {
+        console.log('📅 Using startDate filter:', filters.startDate);
+        queryParams.append('startDate', filters.startDate);
+      }
+      if (filters.endDate) {
+        console.log('📅 Using endDate filter:', filters.endDate);
+        queryParams.append('endDate', filters.endDate);
+      }
+
+      // Set status filters if any
+      if (selectedFilters.length > 0) {
+        console.log('🎯 Applying filters to API call:', selectedFilters);
+        const statusFilters = selectedFilters.filter(f =>
+          ['completed', 'pending', 'failed', 'refunded'].includes(f)
+        );
+        if (statusFilters.length > 0) {
+          queryParams.append('status', statusFilters.join(','));
+        }
+
+        const paymentFilters = selectedFilters.filter(f =>
+          ['cash', 'mpesa', 'card'].includes(f)
+        );
+        if (paymentFilters.length > 0) {
+          queryParams.append('paymentMethod', paymentFilters.join(','));
+        }
+      }
+
+      if (filters.limit) queryParams.append('limit', filters.limit);
+
+      const queryString = queryParams.toString();
+      if (queryString) url += `?${queryString}`;
+
+      console.log('🔍 Fetching transactions from URL:', url);
+      const response = await GET(url);
+      const transactionsData = response.data || response.transactions || response || [];
+
+      console.log(`✅ Got ${transactionsData.length} transactions`);
+      return transactionsData;
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      return [];
+    }
+  };
+
+  const fetchProducts = async (businessId, filters = {}) => {
+    try {
+      let url = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS
+        .replace(':businessId', businessId);
+
+      const queryParams = new URLSearchParams();
+
+      // Apply selected filters
+      if (selectedFilters.includes('low_stock')) {
+        queryParams.append('lowStock', 'true');
+      }
+      if (selectedFilters.includes('out_of_stock')) {
+        queryParams.append('outOfStock', 'true');
+      }
+
+      if (filters.category) queryParams.append('category', filters.category);
+      if (filters.best_selling) queryParams.append('sort', '-soldQuantity');
+
+      const queryString = queryParams.toString();
+      if (queryString) url += `?${queryString}`;
+
+      const response = await GET(url);
+      return response.data || response.products || response || [];
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      return [];
+    }
+  };
+
+  const fetchDailyReport = async (businessId, dateRange, customRange = null) => {
+    try {
+      let url = URLS.TRANSACTIONS.GET_DAILY_REPORT_BY_BUSINESS
+        .replace(':businessId', businessId)
+        .replace(':date', dateRange.date || new Date().toISOString().split('T')[0]);
+
+      const queryParams = new URLSearchParams();
+
+      if (customRange?.start && customRange?.end) {
+        queryParams.append('start', customRange.start);
+        queryParams.append('end', customRange.end);
+      } else if (dateRange.start && dateRange.end) {
+        queryParams.append('start', dateRange.start);
+        queryParams.append('end', dateRange.end);
+      }
+
+      const queryString = queryParams.toString();
+      if (queryString) url += `?${queryString}`;
+
+      const response = await GET(url);
+      return response.data || response;
+    } catch (error) {
+      console.error("Error fetching daily report:", error);
+      return null;
+    }
+  };
+
+  // Process and calculate sales data from transactions
+  const processSalesData = (transactions, period) => {
+    if (!transactions || !Array.isArray(transactions)) {
+      return {
+        totalRevenue: 0,
+        transactionCount: 0,
+        paymentMethods: [],
+        dailyTrend: []
+      };
+    }
+
+    // Filter completed transactions for revenue calculation
+    const completedTransactions = transactions.filter(t =>
+      t.status?.toLowerCase() === 'completed'
+    );
+
+    // Calculate total revenue
+    const totalRevenue = completedTransactions.reduce((sum, t) =>
+      sum + (parseFloat(t.totalAmount) || 0), 0
+    );
+
+    // Calculate transaction count
+    const transactionCount = transactions.length;
+
+    // Calculate payment methods distribution
+    const paymentMethodsMap = {};
+    completedTransactions.forEach(t => {
+      const method = t.paymentMethod?.toLowerCase() || 'cash';
+      if (!paymentMethodsMap[method]) {
+        paymentMethodsMap[method] = {
+          amount: 0,
+          count: 0,
+          method: method.charAt(0).toUpperCase() + method.slice(1)
+        };
+      }
+      paymentMethodsMap[method].amount += parseFloat(t.totalAmount) || 0;
+      paymentMethodsMap[method].count += 1;
+    });
+
+    const paymentMethods = Object.values(paymentMethodsMap).map((method, index) => ({
+      ...method,
+      color: method.method === 'Cash' ? '#10B981' :
+        method.method === 'Mpesa' ? '#3B82F6' :
+          method.method === 'Card' ? '#8B5CF6' :
+            COLORS[index % COLORS.length]
+    }));
+
+    // Create daily trend data
+    const daysToShow = period === 'today' || period === 'yesterday' ? 1 :
+      period === 'week' ? 7 :
+        period === '2weeks' ? 14 :
+          period === 'month' ? 30 :
+            period === '60days' ? 60 : 30;
+
+    // Initialize days array
+    const dailyTrendMap = {};
+    const today = new Date();
+
+    // If period is today, just show today
+    if (period === 'today') {
+      const dateKey = today.toISOString().split('T')[0];
+      const dayKey = today.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      dailyTrendMap[dateKey] = {
+        day: dayKey,
+        revenue: 0,
+        transactions: 0,
+        fullDate: dateKey
+      };
+    } else {
+      // For other periods, show multiple days
+      for (let i = daysToShow - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dayKey = date.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+        const dateKey = date.toISOString().split('T')[0];
+
+        dailyTrendMap[dateKey] = {
+          day: dayKey,
+          revenue: 0,
+          transactions: 0,
+          fullDate: dateKey
+        };
+      }
+    }
+
+    // Populate with actual data
+    transactions.forEach(t => {
+      if (!t.createdAt && !t.timestamp) return;
+
+      const transDate = new Date(t.createdAt || t.timestamp);
+      const dateKey = transDate.toISOString().split('T')[0];
+
+      if (dailyTrendMap[dateKey]) {
+        dailyTrendMap[dateKey].transactions += 1;
+        if (t.status?.toLowerCase() === 'completed') {
+          dailyTrendMap[dateKey].revenue += parseFloat(t.totalAmount) || 0;
+        }
+      }
+    });
+
+    const dailyTrend = Object.values(dailyTrendMap);
+
+    return {
+      totalRevenue,
+      transactionCount,
+      paymentMethods,
+      dailyTrend,
+      averageSale: transactionCount > 0 ? totalRevenue / transactionCount : 0
+    };
+  };
+
+  // Update the fetchStaffManagementData function in KioskAdminReportsPage.jsx
+  const fetchStaffManagementData = async (businessId) => {
+    try {
+      console.log('🔍 Fetching staff management data for business:', businessId);
+
+      let staffData = [];
+
+      // FIRST: Try to get the current user's info as fallback
+      const currentUserInfo = {
+        id: currentUser.id || currentUser._id,
+        firstName: currentUser.firstName || "Admin",
+        lastName: currentUser.lastName || "User",
+        email: currentUser.email || "",
+        username: currentUser.username || "",
+        phone: currentUser.phone || currentUser.phoneNumber || "",
+        phoneNumber: currentUser.phoneNumber || currentUser.phone || "",
+        role: currentUser.role || "Kiosk_Admin",
+        status: 'ACTIVE',
+        businessId: businessId,
+        associatedBusinessId: businessId,
+        institutionId: businessId,
+        businessName: userData?.adminInfo?.businessName || "Current Business",
+        businessType: userData?.adminInfo?.businessType || "Kiosk",
+        dateJoined: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        rating: 4.5
+      };
+
+      // Try multiple API endpoints
+      const endpointsToTry = [
+        `/api/users/business/${businessId}`,
+        `/api/business/${businessId}/staff`,
+        `/api/staff/business/${businessId}`,
+        URLS.USERS?.GET_USERS_BY_BUSINESS?.replace(':businessId', businessId),
+        URLS.USERS?.GET_ALL_USERS
+      ].filter(url => url && typeof url === 'string');
+
+      console.log('🔄 Trying endpoints:', endpointsToTry);
+
+      for (const endpoint of endpointsToTry) {
+        try {
+          console.log(`📤 Trying endpoint: ${endpoint}`);
+          const result = await GET(endpoint);
+
+          console.log(`📥 Endpoint ${endpoint} response:`, result);
+
+          if (result?.success && Array.isArray(result.data)) {
+            staffData = result.data;
+            console.log(`✅ Got ${staffData.length} staff from ${endpoint}`);
+            break;
+          } else if (result?.success && Array.isArray(result.staff)) {
+            staffData = result.staff;
+            console.log(`✅ Got ${staffData.length} staff from ${endpoint}`);
+            break;
+          } else if (Array.isArray(result)) {
+            staffData = result;
+            console.log(`✅ Got ${staffData.length} staff from ${endpoint}`);
+            break;
+          }
+        } catch (endpointError) {
+          console.log(`ℹ️ Endpoint ${endpoint} failed:`, endpointError.message);
+          continue;
+        }
+      }
+
+      // If still no data, try to filter from all users if we can fetch them
+      if (staffData.length === 0 && URLS.USERS?.GET_ALL_USERS) {
+        try {
+          console.log('🔄 Trying to filter from all users...');
+          const allUsersResult = await GET(URLS.USERS.GET_ALL_USERS);
+
+          if (allUsersResult?.success && Array.isArray(allUsersResult.data)) {
+            // Filter for users in current business with Kiosk roles
+            staffData = allUsersResult.data.filter(user => {
+              if (!user) return false;
+
+              const userBusinessId = String(user.businessId || user.associatedBusinessId || user.institutionId || "").trim();
+              const targetBusinessId = String(businessId).trim();
+
+              // Check if user belongs to this business
+              const belongsToCurrentBusiness =
+                userBusinessId === targetBusinessId ||
+                (user.businessId && String(user.businessId) === targetBusinessId) ||
+                (user.associatedBusinessId && String(user.associatedBusinessId) === targetBusinessId) ||
+                (user.institutionId && String(user.institutionId) === targetBusinessId);
+
+              // Check for Kiosk roles
+              const hasValidRole = user.role && (
+                user.role.startsWith('Kiosk_') ||
+                ['Kiosk_Admin', 'Kiosk_Shopkeeper', 'Kiosk_Cashier', 'Kiosk_Manager', 'Admin', 'Manager', 'Cashier', 'Shopkeeper'].includes(user.role)
+              );
+
+              return belongsToCurrentBusiness && hasValidRole;
+            });
+
+            console.log(`✅ Filtered ${staffData.length} staff from all users`);
+          }
+        } catch (allUsersError) {
+          console.log('ℹ️ Could not fetch all users:', allUsersError.message);
+        }
+      }
+
+      // CRITICAL: If still no data, use current user as default staff
+      if (staffData.length === 0) {
+        console.warn('⚠️ No staff data found for business, using current user as default');
+        staffData = [currentUserInfo];
+      }
+
+      // Transform staff data with proper field mapping
+      const transformedStaff = staffData.map(member => {
+        const memberId = member._id || member.id || `staff-${Math.random().toString(36).substr(2, 9)}`;
+        const memberBusinessId = member.businessId || member.associatedBusinessId || businessId;
+
+        console.log(`🔍 Processing staff member ${memberId}:`, {
+          firstName: member.firstName,
+          lastName: member.lastName,
+          role: member.role,
+          businessId: memberBusinessId
+        });
+
+        return {
+          id: memberId,
+          _id: memberId,
+          firstName: member.firstName || "Staff",
+          lastName: member.lastName || "Member",
+          email: member.email || "",
+          username: member.username || "",
+          phone: member.phone || member.phoneNumber || "",
+          phoneNumber: member.phoneNumber || member.phone || "",
+          role: member.role || "Kiosk_Staff",
+          status: (member.status || 'ACTIVE').toUpperCase(),
+          businessId: memberBusinessId,
+          associatedBusinessId: member.associatedBusinessId || businessId,
+          institutionId: member.institutionId || businessId,
+          businessName: userData?.adminInfo?.businessName || "Current Business",
+          businessType: userData?.adminInfo?.businessType || "Kiosk",
+          dateJoined: member.createdAt || member.dateJoined || new Date().toISOString(),
+          lastLogin: member.lastLogin,
+          createdAt: member.createdAt,
+          rating: member.rating || (3.5 + (Math.random() * 1.5)), // Add rating field
+          // Add shopkeeper name for matching with transactions
+          shopkeeperName: `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+          fullName: `${member.firstName || ''} ${member.lastName || ''}`.trim()
+        };
+      });
+
+      console.log('✅ Transformed staff management data:', transformedStaff.length);
+      console.log('📊 First transformed staff:', transformedStaff[0]);
+
+      return transformedStaff;
+
+    } catch (error) {
+      console.error('❌ Error fetching staff management data:', error);
+      // Return at least the current user as staff
+      return [{
+        id: currentUser.id || currentUser._id || `default-${Date.now()}`,
+        _id: currentUser.id || currentUser._id || `default-${Date.now()}`,
+        firstName: currentUser.firstName || "Admin",
+        lastName: currentUser.lastName || "User",
+        email: currentUser.email || "",
+        username: currentUser.username || "",
+        phone: currentUser.phone || currentUser.phoneNumber || "",
+        phoneNumber: currentUser.phoneNumber || currentUser.phone || "",
+        role: currentUser.role || "Kiosk_Admin",
+        status: 'ACTIVE',
+        businessId: businessId,
+        associatedBusinessId: businessId,
+        institutionId: businessId,
+        businessName: userData?.adminInfo?.businessName || "Current Business",
+        businessType: userData?.adminInfo?.businessType || "Kiosk",
+        dateJoined: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        rating: 4.5,
+        shopkeeperName: `${currentUser.firstName || 'Admin'} ${currentUser.lastName || 'User'}`.trim(),
+        fullName: `${currentUser.firstName || 'Admin'} ${currentUser.lastName || 'User'}`.trim()
+      }];
+    }
+  };
+
+  // Helper function to filter transactions locally
+  const filterTransactionsLocally = (allTrans, dateRange, filters) => {
+    let filtered = [...allTrans];
+
+    // Apply date range filter
+    if (dateRange) {
+      try {
+        const [startDay, startMonth, startYear] = dateRange.startDate.split('-');
+        const [endDay, endMonth, endYear] = dateRange.endDate.split('-');
+
+        const startDate = new Date(`${startYear}-${startMonth}-${startDay}T00:00:00`);
+        const endDate = new Date(`${endYear}-${endMonth}-${endDay}T23:59:59.999`);
+
+        filtered = filtered.filter(transaction => {
+          if (!transaction.createdAt && !transaction.timestamp) return false;
+
+          const transDate = new Date(transaction.createdAt || transaction.timestamp || transaction.date);
+          if (isNaN(transDate.getTime())) return false;
+
+          return transDate >= startDate && transDate <= endDate;
+        });
+      } catch (dateError) {
+        console.error('❌ Error parsing date range:', dateError);
+      }
+    }
+
+    // Apply status and payment filters
+    if (filters.length > 0) {
+      filtered = filtered.filter(transaction => {
+        // Status filters
+        const statusFilters = filters.filter(f =>
+          ['completed', 'pending', 'failed', 'refunded'].includes(f)
+        );
+
+        // Payment method filters
+        const paymentFilters = filters.filter(f =>
+          ['cash', 'mpesa', 'card'].includes(f)
+        );
+
+        // Check status
+        let statusMatch = true;
+        if (statusFilters.length > 0) {
+          const transactionStatus = transaction.status?.toLowerCase() || '';
+          statusMatch = statusFilters.some(filter =>
+            transactionStatus.includes(filter)
+          );
+        }
+
+        // Check payment method
+        let paymentMatch = true;
+        if (paymentFilters.length > 0) {
+          const transactionPayment = transaction.paymentMethod?.toLowerCase() || 'cash';
+          paymentMatch = paymentFilters.some(filter =>
+            transactionPayment.includes(filter)
+          );
+        }
+
+        return statusMatch && paymentMatch;
+      });
+    }
+
+    return filtered;
+  };
+
+  const fetchDashboardData = async () => {
+    if (!userData.businessId || !userData.initialized) {
+      console.log('❌ Cannot fetch: Missing businessId or user not initialized');
+      return;
+    }
+
+    console.log('🚀 fetchDashboardData called with:', {
+      businessId: userData.businessId,
+      selectedDateRange,
+      selectedFilters,
+      todayStr
+    });
+
+    setError(null);
+    setOperationLoading(true);
+    setOperationLoadingText("Loading dashboard data...");
+
+    try {
+      setLoading({
+        sales: true,
+        products: true,
+        debts: true,
+        staff: true,
+        overview: true
+      });
+
+      // FIRST: Fetch ALL transactions for the business with NO date filters initially
+      console.log('📥 Fetching ALL transactions...');
+      const allTransactions = await fetchTransactions(userData.businessId, {
+        // IMPORTANT: Don't pass startDate/endDate here to get ALL transactions
+        limit: 5000  // Increase limit to get more data
+      });
+
+      console.log(`✅ Got ${allTransactions.length} total transactions`);
+      setTransactions(allTransactions);
+
+      // SECOND: Filter transactions locally based on selected date range and filters
+      const filtered = filterTransactionsLocally(allTransactions, selectedDateRange, selectedFilters);
+      console.log(`📊 Filtered to ${filtered.length} transactions`);
+      setFilteredTransactions(filtered);
+
+      // THIRD: Determine what date range to use (default to today if none selected)
+      let effectiveDateRange = selectedDateRange;
+
+      // If no date range is selected, default to today
+      if (!selectedDateRange || (!selectedDateRange.startDate && !selectedDateRange.endDate)) {
+        effectiveDateRange = {
+          startDate: todayStr,
+          endDate: todayStr
+        };
+        console.log('📅 No date range selected, defaulting to today:', effectiveDateRange);
+      }
+
+      // Determine period for trend calculation
+      const isToday = effectiveDateRange.startDate === todayStr &&
+        effectiveDateRange.endDate === todayStr;
+      const period = isToday ? 'today' : 'custom';
+
+      console.log(`📈 Period determined: ${period} (isToday: ${isToday})`);
+
+      // Process sales data from FILTERED transactions
+      const processedSalesData = processSalesData(filtered, period);
+      console.log('💰 Processed sales data:', {
+        totalRevenue: processedSalesData.totalRevenue,
+        transactionCount: processedSalesData.transactionCount
+      });
+
+      // Fetch previous period data for growth calculation
+      let previousPeriodData = { totalRevenue: 0, transactionCount: 0 };
+
+      if (effectiveDateRange) {
+        // Calculate previous period dates based on filtered period
+        const [startDay, startMonth, startYear] = effectiveDateRange.startDate.split('-');
+        const [endDay, endMonth, endYear] = effectiveDateRange.endDate.split('-');
+        const start = new Date(`${startYear}-${startMonth}-${startDay}`);
+        const end = new Date(`${endYear}-${endMonth}-${endDay}`);
+        end.setHours(23, 59, 59, 999);
+
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        // Get previous period transactions
+        const prevStart = new Date(start);
+        const prevEnd = new Date(end);
+        prevStart.setDate(prevStart.getDate() - diffDays);
+        prevEnd.setDate(prevEnd.getDate() - diffDays);
+
+        // Format dates for API
+        const prevStartStr = prevStart.toISOString().split('T')[0];
+        const prevEndStr = prevEnd.toISOString().split('T')[0];
+
+        console.log('📅 Fetching previous period data:', {
+          prevStart: prevStartStr,
+          prevEnd: prevEndStr,
+          diffDays
+        });
+
+        // Fetch previous period transactions
+        const prevTransactions = await fetchTransactions(userData.businessId, {
+          startDate: prevStartStr,
+          endDate: prevEndStr,
+          limit: 1000
+        });
+
+        // Apply the same filters to previous period transactions
+        let filteredPrevTransactions = filterTransactionsLocally(prevTransactions, effectiveDateRange, selectedFilters);
+
+        const prevSalesData = processSalesData(filteredPrevTransactions, period);
+        previousPeriodData = {
+          totalRevenue: prevSalesData.totalRevenue,
+          transactionCount: prevSalesData.transactionCount
+        };
+      }
+
+      // Update sales data with current and previous period
+      setSalesData({
+        ...processedSalesData,
+        previousRevenue: previousPeriodData.totalRevenue,
+        previousTransactions: previousPeriodData.transactionCount
+      });
+
+      setLoading(prev => ({ ...prev, sales: false }));
+
+      // Fetch product data
+      const products = await fetchProducts(userData.businessId);
+
+      // In fetchDashboardData function, update the product processing section:
+      const processedProducts = products && Array.isArray(products)
+        ? products.map(product => {
+          const soldQuantity = product.soldQuantity || product.quantitySold || 0;
+          const sellingPrice = parseFloat(product.sellingPrice) || parseFloat(product.price) || 0;
+          const stock = product.currentStock || product.stock || product.quantity || 0;
+
+          // FIXED: Get cost price from product data
+          const costPrice = parseFloat(product.costPrice) || 0;
+
+          // Calculate revenue and profit
+          const revenue = soldQuantity * sellingPrice;
+          const totalCost = soldQuantity * costPrice;
+          const profit = revenue - totalCost;
+
+          return {
+            id: product._id || product.id,
+            name: product.name || `Product ${product._id}`,
+            quantitySold: soldQuantity,
+            revenue: revenue,
+            stock: stock,
+            category: product.category || 'Uncategorized',
+            sellingPrice: sellingPrice,
+            costPrice: costPrice, // Pass cost price to child
+            profit: profit,
+            // Add other fields that might be needed
+            sku: product.sku || product.code || 'N/A',
+            unit: product.unit || 'units',
+            threshold: parseFloat(product.threshold) || 10,
+            buyingPrice: parseFloat(product.buyingPrice) || 0,
+            purchasePrice: parseFloat(product.purchasePrice) || 0,
+            wholesalePrice: parseFloat(product.wholesalePrice) || 0
+          };
+        }).filter(p => p.name && p.sellingPrice > 0)
+        : [];
+
+      setProductData(processedProducts);
+      setLoading(prev => ({ ...prev, products: false }));
+
+      // Fetch staff management data
+      try {
+        const staffManagementData = await fetchStaffManagementData(userData.businessId);
+        setStaffData(staffManagementData);
+        setLoading(prev => ({ ...prev, staff: false }));
+      } catch (staffError) {
+        console.error('Error fetching staff management data:', staffError);
+        setLoading(prev => ({ ...prev, staff: false }));
+      }
+
+      // Calculate kiosk stats
+      const totalInventoryValue = processedProducts.reduce((sum, p) => sum + (p.stock * (p.costPrice || p.sellingPrice * 0.7)), 0);
+      const totalProfit = processedProducts.reduce((sum, p) => sum + p.profit, 0);
+      const profitMargin = processedSalesData.totalRevenue > 0 ? (totalProfit / processedSalesData.totalRevenue) * 100 : 0;
+
+      const uniqueCustomers = new Set();
+      filtered?.forEach(t => {
+        if (t.customerName) uniqueCustomers.add(t.customerName);
+        if (t.customerPhone) uniqueCustomers.add(t.customerPhone);
+      });
+
+      const targetProgress = processedSalesData.totalRevenue > 0
+        ? Math.min(Math.round((processedSalesData.totalRevenue / 1000000) * 100), 100)
+        : 0;
+
+      setKioskStats({
+        activeCustomers: uniqueCustomers.size,
+        inventoryValue: totalInventoryValue,
+        profitMargin: parseFloat(profitMargin.toFixed(1)),
+        targetProgress: targetProgress
+      });
+
+      const lowStockItems = processedProducts.filter(p => p.stock > 0 && p.stock < 20).length;
+      const outOfStockItems = processedProducts.filter(p => p.stock <= 0).length;
+
+      setInventoryData({
+        totalValue: totalInventoryValue,
+        lowStockItems,
+        outOfStockItems,
+        totalItems: processedProducts.length
+      });
+
+      setLoading(prev => ({ ...prev, overview: false }));
+      setContentLoaded(true);
+      setOperationLoading(false);
+
+    } catch (err) {
+      console.error("❌ Error fetching dashboard data:", err);
+      setError(`Failed to load dashboard data: ${err.message}`);
+
+      setLoading({
+        sales: false,
+        products: false,
+        debts: false,
+        staff: false,
+        overview: false
+      });
+      setContentLoaded(true);
+      setOperationLoading(false);
+    }
+  };
+
+  // Handle date range change
+  const handleDateRangeChange = (dateRange) => {
+    setSelectedDateRange(dateRange);
+    setOperationLoading(true);
+    setOperationLoadingText("Applying date range...");
+
+    // Clear any existing date filters from localStorage
+    localStorage.removeItem("dateFilter");
+    localStorage.removeItem("dateFilterCustom");
+
+    // Fetch data with new date range
+    if (userData.initialized) {
+      if (transactions.length > 0) {
+        // Filter locally if we already have transactions
+        const filtered = filterTransactionsLocally(transactions, dateRange, selectedFilters);
+        setFilteredTransactions(filtered);
+
+        // Update sales data
+        const isToday = dateRange?.startDate === todayStr &&
+          dateRange?.endDate === todayStr;
+        const period = isToday ? 'today' : 'custom';
+
+        const processedSalesData = processSalesData(filtered, period);
+        setSalesData(prev => ({
+          ...prev,
+          ...processedSalesData,
+          transactionCount: filtered.length,
+          totalRevenue: processedSalesData.totalRevenue
+        }));
+
+        setTimeout(() => {
+          setOperationLoading(false);
+        }, 500);
+      } else {
+        // Otherwise fetch fresh data
+        fetchDashboardData();
+      }
+    }
+  };
+
+  // Handle filter change
+  const handleFilterChange = (filters) => {
+    setSelectedFilters(filters);
+    setOperationLoading(true);
+    setOperationLoadingText("Applying filters...");
+
+    // If we already have transactions, filter them locally
+    if (transactions.length > 0 && userData.initialized) {
+      console.log('🎯 Applying new filters to existing transactions:', filters);
+
+      const filtered = filterTransactionsLocally(transactions, selectedDateRange, filters);
+      setFilteredTransactions(filtered);
+
+      // Update sales data
+      const isToday = selectedDateRange?.startDate === todayStr &&
+        selectedDateRange?.endDate === todayStr;
+      const period = isToday ? 'today' : 'custom';
+
+      const processedSalesData = processSalesData(filtered, period);
+      setSalesData(prev => ({
+        ...prev,
+        ...processedSalesData,
+        transactionCount: filtered.length,
+        totalRevenue: processedSalesData.totalRevenue
+      }));
+
+      setTimeout(() => {
+        setOperationLoading(false);
+      }, 500);
+    } else {
+      // Otherwise fetch fresh data
+      fetchDashboardData();
+    }
+  };
+
+  // Handle view transaction
+  const handleViewTransaction = (transaction) => {
+    setSelectedTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const handleExport = async (format) => {
+    try {
+      let exportData = {};
+      let exportType = "";
+
+      switch (activeTab) {
+        case 0:
+          exportData = {
+            salesData,
+            transactions: filteredTransactions.slice(0, 100),
+            dateRange: selectedDateRange,
+            filters: selectedFilters,
+            generatedAt: new Date().toISOString()
+          };
+          exportType = "sales";
+          break;
+        case 1:
+          exportData = productData;
+          exportType = "products";
+          break;
+        case 3:
+          exportData = staffData;
+          exportType = "staff";
+          break;
+        default:
+          alert("Export not available for this tab");
+          return;
+      }
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${exportType}_report_${selectedDateRange ? 'custom' : 'today'}_${new Date().toISOString().split('T')[0]}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Failed to export report. Please try again.");
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Calculate totals for debt report
-  const totalOutstanding = mockDebtData
-    .filter((item) => item.status === "Pending" || item.status === "Overdue")
-    .reduce((sum, item) => sum + item.amount, 0);
+  const refreshData = () => {
+    setContentLoaded(false);
+    setLoading({
+      sales: true,
+      products: true,
+      debts: true,
+      staff: true,
+      overview: true
+    });
+    setOperationLoading(true);
+    setOperationLoadingText("Refreshing data...");
+    fetchDashboardData();
+  };
 
-  const totalRecovered = mockDebtData
-    .filter((item) => item.status === "Completed")
-    .reduce((sum, item) => sum + item.amount, 0);
+  // Effects
+  useEffect(() => {
+    if (!currentUser || !token) {
+      navigate('/login');
+      return;
+    }
 
-  const totalDebt = mockDebtData.reduce((sum, item) => sum + item.amount, 0);
+    const businessId = currentUser.businessId ||
+      currentUser.businessID ||
+      localStorage.getItem('businessId') ||
+      sessionStorage.getItem('businessId');
+
+    const kioskId = currentUser.kioskId ||
+      currentUser.kioskID ||
+      localStorage.getItem('kioskId') ||
+      sessionStorage.getItem('kioskId');
+
+    if (!businessId) {
+      setError("No business assigned to your account. Please contact administrator.");
+      setAuthChecked(true);
+      return;
+    }
+
+    setUserData({
+      user: currentUser,
+      businessId,
+      kioskId,
+      adminInfo: {
+        businessId,
+        kioskId,
+        businessName: currentUser.businessName || "Business",
+        businessType: currentUser.businessType || "Retail"
+      },
+      initialized: true
+    });
+
+    setAuthChecked(true);
+
+  }, [currentUser, token, navigate]);
+
+  // Fetch data when component mounts or when user data changes
+  useEffect(() => {
+    if (userData.initialized && authChecked) {
+      fetchDashboardData();
+    }
+  }, [userData.initialized, authChecked]);
+
+  // Handle refetch when selectedDateRange changes
+  useEffect(() => {
+    if (userData.initialized && selectedDateRange) {
+      // We'll handle this in handleDateRangeChange
+    }
+  }, [selectedDateRange]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!contentLoaded && Object.values(loading).some(l => l)) {
+        setContentLoaded(true);
+        setLoading({
+          sales: false,
+          products: false,
+          debts: false,
+          staff: false,
+          overview: false
+        });
+        setOperationLoading(false);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeoutId);
+  }, [contentLoaded, loading]);
+
+  // Calculate derived values for sales
+  const revenueGrowth = calculateGrowth(salesData.totalRevenue, salesData.previousRevenue);
+  const transactionGrowth = calculateGrowth(salesData.transactionCount, salesData.previousTransactions);
 
   const tabs = [
     { id: 0, label: "Sales Dashboard", icon: <BarChart3 size={18} /> },
@@ -150,1038 +1184,311 @@ export default function KioskAdminReportsPage() {
     { id: 3, label: "Staff Performance", icon: <Users size={18} /> },
   ];
 
-  const revenueGrowth = calculateGrowth(mockSalesData.totalRevenue, mockSalesData.previousRevenue);
-  const transactionGrowth = calculateGrowth(mockSalesData.transactionCount, mockSalesData.previousTransactions);
+  // ===== CONTENT LOADER INTEGRATION =====
+  // Show ContentLoader when operationLoading is true
+  if (operationLoading || tabChanging) {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Container that becomes full width only on small devices */}
+        <div className="w-full sm:w-auto md:w-auto lg:w-auto">
+          <div className="main-app-view w-full sm:w-auto">
+            <div className="main-app-content-container w-full sm:w-auto min-h-[200px] sm:min-h-auto">
+              <ContentLoader
+                state={true}
+                loading={true}
+                loadingText={operationLoadingText || "Loading dashboard..."}
+                loadedText=""
+                color="#3B82F6"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const StatCard = ({ title, value, growth, icon, color, suffix = "" }) => (
+  // Initial loading state
+  if (!authChecked || (!contentLoaded && loading.overview)) {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Container that becomes full width only on small devices */}
+        <div className="w-full sm:w-auto md:w-auto lg:w-auto">
+          <div className="main-app-view w-full sm:w-auto">
+            <div className="main-app-content-container w-full sm:w-auto min-h-[200px] sm:min-h-auto">
+              <ContentLoader
+                state={true}
+                loading={true}
+                loadingText={operationLoadingText || "Loading dashboard..."}
+                loadedText=""
+                color="#3B82F6"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (!userData.user || !userData.businessId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12 bg-white rounded-xl shadow-lg p-8">
+            <div className="text-red-500 text-xl mb-4">
+              {!userData.user ? "User Not Logged In" : "No Business Assigned"}
+            </div>
+            <div className="text-gray-600 mb-6">
+              {!userData.user
+                ? "Please log in to access the analytics dashboard."
+                : "Your account is not assigned to any business. Please contact your administrator."}
+            </div>
+            {!userData.user && (
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+              >
+                Go to Login
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // StatCard Component
+  const StatCard = ({ title, value, growth, icon, color, suffix = "", loading: isLoading }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
       <div className="flex items-center justify-between mb-4">
         <div className={`p-3 rounded-lg bg-gradient-to-br ${color} bg-opacity-10`}>
           {icon}
         </div>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-          {growth >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
-          {Math.abs(growth)}%
-        </span>
+        {!isLoading && growth !== undefined && (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}>
+            {growth >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
+            {Math.abs(growth)}%
+          </span>
+        )}
       </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-1">{value}{suffix}</h3>
-      <p className="text-sm text-gray-600">{title}</p>
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center text-xs text-gray-500">
-          <span>Compared to last period</span>
+      {isLoading ? (
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+        </div>
+      ) : (
+        <>
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">{value}{suffix}</h3>
+          <p className="text-sm text-gray-600">{title}</p>
+          {growth !== undefined && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center text-xs text-gray-500">
+                <span>{growth >= 0 ? 'Increase' : 'Decrease'} from previous period</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  // LoadingOverlay Component
+  const LoadingOverlay = () => (
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+      <div className="text-center">
+        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={32} />
+        <p className="text-gray-600">Loading data...</p>
+      </div>
+    </div>
+  );
+
+  // ErrorAlert Component
+  const ErrorAlert = ({ message, onRetry }) => (
+    <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+      <div className="flex items-start">
+        <AlertTriangle className="text-red-500 mt-1 mr-3 flex-shrink-0" size={24} />
+        <div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
+          <p className="text-red-600 mb-4">{message}</p>
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+          >
+            Retry
+          </button>
         </div>
       </div>
     </div>
   );
 
+  // Render
   return (
-    <div className="min-h-screen bg-white  p-4 md:p-6">
-      {/* Enhanced Header with Glass Effect */}
-      <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-5 rounded-3xl blur-xl"></div>
-        <div className="relative">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                  <Activity className="text-white" size={24} />
-                </div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Analytics Dashboard
-                </h1>
-              </div>
-              <p className="text-gray-600 ml-1">
-                Real-time insights and comprehensive business analytics
-                <span className="inline-flex items-center ml-2 text-blue-600">
-                  <Sparkles size={16} className="mr-1" />
-                  Powered by AI Insights
-                </span>
-              </p>
-            </div>
-            
-            <div className="mt-4 md:mt-0 flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 shadow-sm">
-                <RefreshCw size={18} />
-                <span className="font-medium">Refresh Data</span>
-              </button>
-              <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg shadow-blue-500/30">
-                <HelpCircle size={18} />
-                <span className="font-medium">Quick Insights</span>
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-white p-4 md:p-6">
+      {/* Header */}
+      <ReportHeader
+        userData={userData}
+        refreshData={refreshData}
+        loading={loading.overview}
+        error={error}
+        ErrorAlert={ErrorAlert}
+      />
 
-          {/* Quick Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active Customers</p>
-                  <p className="text-2xl font-bold text-gray-900">1,248</p>
-                </div>
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="text-blue-600" size={24} />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Inventory Value</p>
-                  <p className="text-2xl font-bold text-gray-900">KSh 2.4M</p>
-                </div>
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Package className="text-green-600" size={24} />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Profit Margin</p>
-                  <p className="text-2xl font-bold text-gray-900">24.8%</p>
-                </div>
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Percent className="text-purple-600" size={24} />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Target Progress</p>
-                  <p className="text-2xl font-bold text-gray-900">78%</p>
-                </div>
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Target className="text-orange-600" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Error Display */}
+      {error && <ErrorAlert message={error} onRetry={refreshData} />}
 
-      {/* Enhanced Control Panel */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 mb-8 overflow-hidden">
-        <div className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <select
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                    className="pl-10 pr-8 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                  >
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="quarter">This Quarter</option>
-                    <option value="year">This Year</option>
-                    <option value="custom">Custom Range</option>
-                  </select>
-                </div>
+      {/* Control Panel */}
+      <ReportControls
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}  // Use the new handler
+        tabs={tabs}
+        loading={loading.overview}
+        handleExport={handleExport}
+        handlePrint={handlePrint}
+        selectedDateRange={selectedDateRange}
+        onDateRangeChange={handleDateRangeChange}
+        filterOptions={getCurrentFilterOptions()}
+        selectedFilters={selectedFilters}
+        onFilterChange={handleFilterChange}
+      />
 
-                {dateFilter === "custom" && (
-                  <div className="flex gap-3">
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={customDateRange.start}
-                        onChange={(e) =>
-                          setCustomDateRange((prev) => ({
-                            ...prev,
-                            start: e.target.value,
-                          }))
-                        }
-                        className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <span className="flex items-center text-gray-500">to</span>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={customDateRange.end}
-                        onChange={(e) =>
-                          setCustomDateRange((prev) => ({
-                            ...prev,
-                            end: e.target.value,
-                          }))
-                        }
-                        className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <button className="inline-flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-                  <Filter size={18} />
-                  <span>More Filters</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex bg-gray-100 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`px-4 py-2 rounded-lg transition-all ${viewMode === "grid" ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
-                >
-                  Grid View
-                </button>
-                <button
-                  onClick={() => setViewMode("detailed")}
-                  className={`px-4 py-2 rounded-lg transition-all ${viewMode === "detailed" ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
-                >
-                  Detailed View
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleExport("pdf")}
-                  className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:opacity-90 transition-all shadow-lg shadow-blue-500/30"
-                >
-                  <FileText size={18} />
-                  <span>PDF Report</span>
-                </button>
-                <button
-                  onClick={() => handleExport("csv")}
-                  className="inline-flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  <Download size={18} />
-                  <span>Export CSV</span>
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="inline-flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  <Printer size={18} />
-                  <span>Print</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Tabs */}
-        <div className="border-t border-gray-200">
-          <div className="flex px-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-1 mr-8 border-b-2 font-medium text-sm transition-all duration-300 ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <span className={`transition-colors ${activeTab === tab.id ? 'text-blue-500' : 'text-gray-400'}`}>
-                  {tab.icon}
-                </span>
-                {tab.label}
-                {activeTab === tab.id && (
-                  <ChevronRight className="ml-1" size={16} />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Quick Stats Bar */}
+      <ReportStats
+        kioskStats={kioskStats}
+        inventoryData={inventoryData}
+        loading={loading.overview}
+        formatCurrency={formatCurrency}
+      />
 
       {/* Main Content */}
-      <div className="space-y-8">
-        {/* Tab 1: Enhanced Sales Dashboard */}
-        {activeTab === 0 && (
-          <div className="space-y-8">
-            {/* Top Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard
-                title="Total Revenue"
-                value={formatCurrency(mockSalesData.totalRevenue)}
-                growth={revenueGrowth}
-                icon={<DollarSign className="text-blue-600" size={24} />}
-                color="from-blue-500 to-blue-600"
-              />
-              <StatCard
-                title="Transactions"
-                value={mockSalesData.transactionCount}
-                growth={transactionGrowth}
-                icon={<ShoppingCart className="text-green-600" size={24} />}
-                color="from-green-500 to-green-600"
-                suffix=""
-              />
-              <StatCard
-                title="Average Sale"
-                value={formatCurrency(Math.round(mockSalesData.totalRevenue / mockSalesData.transactionCount))}
-                growth={2.4}
-                icon={<CreditCard className="text-purple-600" size={24} />}
-                color="from-purple-500 to-purple-600"
-              />
-              <StatCard
-                title="Customer Count"
-                value="342"
-                growth={8.7}
-                icon={<Users className="text-orange-600" size={24} />}
-                color="from-orange-500 to-orange-600"
-              />
+      {contentLoaded ? (
+        <div className="space-y-8">
+          {/* Tab 1: Sales Dashboard */}
+          {activeTab === 0 && (
+            <SalesDashboard
+              salesData={salesData}
+              loading={loading.sales}
+              revenueGrowth={revenueGrowth}
+              transactionGrowth={transactionGrowth}
+              formatCurrency={formatCurrency}
+              StatCard={StatCard}
+              LoadingOverlay={LoadingOverlay}
+              RechartsTooltip={RechartsTooltip}
+              BarChart={BarChart}
+              Bar={Bar}
+              XAxis={XAxis}
+              YAxis={YAxis}
+              CartesianGrid={CartesianGrid}
+              ResponsiveContainer={ResponsiveContainer}
+              PieChart={PieChart}
+              Pie={Pie}
+              Cell={Cell}
+              Legend={Legend}
+              AreaChart={AreaChart}
+              Area={Area}
+              Line={Line}
+              COLORS={COLORS}
+              userData={userData}
+              selectedDateRange={selectedDateRange}
+              selectedFilters={selectedFilters}
+              transactions={transactions}
+              filteredTransactions={filteredTransactions}
+              onViewTransaction={handleViewTransaction}
+              onRefresh={refreshData}
+              onDateRangeChange={handleDateRangeChange}
+              onFilterChange={handleFilterChange}
+            />
+          )}
+
+          {/* Tab 2: Product Analytics */}
+          {activeTab === 1 && (
+            <ProductsDashboard
+              productData={productData}
+              loading={loading.products}
+              formatCurrency={formatCurrency}
+              LoadingOverlay={LoadingOverlay}
+              RechartsTooltip={RechartsTooltip}
+              BarChart={BarChart}
+              Bar={Bar}
+              XAxis={XAxis}
+              YAxis={YAxis}
+              CartesianGrid={CartesianGrid}
+              ResponsiveContainer={ResponsiveContainer}
+              Package={Package}
+              AlertTriangle={AlertTriangle}
+              CheckCircle={CheckCircle}
+              userData={userData}
+              selectedDateRange={selectedDateRange}
+              selectedFilters={selectedFilters}
+              onDateRangeChange={handleDateRangeChange}
+              onFilterChange={handleFilterChange}
+              onRefresh={refreshData}
+              filteredTransactions={filteredTransactions}
+            />
+
+          )}
+
+          {/* Tab 3: Debt Management */}
+          {activeTab === 2 && (
+            <div className="mt-6">
+              <DebtManagement />
             </div>
+          )}
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Revenue Trend Chart */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-                    <p className="text-sm text-gray-600">Daily performance overview</p>
-                  </div>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <MoreVertical size={20} />
-                  </button>
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockSalesData.dailyTrend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                      <YAxis axisLine={false} tickLine={false} />
-                      <RechartsTooltip 
-                        formatter={(value) => [formatCurrency(value), 'Revenue']}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stroke="#3B82F6" 
-                        fill="url(#colorRevenue)" 
-                        strokeWidth={2}
-                      />
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Payment Methods */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Payment Methods</h3>
-                    <p className="text-sm text-gray-600">Breakdown by payment type</p>
-                  </div>
-                  <PieChartIcon className="text-gray-400" size={20} />
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={mockSalesData.paymentMethods}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="amount"
-                      >
-                        {mockSalesData.paymentMethods.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-6 space-y-3">
-                  {mockSalesData.paymentMethods.map((method) => (
-                    <div key={method.method} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: method.color }} />
-                        <span className="font-medium">{method.method}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(method.amount)}</p>
-                        <p className="text-sm text-gray-500">{method.count} transactions</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Daily Performance */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Daily Performance</h3>
-                  <p className="text-sm text-gray-600">Revenue vs Transactions</p>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                    <span>Revenue</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span>Transactions</span>
-                  </div>
-                </div>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={mockSalesData.dailyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="left" axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} />
-                    <RechartsTooltip 
-                      formatter={(value, name) => [
-                        name === 'revenue' ? formatCurrency(value) : value,
-                        name === 'revenue' ? 'Revenue' : 'Transactions'
-                      ]}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    />
-                    <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="transactions" stroke="#10B981" strokeWidth={3} dot={{ r: 4 }} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Enhanced Product Analytics */}
-        {activeTab === 1 && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Product Performance Chart */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Top Performing Products</h3>
-                    <p className="text-sm text-gray-600">By revenue and quantity sold</p>
-                  </div>
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option>This Month</option>
-                    <option>Last Month</option>
-                    <option>This Quarter</option>
-                  </select>
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mockProductData.slice(0, 6)} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                      <XAxis type="number" axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="name" width={150} axisLine={false} tickLine={false} />
-                      <RechartsTooltip formatter={(value) => [formatCurrency(value), 'Revenue']} />
-                      <Bar dataKey="revenue" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Stock Overview */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Stock Alert</h3>
-                    <p className="text-sm text-gray-600">Low stock items</p>
-                  </div>
-                  <AlertTriangle className="text-yellow-500" size={20} />
-                </div>
-                <div className="space-y-4">
-                  {mockProductData
-                    .filter(item => item.stock < 30)
-                    .map((product, index) => (
-                      <div key={index} className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{product.name}</span>
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
-                            Low Stock
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Current Stock: {product.stock}</span>
-                          <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            Reorder
-                          </button>
-                        </div>
-                        <div className="mt-2">
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-yellow-500 rounded-full"
-                              style={{ width: `${(product.stock / 100) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Product Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Product Sales Details</h3>
-                    <p className="text-sm text-gray-600">Complete product performance breakdown</p>
-                  </div>
-                  <button className="text-blue-600 hover:text-blue-800 font-medium">
-                    View All Products
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Quantity Sold
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Revenue
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Stock
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {mockProductData.map((product, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
-                                <Package className="text-blue-600" size={20} />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                <div className="text-sm text-gray-500">SKU: PROD{1000 + index}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                              {product.category}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                            {product.quantitySold}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="text-sm font-semibold text-gray-900">{formatCurrency(product.revenue)}</div>
-                            <div className="text-xs text-gray-500">
-                              {formatCurrency(Math.round(product.revenue / product.quantitySold))} avg
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="inline-flex items-center">
-                              <span className={`text-sm font-medium ${product.stock < 30 ? 'text-yellow-600' : 'text-green-600'}`}>
-                                {product.stock} units
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                              <Eye size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Enhanced Debt Management */}
-        {activeTab === 2 && (
-          <div className="space-y-8">
-            {/* Debt Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <AlertTriangle size={24} />
-                  <span className="text-sm opacity-90">Outstanding</span>
-                </div>
-                <h3 className="text-3xl font-bold mb-2">{formatCurrency(totalOutstanding)}</h3>
-                <p className="text-sm opacity-90">Total amount pending</p>
-                <div className="mt-4 pt-4 border-t border-white/20">
-                  <div className="text-xs opacity-80">From {mockDebtData.filter(d => d.status !== 'Completed').length} customers</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <CheckCircle size={24} />
-                  <span className="text-sm opacity-90">Recovered</span>
-                </div>
-                <h3 className="text-3xl font-bold mb-2">{formatCurrency(totalRecovered)}</h3>
-                <p className="text-sm opacity-90">Successfully collected</p>
-                <div className="mt-4 pt-4 border-t border-white/20">
-                  <div className="text-xs opacity-80">{((totalRecovered / totalDebt) * 100).toFixed(1)}% recovery rate</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <CreditCard size={24} />
-                  <span className="text-sm opacity-90">Total Debt</span>
-                </div>
-                <h3 className="text-3xl font-bold mb-2">{formatCurrency(totalDebt)}</h3>
-                <p className="text-sm opacity-90">Overall debt portfolio</p>
-                <div className="mt-4 pt-4 border-t border-white/20">
-                  <div className="text-xs opacity-80">{mockDebtData.length} total records</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Debt Distribution Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Debt Distribution</h3>
-                    <p className="text-sm text-gray-600">By status and amount</p>
-                  </div>
-                  <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                    Send Reminders
-                  </button>
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadialBarChart 
-                      innerRadius="20%" 
-                      outerRadius="90%" 
-                      data={mockDebtData.map(d => ({ ...d, fill: d.status === 'Completed' ? '#10B981' : d.status === 'Overdue' ? '#EF4444' : '#F59E0B' }))}
-                      startAngle={180}
-                      endAngle={0}
-                    >
-                      <RadialBar 
-                        minAngle={15} 
-                        label={{ position: 'insideStart', fill: '#fff' }} 
-                        background 
-                        clockWise 
-                        dataKey="amount" 
-                      />
-                      <Legend />
-                      <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Debt Status Overview */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Debt Status</h3>
-                <div className="space-y-4">
-                  {['Pending', 'Completed', 'Overdue'].map((status) => {
-                    const count = mockDebtData.filter(d => d.status === status).length;
-                    const amount = mockDebtData.filter(d => d.status === status).reduce((sum, d) => sum + d.amount, 0);
-                    const color = status === 'Completed' ? 'green' : status === 'Overdue' ? 'red' : 'yellow';
-                    
-                    return (
-                      <div key={status} className="p-4 bg-gray-50 rounded-xl">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{status}</span>
-                          <span className={`px-2 py-1 bg-${color}-100 text-${color}-800 text-xs rounded-full`}>
-                            {count} customers
-                          </span>
-                        </div>
-                        <p className="text-xl font-semibold text-gray-900">{formatCurrency(amount)}</p>
-                        <div className="mt-2">
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full bg-${color}-500 rounded-full`}
-                              style={{ width: `${(count / mockDebtData.length) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Debt Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Customer Debt Details</h3>
-                    <p className="text-sm text-gray-600">Manage and track customer debts</p>
-                  </div>
-                  <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:opacity-90 transition-all">
-                    <Download size={18} />
-                    Export List
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Customer
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Contact
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Amount
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Days
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {mockDebtData.map((debt, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                                <Users className="text-gray-600" size={20} />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{debt.customer}</div>
-                                <div className="text-sm text-gray-500">Debt ID: DBT{1000 + index}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{debt.phone}</div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="text-sm font-semibold text-gray-900">{formatCurrency(debt.amount)}</div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                              debt.status === "Completed" 
-                                ? "bg-green-100 text-green-800" 
-                                : debt.status === "Overdue"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}>
-                              {debt.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <div className={`text-sm font-medium ${
-                              debt.days > 10 ? 'text-red-600' : 
-                              debt.days > 5 ? 'text-yellow-600' : 
-                              'text-gray-600'
-                            }`}>
-                              {debt.days} days
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <div className="flex justify-center gap-2">
-                              <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
-                                <Eye size={16} />
-                              </button>
-                              <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
-                                <CheckCircle size={16} />
-                              </button>
-                              <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                                <AlertTriangle size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: Enhanced Staff Performance */}
-        {activeTab === 3 && (
-          <div className="space-y-8">
-            {/* Staff Performance Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {mockStaffData.map((staff, index) => (
-                <div key={index} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold"
-                        style={{ backgroundColor: staff.imageColor }}
-                      >
-                        {getInitials(staff.name)}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{staff.name}</h4>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              size={12} 
-                              className={i < Math.floor(staff.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"} 
-                            />
-                          ))}
-                          <span className="text-xs text-gray-600 ml-1">{staff.rating}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <MoreVertical className="text-gray-400" size={20} />
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Transactions</span>
-                      <span className="font-semibold">{staff.transactions}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Sales</span>
-                      <span className="font-semibold text-green-600">{formatCurrency(staff.totalSales)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Avg. Sale</span>
-                      <span className="font-semibold">{formatCurrency(staff.avgSale)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">Performance</span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        staff.avgSale > 1800 
-                          ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800"
-                          : staff.avgSale > 1700
-                          ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800"
-                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800"
-                      }`}>
-                        {staff.avgSale > 1800 ? "Top Performer" : staff.avgSale > 1700 ? "Excellent" : "Good"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Performance Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Staff Performance Trend</h3>
-                    <p className="text-sm text-gray-600">Average sale comparison</p>
-                  </div>
-                  <Trophy className="text-yellow-500" size={24} />
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mockStaffData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                      <YAxis axisLine={false} tickLine={false} />
-                      <RechartsTooltip formatter={(value) => [formatCurrency(value), 'Average Sale']} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="avgSale" 
-                        stroke="#3B82F6" 
-                        strokeWidth={3}
-                        dot={{ r: 6, fill: "#3B82F6" }}
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Top Performer */}
-              <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-6">
-                  <Trophy size={24} />
-                  <span className="text-sm opacity-90">Top Performer</span>
-                </div>
-                <div className="text-center mb-6">
-                  <div className="h-20 w-20 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                    {getInitials(mockStaffData[2].name)}
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2">{mockStaffData[2].name}</h3>
-                  <div className="flex items-center justify-center gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={16} className={i < 5 ? "fill-white" : ""} />
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="opacity-90">Transactions</span>
-                    <span className="font-semibold">{mockStaffData[2].transactions}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-90">Total Sales</span>
-                    <span className="font-semibold">{formatCurrency(mockStaffData[2].totalSales)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-90">Avg. Sale</span>
-                    <span className="font-semibold">{formatCurrency(mockStaffData[2].avgSale)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Staff Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Detailed Performance</h3>
-                    <p className="text-sm text-gray-600">Complete staff performance metrics</p>
-                  </div>
-                  <button className="text-blue-600 hover:text-blue-800 font-medium">
-                    Download Report
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Staff Member
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Transactions
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Total Sales
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Average Sale
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Conversion Rate
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Performance Score
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {mockStaffData.map((staff, index) => {
-                        const performanceScore = Math.round((staff.avgSale / 2000) * 100);
-                        return (
-                          <tr key={index} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center">
-                                <div 
-                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold mr-3"
-                                  style={{ backgroundColor: staff.imageColor }}
-                                >
-                                  {getInitials(staff.name)}
-                                </div>
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{staff.name}</div>
-                                  <div className="text-sm text-gray-500">Employee ID: EMP{1000 + index}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="text-sm font-semibold">{staff.transactions}</div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="text-sm font-semibold text-green-600">{formatCurrency(staff.totalSales)}</div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="text-sm font-semibold">{formatCurrency(staff.avgSale)}</div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="text-sm font-semibold">
-                                {Math.round((staff.transactions / 100) * 100)}%
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="inline-flex items-center">
-                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded-full ${
-                                      performanceScore >= 90 ? 'bg-green-500' :
-                                      performanceScore >= 80 ? 'bg-blue-500' :
-                                      performanceScore >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}
-                                    style={{ width: `${performanceScore}%` }}
-                                  />
-                                </div>
-                                <span className="ml-2 text-sm font-semibold">{performanceScore}/100</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="flex justify-center gap-2">
-                                <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="View Details">
-                                  <Eye size={16} />
-                                </button>
-                                <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Award Bonus">
-                                  <Trophy size={16} />
-                                </button>
-                                <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Send Message">
-                                  <Users size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="mt-12 pt-8 border-t border-gray-200">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between text-sm text-gray-600">
-          <div className="mb-4 md:mb-0">
-            <p>© 2024 Kiosk Management System. All rights reserved.</p>
-            <p className="mt-1">Last updated: Today at 14:30</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="inline-flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              System Status: <span className="font-medium text-green-600">Operational</span>
-            </span>
-            <span>•</span>
-            <span>Data refresh: Auto (Every 5 min)</span>
-          </div>
+          {/* Tab 4: Staff Performance */}
+          {activeTab === 3 && (
+            <StaffDashboard
+              staffData={staffData}
+              loading={loading.staff}
+              formatCurrency={formatCurrency}
+              getInitials={getInitials}
+              LoadingOverlay={LoadingOverlay}
+              Star={Star}
+              MoreVertical={MoreVertical}
+              Users={Users}
+              Trophy={Trophy}
+              RechartsTooltip={RechartsTooltip}
+              LineChart={LineChart}
+              Line={Line}
+              CartesianGrid={CartesianGrid}
+              XAxis={XAxis}
+              YAxis={YAxis}
+              ResponsiveContainer={ResponsiveContainer}
+              isToday={!selectedDateRange || (
+                selectedDateRange.startDate === selectedDateRange.endDate &&
+                selectedDateRange.startDate === todayStr
+              )}
+              // ===== CRITICAL ADDITIONS =====
+              filteredTransactions={filteredTransactions}
+              onRefresh={refreshData}
+              onDateRangeChange={handleDateRangeChange}
+              onFilterChange={handleFilterChange}
+              selectedDateRange={selectedDateRange}
+              selectedFilters={selectedFilters}
+            />
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="text-center py-12">
+          <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
+          <p className="text-gray-600">Loading dashboard data...</p>
+          <button
+            onClick={() => {
+              setContentLoaded(true);
+              setLoading({
+                sales: false,
+                products: false,
+                debts: false,
+                staff: false,
+                overview: false
+              });
+            }}
+            className="mt-4 text-blue-600 hover:text-blue-800"
+          >
+            Show demo data
+          </button>
+        </div>
+      )}
     </div>
   );
 }

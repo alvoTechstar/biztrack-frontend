@@ -15,10 +15,10 @@ export default function FilterInput({
   filters,
   filters2,
   options,
-  selected = [], // Add default value
+  selected = [], 
   selectedAction,
-  selected2, // Keep optional
-  selectedAction2, // Keep optional
+  selected2, 
+  selectedAction2, 
   tableFilter,
   handleTableFilter,
   anchorEl,

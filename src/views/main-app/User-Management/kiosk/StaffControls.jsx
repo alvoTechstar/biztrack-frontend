@@ -89,12 +89,12 @@ const StaffControls = ({
   ];
 
   return (
-    <div className="bg-white p-4 mb-4 ml-2">
-      <div className="flex gap-4 flex-wrap items-center justify-between">
+    <div className="bg-white p-4 mb-4 ml-2 sm:p-1 m-0">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         {/* Left Side: Search and Filters */}
-        <div className="flex gap-4 flex-wrap items-center flex-1">
-          {/* Search Input */}
-          <div className="min-w-64">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
+          {/* Search Input - Full width on mobile, normal on desktop */}
+          <div className="w-full sm:w-auto sm:flex-1 mb-2 sm:mb-0">
             <SearchInput
               id="staff-search"
               placeholder="Search by name, email, or phone..."
@@ -106,44 +106,51 @@ const StaffControls = ({
             />
           </div>
 
-          {/* Date Range Filter */}
-          <DateRangeInput
-            type="staff"
-            color={theme.primaryColor}
-            selected={filters.startDate && filters.endDate ? {
-              startDate: filters.startDate,
-              endDate: filters.endDate
-            } : null}
-            dateFilter={dateFilter}
-            anchorEl={dateFilterAnchorEl}
-            selectedAction={handleDateSelected}
-            handleDateFilter={handleDateFilter}
-            handleClose={handleDateFilterClose}
-            handleClick={handleDateFilterClick}
-          />
+          {/* Date Range and Filter - Right next to search on all sizes */}
+          <div className="flex gap-0 sm:gap-4 w-full sm:w-auto">
+            {/* Date Range Filter */}
+            <div className="flex-1 sm:flex-none">
+              <DateRangeInput
+                type="staff"
+                color={theme.primaryColor}
+                selected={filters.startDate && filters.endDate ? {
+                  startDate: filters.startDate,
+                  endDate: filters.endDate
+                } : null}
+                dateFilter={dateFilter}
+                anchorEl={dateFilterAnchorEl}
+                selectedAction={handleDateSelected}
+                handleDateFilter={handleDateFilter}
+                handleClose={handleDateFilterClose}
+                handleClick={handleDateFilterClick}
+              />
+            </div>
 
-          {/* Advanced Filter Button */}
-          <FilterInput
-            color={theme.primaryColor}
-            label="advanced-filter"
-            filters={statusFilters}
-            filters2={roleFilters}
-            options={filterOptions}
-            selected={selectedItems || []}
-            selectedAction={setSelectedItems}
-            tableFilter={tableFilter}
-            handleTableFilter={handleTableFilter}
-            anchorEl={filterAnchorEl}
-            handleClose={handleFilterClose}
-            handleClick={handleFilterClick}
-          />
+            {/* Advanced Filter Button - No gap on mobile */}
+            <div className="flex-1 sm:flex-none ml-0 sm:ml-0">
+              <FilterInput
+                color={theme.primaryColor}
+                label="advanced-filter"
+                filters={statusFilters}
+                filters2={roleFilters}
+                options={filterOptions}
+                selected={selectedItems || []}
+                selectedAction={setSelectedItems}
+                tableFilter={tableFilter}
+                handleTableFilter={handleTableFilter}
+                anchorEl={filterAnchorEl}
+                handleClose={handleFilterClose}
+                handleClick={handleFilterClick}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Right Side: Add Staff Button */}
-        <div className="flex-shrink-0">
+        {/* Right Side: Add Staff Button - Full width on mobile, normal on desktop */}
+        <div className="w-full lg:w-auto mt-4 lg:mt-0">
           <AppFormButton
             text={
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center lg:justify-start gap-2">
                 <Plus size={18} />
                 Add Staff
               </div>
