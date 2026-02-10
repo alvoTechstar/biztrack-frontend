@@ -3,8 +3,8 @@ const URLS = {
   // Base URL is prepended to all paths below
   // TAG_BASE_URL: "http://localhost:3000",
   //  TAG_BASE_URL: "https://dona-southmost-finn.ngrok-free.dev",
-    //  TAG_BASE_URL: "https://plenty-rice-travel.loca.lt",
-   TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
+  //  TAG_BASE_URL: "https://plenty-rice-travel.loca.lt",
+  TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
 
   AUTH: {
     LOGIN: "/api/auth/login",
@@ -18,7 +18,7 @@ const URLS = {
   },
 
   BUSINESS: {
-    CREATE_BUSINESS: "/api/business/create-business", 
+    CREATE_BUSINESS: "/api/business/create-business",
     GET_ALL_BUSINESSES: "/api/business",
     GET_BUSINESS_BY_ID: "/api/business/:id",
     UPDATE_BUSINESS: "/api/business/:id",
@@ -59,13 +59,18 @@ const URLS = {
     GET_ALL_TRANSACTIONS: '/api/transactions',
     GET_TRANSACTIONS_BY_BUSINESS: '/api/transactions/business/:businessId',
     GET_DAILY_REPORT_BY_BUSINESS: '/api/transactions/report/business/:businessId/:date',
-    UPDATE_TRANSACTION: '/api/transactions/:id'
+    UPDATE_TRANSACTION: '/api/transactions/:id/update',
+    GET_TRANSACTION_BY_ID: '/api/transactions/by-id/:transactionId',
+    GET_BY_ID: '/api/transactions/by-id/:transactionId'
+
 
   },
   MPESA: {
-    STK_PUSH: "/api/mpesa/stk-push",
-    CALLBACK: "/api/mpesa/callback",
-    QUERY_STATUS: "/api/mpesa/query-status/:checkoutRequestId",
+    STK_PUSH: '/api/mpesa/stk-push',
+    CALLBACK: '/api/mpesa/callback',
+    POLL_STATUS: '/api/mpesa/poll/:transactionId',
+    QUERY_STATUS: '/api/mpesa/status/:checkoutRequestId',
+    GET_TRANSACTION: '/api/mpesa/transaction/:transactionId'
   },
 
   KIOSKS: {

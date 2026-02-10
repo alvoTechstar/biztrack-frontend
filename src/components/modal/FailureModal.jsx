@@ -1,20 +1,21 @@
+// FailureModal.js
 import React, { useEffect, useState } from "react";
-import failureIcon from "../../assets/error.svg";
+import failureIcon from "../../assets/modal/error.svg";
 
-const FailureModal = ({ amount, currency, reference }) => {
-  const [secondsLeft, setSecondsLeft] = useState(10);
+const FailureModal = ({ amount, currency, reference, onRetry }) => {
+  const [secondsLeft, setSecondsLeft] = useState(5); // Changed from 10 to 3 seconds
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      window.location.href = "/home"; // Redirect after countdown
+      onRetry?.(); // Call the retry callback when countdown finishes
       return;
     }
     const timer = setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000);
     return () => clearTimeout(timer);
-  }, [secondsLeft]);
+  }, [secondsLeft, onRetry]);
 
   const strokeDasharray = 100;
-  const strokeDashoffset = (secondsLeft / 10) * strokeDasharray;
+  const strokeDashoffset = (secondsLeft / 5) * strokeDasharray; // Changed denominator to 3
 
   const formattedAmount = Number(amount);
 
@@ -46,7 +47,7 @@ const FailureModal = ({ amount, currency, reference }) => {
 
         {/* Countdown */}
         <div className="mt-6 text-gray-600 text-sm">
-          Returning to merchant in
+          Returning to payment page in
           <div className="mt-3 flex justify-center">
             <div className="w-16 h-16 relative">
               <svg
@@ -82,10 +83,10 @@ const FailureModal = ({ amount, currency, reference }) => {
 
         {/* Manual Return */}
         <button
-          onClick={() => (window.location.href = "/home")}
+          onClick={onRetry}
           className="mt-6 text-sm text-blue-600 hover:underline flex items-center justify-center mx-auto"
         >
-          &larr; Return to merchant
+          &larr; Try again
         </button>
       </div>
     </div>

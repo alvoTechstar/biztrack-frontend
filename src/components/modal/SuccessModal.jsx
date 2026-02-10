@@ -1,12 +1,13 @@
+// SuccessModal.js
 import React, { useEffect, useState } from "react";
-import successIcon from "../../assets/success.svg"; // Adjust path if needed
+import successIcon from "../../assets/modal/success.svg";
 
 const SuccessModal = ({ amount, currency, reference, onComplete }) => {
-  const [secondsLeft, setSecondsLeft] = useState(10);
+  const [secondsLeft, setSecondsLeft] = useState(5); // Changed from 10 to 3 seconds
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      onComplete?.();
+      onComplete?.(); // Call the callback when countdown finishes
       return;
     }
     const timer = setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000);
@@ -14,7 +15,7 @@ const SuccessModal = ({ amount, currency, reference, onComplete }) => {
   }, [secondsLeft, onComplete]);
 
   const strokeDasharray = 100;
-  const strokeDashoffset = (secondsLeft / 10) * strokeDasharray;
+  const strokeDashoffset = (secondsLeft / 5) * strokeDasharray; // Changed denominator to 3
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -33,7 +34,7 @@ const SuccessModal = ({ amount, currency, reference, onComplete }) => {
         <p className="text-sm text-gray-600">
           You have successfully paid{" "}
           <strong>
-          {currency} {(!isNaN(amount) ? Number(amount).toFixed(2) : "0.00")}
+            {currency} {(!isNaN(amount) ? Number(amount).toFixed(2) : "0.00")}
           </strong>
           , ref #:{" "}
           <span className="bg-green-100 text-green-800 font-mono px-2 py-0.5 rounded">
@@ -43,7 +44,7 @@ const SuccessModal = ({ amount, currency, reference, onComplete }) => {
 
         {/* Countdown */}
         <div className="mt-6 text-gray-600 text-sm">
-          Returning to merchant in
+          Returning to sales page in
           <div className="mt-3 flex justify-center">
             <div className="w-16 h-16 relative">
               <svg
@@ -67,7 +68,7 @@ const SuccessModal = ({ amount, currency, reference, onComplete }) => {
                   strokeWidth="4"
                   strokeDasharray={strokeDasharray}
                   strokeDashoffset={strokeDashoffset}
-                  transform="rotate(-90 18 18)" // CLOCKWISE direction
+                  transform="rotate(-90 18 18)"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center text-green-600 font-bold">
@@ -82,7 +83,7 @@ const SuccessModal = ({ amount, currency, reference, onComplete }) => {
           onClick={onComplete}
           className="mt-6 text-sm text-blue-600 hover:underline flex items-center justify-center mx-auto"
         >
-          &larr; Return to merchant
+          &larr; Return to sales page
         </button>
       </div>
     </div>

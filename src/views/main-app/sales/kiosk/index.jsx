@@ -69,6 +69,9 @@ const SalesPage = () => {
     type: "success",
   });
 
+  // Track current transaction for M-PESA
+  const [currentTransaction, setCurrentTransaction] = useState(null);
+
   // Utility functions
   const formatCurrency = useCallback((amount) => {
     return `KSh ${amount.toLocaleString()}`;
@@ -356,9 +359,9 @@ const SalesPage = () => {
   }, [productsInStock]);
 
   // Update product stock
-  const updateProductStock = useCallback(async (cartItems) => {
+  const updateProductStock = useCallback(async (cartItems, isMpesa = false) => {
     try {
-      console.log(`📦 Updating stock for ${cartItems.length} products`);
+      console.log(`📦 Updating stock for ${cartItems.length} products, M-PESA: ${isMpesa}`);
 
       if (!URLS.PRODUCTS?.UPDATE_STOCK) {
         console.warn('⚠️ Stock update endpoint not configured');
@@ -467,6 +470,13 @@ const SalesPage = () => {
     }
   }, [findProductInList]);
 
+  // Generate transaction ID
+  const generateTransactionId = useCallback(() => {
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `TXN${timestamp.slice(-6)}${random}`;
+  }, []);
+
   // Filter products based on search term and current stock
   const filteredProducts = useMemo(() => {
     return productsInStock.filter((product) =>
@@ -484,9 +494,9 @@ const SalesPage = () => {
   // Calculate total items in cart (with units)
   const cartSummary = useMemo(() => {
     if (cart.length === 0) return "Empty cart";
-    
+
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
+
     // Group by unit for better display
     const unitGroups = cart.reduce((groups, item) => {
       const unit = item.unit || "units";
@@ -496,11 +506,11 @@ const SalesPage = () => {
       groups[unit] += item.quantity;
       return groups;
     }, {});
-    
+
     const parts = Object.entries(unitGroups).map(([unit, qty]) => {
       return `${qty} ${unit}`;
     });
-    
+
     return parts.join(", ");
   }, [cart]);
 
@@ -668,33 +678,38 @@ const SalesPage = () => {
     setSearchTerm(searchValue);
   }, []);
 
-  // Generate transaction ID
-  const generateTransactionId = useCallback(() => {
-    const timestamp = Date.now().toString();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `TXN${timestamp.slice(-6)}${random}`;
+  // Phone validation
+  const validatePhone = useCallback((phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+
+    if (cleaned.length < 9) {
+      return { isValid: false, message: 'Phone number too short' };
+    }
+
+    if (!/^(07|01|2547|2541|7|1)/.test(cleaned)) {
+      return { isValid: false, message: 'Invalid Kenyan number format' };
+    }
+
+    return { isValid: true, message: 'Valid phone number' };
   }, []);
 
   // Payment handlers
   const handleCashPayment = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || cart.length === 0) return;
 
     setSubmitting(true);
-    setMpesaLoading(true);
 
     try {
       const paidAmount = parseFloat(amountPaid);
       if (isNaN(paidAmount) || paidAmount <= 0) {
         showNotification("Please enter a valid amount", "error");
         setSubmitting(false);
-        setMpesaLoading(false);
         return;
       }
 
       if (paidAmount < totalAmount) {
         showNotification(`Amount paid (${formatCurrency(paidAmount)}) is less than total amount (${formatCurrency(totalAmount)})`, "error");
         setSubmitting(false);
-        setMpesaLoading(false);
         return;
       }
 
@@ -702,8 +717,9 @@ const SalesPage = () => {
 
       const transactionData = {
         transactionId: generateTransactionId(),
-        type: "cash",
+        type: "sale",
         status: "completed",
+        paymentStatus: "paid",
         totalAmount: totalAmount,
         amountPaid: paidAmount,
         change: change,
@@ -751,12 +767,12 @@ const SalesPage = () => {
       showNotification(error.message || "Failed to process cash payment", "error");
     } finally {
       setSubmitting(false);
-      setMpesaLoading(false);
     }
   }, [cart, totalAmount, amountPaid, submitting, saveTransaction, updateProductStock, refreshProducts, formatCurrency, showNotification, generateTransactionId]);
 
+  // M-PESA Payment Handler
   const handleMpesaPayment = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || cart.length === 0) return;
 
     setSubmitting(true);
     setMpesaLoading(true);
@@ -782,6 +798,7 @@ const SalesPage = () => {
         return;
       }
 
+      // Format phone number
       let formattedPhone = phone;
       if (phone.startsWith('0')) {
         formattedPhone = '254' + phone.substring(1);
@@ -791,12 +808,17 @@ const SalesPage = () => {
         formattedPhone = '254' + phone;
       }
 
+      // Generate transaction ID
+      const transactionId = generateTransactionId();
+
+      // First, save the transaction as pending
       const transactionData = {
-        transactionId: generateTransactionId(),
-        type: "mpesa",
+        transactionId: transactionId,
+        type: "sale",
         status: "pending",
+        paymentStatus: "pending",
         totalAmount: totalAmount,
-        amountPaid: totalAmount,
+        amountPaid: 0,
         change: 0,
         paymentMethod: "mpesa",
         items: cart.map(item => ({
@@ -809,10 +831,15 @@ const SalesPage = () => {
         })),
         customerName: "MPESA Customer",
         customerPhone: formattedPhone,
-        notes: `MPESA payment initiated for phone: ${formattedPhone}`
+        notes: `MPESA payment initiated for phone: ${formattedPhone}`,
+        paymentDetails: {
+          initiatedAt: new Date().toISOString(),
+          phone: formattedPhone,
+          amount: totalAmount
+        }
       };
 
-      console.log("📱 Processing MPESA payment:", transactionData);
+      console.log("📱 Saving MPESA transaction:", transactionData);
 
       const savedTransaction = await saveTransaction(transactionData);
 
@@ -820,12 +847,13 @@ const SalesPage = () => {
         throw new Error(savedTransaction.errorMessage || "Failed to save transaction");
       }
 
+      // Now send STK Push
       if (URLS.MPESA?.STK_PUSH) {
         const mpesaData = {
           phone: formattedPhone,
           amount: totalAmount,
           businessId: userData.businessId,
-          transactionId: transactionData.transactionId,
+          transactionId: transactionId,
           description: `Payment for ${cart.length} item(s) from ${userData.shopkeeperInfo?.businessName || 'Business'}`
         };
 
@@ -836,57 +864,98 @@ const SalesPage = () => {
         console.log('📱 MPESA STK Push response:', mpesaResponse);
 
         if (mpesaResponse.success) {
-          const stockUpdateResult = await updateProductStock(cart);
+          // Store transaction info for polling
+          setCurrentTransaction({
+            transactionId: transactionId,
+            checkoutRequestId: mpesaResponse.data?.checkoutRequestId,
+            phone: formattedPhone,
+            amount: totalAmount
+          });
 
-          if (!stockUpdateResult.success) {
-            console.warn("Stock update had issues:", stockUpdateResult);
-          }
-
-          setCart([]);
-          setQuantities({});
-          setMpesaPhone("");
-          setMpesaModal(false);
-
-          showNotification("MPESA payment initiated. Please check your phone to complete the payment.", "success");
-
-          setTimeout(() => {
-            refreshProducts();
-          }, 500);
+          return {
+            success: true,
+            transactionId: transactionId,
+            checkoutRequestId: mpesaResponse.data?.checkoutRequestId,
+            phone: formattedPhone,
+            amount: totalAmount,
+            message: mpesaResponse.data?.customerMessage || "STK Push sent successfully"
+          };
         } else {
-          showNotification(mpesaResponse.message || "MPESA request failed", "error");
+          throw new Error(mpesaResponse.message || "MPESA request failed");
         }
       } else {
-        console.log('⚠️ MPESA endpoint not configured, processing as simulated sale');
-
-        const stockUpdateResult = await updateProductStock(cart);
-
-        if (!stockUpdateResult.success) {
-          console.warn("Stock update had issues:", stockUpdateResult);
-        }
-
-        setCart([]);
-        setQuantities({});
-        setMpesaPhone("");
-        setMpesaModal(false);
-
-        showNotification(`Sale recorded for ${formattedPhone}. (MPESA simulation)`, "success");
-
-        setTimeout(() => {
-          refreshProducts();
-        }, 500);
+        throw new Error("MPESA endpoint not configured");
       }
 
     } catch (error) {
       console.error("❌ MPESA payment error:", error);
-      showNotification(error.message || "Failed to process MPESA payment", "error");
+      throw error;
     } finally {
       setSubmitting(false);
       setMpesaLoading(false);
     }
-  }, [cart, totalAmount, mpesaPhone, submitting, saveTransaction, updateProductStock, refreshProducts, userData, showNotification, generateTransactionId]);
+  }, [cart, totalAmount, mpesaPhone, submitting, saveTransaction, userData, showNotification, generateTransactionId]);
+
+  // M-PESA Payment Complete Callback
+  const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
+    console.log('✅ M-PESA payment completed callback received:', paymentResult);
+
+    try {
+      // Update stock AFTER payment is confirmed
+      const stockUpdateResult = await updateProductStock(cart, true);
+
+      if (!stockUpdateResult.success) {
+        console.warn("Stock update had issues:", stockUpdateResult);
+      }
+
+      // Clear cart
+      setCart([]);
+      setQuantities({});
+      setMpesaPhone("");
+      // Don't setMpesaModal(false) here - the MpesaPaymentModal handles its own close
+
+      // Show notification
+      showNotification(`M-PESA payment successful! Receipt: ${paymentResult.receipt || 'N/A'}`, "success");
+
+      // Refresh products
+      setTimeout(() => {
+        refreshProducts();
+      }, 500);
+
+    } catch (error) {
+      console.error('❌ Error after M-PESA payment:', error);
+      showNotification('Payment recorded but stock update failed', 'error');
+    }
+  }, [cart, updateProductStock, refreshProducts, showNotification]);
+
+  // M-PESA Transaction Created Callback
+  const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
+    console.log('📝 M-PESA transaction created:', transactionInfo);
+    // Store current transaction for reference
+    setCurrentTransaction({
+      transactionId: transactionInfo.transactionId,
+      checkoutRequestId: transactionInfo.checkoutRequestId,
+      phone: transactionInfo.phone,
+      amount: transactionInfo.amount
+    });
+  }, []);
+
+  // Handle M-PESA modal close
+  const handleMpesaModalClose = useCallback((completed) => {
+    setMpesaModal(false);
+    
+    if (completed) {
+      // If payment was successful, refresh products
+      refreshProducts();
+      showNotification("M-PESA payment completed successfully!", "success");
+    } else {
+      // If payment failed or was cancelled, keep cart items for retry
+      showNotification("M-PESA payment was not completed. You can try again.", "info");
+    }
+  }, [refreshProducts, showNotification]);
 
   const handleDebtPayment = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || cart.length === 0) return;
 
     setSubmitting(true);
 
@@ -901,6 +970,7 @@ const SalesPage = () => {
         transactionId: generateTransactionId(),
         type: "debt",
         status: "pending",
+        paymentStatus: "pending",
         totalAmount: totalAmount,
         amountPaid: 0,
         change: 0,
@@ -915,7 +985,9 @@ const SalesPage = () => {
         })),
         customerName: debtCustomerName.trim(),
         customerPhone: debtPhone.trim() || "",
-        notes: debtNotes.trim() || `Credit sale for ${debtCustomerName.trim()}`
+        notes: debtNotes.trim() || `Credit sale for ${debtCustomerName.trim()}`,
+        debtPaid: false,
+        originalPaymentMethod: "debt"
       };
 
       console.log("📝 Processing debt payment:", transactionData);
@@ -1196,15 +1268,17 @@ const SalesPage = () => {
 
       <MpesaPaymentModal
         isOpen={mpesaModal}
-        onClose={() => setMpesaModal(false)}
+        onClose={handleMpesaModalClose}
         totalAmount={totalAmount}
         mpesaPhone={mpesaPhone}
         onMpesaPhoneChange={setMpesaPhone}
         onConfirmPayment={handleMpesaPayment}
-        mpesaLoading={mpesaLoading}
         formatCurrency={formatCurrency}
-        submitting={submitting}
         shopkeeperName={userData.shopkeeperInfo?.shopkeeperName}
+        validatePhone={validatePhone}
+        onPaymentComplete={handleMpesaPaymentComplete}
+        onTransactionCreated={handleMpesaTransactionCreated}
+        transactionId={currentTransaction?.transactionId}
       />
 
       <DebtPaymentModal
