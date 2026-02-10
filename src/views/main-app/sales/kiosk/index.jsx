@@ -686,8 +686,16 @@ const SalesPage = () => {
       return { isValid: false, message: 'Phone number too short' };
     }
 
+    // Accept: 07, 01, 2547, 2541, 7, 1 (Safaricom numbers)
     if (!/^(07|01|2547|2541|7|1)/.test(cleaned)) {
       return { isValid: false, message: 'Invalid Kenyan number format' };
+    }
+
+    // Check total length for valid Kenyan numbers
+    const validLengths = [10, 12, 9]; // 07XXXXXXXX, 2547XXXXXXXX, 7XXXXXXXX
+
+    if (!validLengths.includes(cleaned.length)) {
+      return { isValid: false, message: 'Invalid phone number length' };
     }
 
     return { isValid: true, message: 'Valid phone number' };
@@ -771,6 +779,7 @@ const SalesPage = () => {
   }, [cart, totalAmount, amountPaid, submitting, saveTransaction, updateProductStock, refreshProducts, formatCurrency, showNotification, generateTransactionId]);
 
   // M-PESA Payment Handler
+  // M-PESA Payment Handler
   const handleMpesaPayment = useCallback(async () => {
     if (submitting || cart.length === 0) return;
 
@@ -787,10 +796,11 @@ const SalesPage = () => {
         return;
       }
 
-      const phoneRegex = /^(?:254|\+254|0)?(7\d{8})$/;
+      // Updated regex to accept 01 and 2541 numbers
+      const phoneRegex = /^(?:254|\+254|0)?(7\d{8}|1\d{8})$/;
       if (!phoneRegex.test(phone)) {
         showNotification(
-          "Invalid Kenyan phone number format. Use format: 0712345678 or 254712345678",
+          "Invalid Kenyan phone number format. Use format: 0712345678, 0112345678, 254712345678, or 254112345678",
           "error"
         );
         setSubmitting(false);
@@ -798,19 +808,40 @@ const SalesPage = () => {
         return;
       }
 
-      // Format phone number
+      // Format phone number for M-PESA
       let formattedPhone = phone;
-      if (phone.startsWith('0')) {
-        formattedPhone = '254' + phone.substring(1);
-      } else if (phone.startsWith('+254')) {
+
+      // Remove + if present
+      if (phone.startsWith('+')) {
         formattedPhone = phone.substring(1);
-      } else if (phone.startsWith('7')) {
-        formattedPhone = '254' + phone;
       }
+
+      // Format to 254XXXXXXXXX
+      if (formattedPhone.startsWith('0')) {
+        // Convert 07XXXXXXXX or 01XXXXXXXX to 2547XXXXXXXX or 2541XXXXXXXX
+        formattedPhone = '254' + formattedPhone.substring(1);
+      } else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+        // Convert 7XXXXXXXX or 1XXXXXXXX to 2547XXXXXXXX or 2541XXXXXXXX
+        formattedPhone = '254' + formattedPhone;
+      } else if (formattedPhone.startsWith('2547') || formattedPhone.startsWith('2541')) {
+        // Already in correct format
+        formattedPhone = formattedPhone;
+      } else {
+        throw new Error("Invalid phone number format");
+      }
+
+      // Validate final format
+      const finalPhoneRegex = /^254(7|1)\d{8}$/;
+      if (!finalPhoneRegex.test(formattedPhone)) {
+        throw new Error("Invalid final phone number format");
+      }
+
+      console.log("📱 Original phone:", phone, "Formatted:", formattedPhone);
 
       // Generate transaction ID
       const transactionId = generateTransactionId();
 
+      // Rest of the function remains the same...
       // First, save the transaction as pending
       const transactionData = {
         transactionId: transactionId,
@@ -889,6 +920,7 @@ const SalesPage = () => {
 
     } catch (error) {
       console.error("❌ MPESA payment error:", error);
+      showNotification(error.message || "Failed to process M-PESA payment", "error");
       throw error;
     } finally {
       setSubmitting(false);
@@ -896,7 +928,7 @@ const SalesPage = () => {
     }
   }, [cart, totalAmount, mpesaPhone, submitting, saveTransaction, userData, showNotification, generateTransactionId]);
 
-  // M-PESA Payment Complete Callback
+  // FIXED: M-PESA Payment Complete Handler
   const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
     console.log('✅ M-PESA payment completed callback received:', paymentResult);
 
@@ -908,25 +940,15 @@ const SalesPage = () => {
         console.warn("Stock update had issues:", stockUpdateResult);
       }
 
-      // Clear cart
-      setCart([]);
-      setQuantities({});
-      setMpesaPhone("");
-      // Don't setMpesaModal(false) here - the MpesaPaymentModal handles its own close
-
-      // Show notification
-      showNotification(`M-PESA payment successful! Receipt: ${paymentResult.receipt || 'N/A'}`, "success");
-
-      // Refresh products
-      setTimeout(() => {
-        refreshProducts();
-      }, 500);
+      // DON'T clear cart or show notification here
+      // The modal's success handler will trigger handleMpesaModalClose(true)
+      // which will handle everything
 
     } catch (error) {
       console.error('❌ Error after M-PESA payment:', error);
       showNotification('Payment recorded but stock update failed', 'error');
     }
-  }, [cart, updateProductStock, refreshProducts, showNotification]);
+  }, [cart, updateProductStock, showNotification]);
 
   // M-PESA Transaction Created Callback
   const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
@@ -940,19 +962,39 @@ const SalesPage = () => {
     });
   }, []);
 
-  // Handle M-PESA modal close
+  // FIXED: M-PESA Modal Close Handler
   const handleMpesaModalClose = useCallback((completed) => {
+    console.log('🔄 M-PESA modal closed, completed:', completed);
+    console.log('📊 Current state - Cart:', cart.length, 'items, Quantities:', Object.keys(quantities).length);
+
+    // Always close the M-PESA modal
     setMpesaModal(false);
-    
-    if (completed) {
-      // If payment was successful, refresh products
-      refreshProducts();
-      showNotification("M-PESA payment completed successfully!", "success");
+
+    if (completed === true) {
+      console.log('✅ Payment successful - CLEARING cart and resetting everything');
+
+      // 1. CRITICAL: Clear the cart and all related state
+      setCart([]);
+      setQuantities({});
+      setMpesaPhone("");
+      setCurrentTransaction(null);
+
+      console.log('✅ Cart cleared - Ready for new sale');
+
+      // 2. Refresh products to show updated stock
+      setTimeout(() => {
+        refreshProducts();
+      }, 500);
+
+      // 3. Show success notification
+      showNotification("M-PESA payment completed! Cart cleared. Ready for new sale.", "success");
+
     } else {
-      // If payment failed or was cancelled, keep cart items for retry
-      showNotification("M-PESA payment was not completed. You can try again.", "info");
+      console.log('❌ Payment not completed - keeping cart for retry');
+      // Keep items in cart so user can retry with different payment method
+      showNotification("M-PESA payment was not completed. Items remain in cart.", "info");
     }
-  }, [refreshProducts, showNotification]);
+  }, [cart, quantities, refreshProducts, showNotification]);
 
   const handleDebtPayment = useCallback(async () => {
     if (submitting || cart.length === 0) return;

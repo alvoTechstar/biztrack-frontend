@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader, Smartphone, Clock, AlertCircle } from "lucide-react";
+import { Loader, Smartphone, Clock, AlertCircle, X } from "lucide-react";
 import Modal from "../../../../components/modal/Modal";
 import TextInput from "../../../../components/Input/TextInput";
 import AppFormButton from "../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../components/theme/ThemeContext";
+
+// IMPORT URLS HERE
 import URLS from "../../../../utilities/Endpoints";
+
+// Import your existing modals
 import SuccessModal from "../../../../components/modal/SuccessModal";
 import FailureModal from "../../../../components/modal/FailureModal";
 
@@ -28,7 +32,7 @@ const MpesaPaymentModal = ({
   const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, sending, waiting, completed, failed, cancelled
   const [currentTransactionId, setCurrentTransactionId] = useState(transactionId || '');
   const [checkoutRequestId, setCheckoutRequestId] = useState('');
-  const [countdown, setCountdown] = useState(30); 
+  const [countdown, setCountdown] = useState(180); // 3 minutes
   const [errorMessage, setErrorMessage] = useState('');
   const [mpesaReceipt, setMpesaReceipt] = useState('');
   const [lastPollTime, setLastPollTime] = useState('');
@@ -83,13 +87,15 @@ const MpesaPaymentModal = ({
     }
   };
 
+  // Single resetState function declaration
   const resetState = () => {
+    console.log('🔄 Resetting M-PESA modal state');
     if (!transactionId) {
       setCurrentTransactionId('');
     }
     setPaymentStatus('idle');
     setCheckoutRequestId('');
-    setCountdown(30);
+    setCountdown(180);
     setErrorMessage('');
     setMpesaReceipt('');
     setLastPollTime('');
@@ -187,21 +193,26 @@ const MpesaPaymentModal = ({
                 transactionId: currentTransactionId
               });
 
-              // Show success modal for 3 seconds
-              setShowSuccessModal(true);
+              // IMPORTANT: Add a small delay before showing success modal
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  // Show success modal
+                  setShowSuccessModal(true);
 
-              // Call payment complete callback with ALL callback data
-              if (onPaymentComplete) {
-                onPaymentComplete({
-                  transactionId: currentTransactionId,
-                  status: 'completed',
-                  receipt: receipt,
-                  amount: result.amountPaid || totalAmount,
-                  phone: mpesaPhone,
-                  callbackData: result,
-                  timestamp: result.timestamp || new Date().toISOString()
-                });
-              }
+                  // Call payment complete callback with ALL callback data
+                  if (onPaymentComplete) {
+                    onPaymentComplete({
+                      transactionId: currentTransactionId,
+                      status: 'completed',
+                      receipt: receipt,
+                      amount: result.amountPaid || totalAmount,
+                      phone: mpesaPhone,
+                      callbackData: result,
+                      timestamp: result.timestamp || new Date().toISOString()
+                    });
+                  }
+                }
+              }, 500); // 500ms delay to ensure state is set
             }
             break;
 
@@ -222,7 +233,7 @@ const MpesaPaymentModal = ({
                 errorMessage: errorMsg
               });
 
-              // Show failure modal for 3 seconds
+              // Show failure modal
               setShowFailureModal(true);
             }
             break;
@@ -230,7 +241,7 @@ const MpesaPaymentModal = ({
           case 'pending':
             // Still waiting for callback - continue polling
             console.log('⏳ Still waiting for M-PESA callback...');
-            
+
             // Update countdown based on polling result if available
             if (result.timeRemaining) {
               setCountdown(result.timeRemaining);
@@ -257,24 +268,24 @@ const MpesaPaymentModal = ({
 
   const queryMpesaDirectly = async () => {
     if (!checkoutRequestId) return null;
-    
+
     try {
       console.log('🔍 Querying M-PESA directly for checkout:', checkoutRequestId);
-      
+
       const queryUrl = `${URLS.TAG_BASE_URL}${URLS.MPESA.QUERY_STATUS.replace(':checkoutRequestId', checkoutRequestId)}`;
       console.log('🌐 Query URL:', queryUrl);
-      
+
       const response = await fetch(queryUrl, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('📊 Direct M-PESA query result:', result);
-        
+
         if (result.success && result.mpesaStatus?.ResultCode === '0') {
           // Payment was successful on M-PESA side
           return {
@@ -286,7 +297,7 @@ const MpesaPaymentModal = ({
           };
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('❌ Error querying M-PESA directly:', error);
@@ -296,10 +307,10 @@ const MpesaPaymentModal = ({
 
   const handleTimeout = async () => {
     cleanup();
-    
+
     // Try to query M-PESA directly first
     const directResult = await queryMpesaDirectly();
-    
+
     if (directResult?.success) {
       // Payment was actually successful
       setPaymentStatus('completed');
@@ -313,19 +324,24 @@ const MpesaPaymentModal = ({
         transactionId: currentTransactionId
       });
 
-      // Show success modal for 3 seconds
-      setShowSuccessModal(true);
-      
-      if (onPaymentComplete) {
-        onPaymentComplete({
-          transactionId: currentTransactionId,
-          status: 'completed',
-          receipt: directResult.receipt,
-          amount: directResult.amount,
-          phone: directResult.phone,
-          source: 'direct_query'
-        });
-      }
+      // Add delay before showing success modal
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          // Show success modal
+          setShowSuccessModal(true);
+
+          if (onPaymentComplete) {
+            onPaymentComplete({
+              transactionId: currentTransactionId,
+              status: 'completed',
+              receipt: directResult.receipt,
+              amount: directResult.amount,
+              phone: directResult.phone,
+              source: 'direct_query'
+            });
+          }
+        }
+      }, 500);
     } else {
       // Genuine timeout/failure
       setPaymentStatus('failed');
@@ -340,7 +356,7 @@ const MpesaPaymentModal = ({
         errorMessage: errorMsg
       });
 
-      // Show failure modal for 3 seconds
+      // Show failure modal
       setShowFailureModal(true);
     }
   };
@@ -379,7 +395,7 @@ const MpesaPaymentModal = ({
           setCurrentTransactionId(transId);
           setCheckoutRequestId(checkoutId || '');
           setPaymentStatus('waiting');
-          setCountdown(30); // Reset countdown
+          setCountdown(180); // Reset countdown
 
           // Start polling immediately (first check after 2 seconds)
           setTimeout(() => {
@@ -436,21 +452,44 @@ const MpesaPaymentModal = ({
   };
 
   const handleClose = (isCompleted = false) => {
+    console.log('🔒 handleClose called with isCompleted:', isCompleted);
     cleanup();
+    resetState();
     onClose(isCompleted);
   };
 
-  // Handle success completion - go back to sales page
+  // FIXED: Success completion handler
   const handleSuccessComplete = () => {
+    console.log('✅ handleSuccessComplete called - navigating to sales page');
+    // Close success modal first
     setShowSuccessModal(false);
-    handleClose(true); // Close with success status
+    // Then close the main modal and signal completion
+    // This will trigger the parent's handleMpesaModalClose(true)
+    handleClose(true);
   };
 
-  // Handle failure - reset to allow retry
+  // FIXED: Failure retry handler - returns to payment modal
   const handleFailureRetry = () => {
+    console.log('🔄 handleFailureRetry called - returning to payment modal');
+    // Close failure modal
     setShowFailureModal(false);
-    handleClose(false); // Close the modal to go back to payment page
-    // The parent component (SalesPage) will handle showing the modal again
+    // Reset to idle state so user can retry
+    setPaymentStatus('idle');
+    setErrorMessage('');
+    setCurrentTransactionId('');
+    setCheckoutRequestId('');
+    setCountdown(180);
+    // Keep the phone number for convenience
+    // DO NOT close the main modal - let user retry
+  };
+
+  // FIXED: Failure close handler - closes everything
+  const handleFailureClose = () => {
+    console.log('❌ handleFailureClose called - closing everything and returning to sales');
+    // Close failure modal
+    setShowFailureModal(false);
+    // Close main modal without completion (payment failed)
+    handleClose(false);
   };
 
   const formatCountdown = (seconds) => {
@@ -596,6 +635,29 @@ const MpesaPaymentModal = ({
         </p>
       </div>
 
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Loader className="h-4 w-4 animate-spin text-blue-600" />
+          <span className="text-sm font-medium text-blue-700">
+            Checking payment status...
+          </span>
+        </div>
+        <p className="text-xs text-blue-600">
+          Last checked: {lastPollTime || 'Just now'}
+        </p>
+        {currentTransactionId && (
+          <p className="text-xs text-blue-500 mt-1">
+            Polling transaction: {currentTransactionId}
+          </p>
+        )}
+      </div>
+
+      <div className="text-xs text-gray-500 space-y-1">
+        <p>✅ Check your phone for M-PESA prompt</p>
+        <p>✅ Enter your M-PESA PIN when prompted</p>
+        <p>✅ Wait for confirmation message</p>
+      </div>
+
       <div className="pt-2">
         <AppFormButton
           text="Cancel Payment"
@@ -660,6 +722,7 @@ const MpesaPaymentModal = ({
 
   return (
     <>
+
       {/* Main M-PESA Payment Modal - only show if success/failure modals are not showing */}
       <Modal
         isOpen={isOpen && !showSuccessModal && !showFailureModal}
@@ -670,23 +733,50 @@ const MpesaPaymentModal = ({
         {renderContent()}
       </Modal>
 
-      {/* Success Modal - shows for 3 seconds then auto-closes to sales page */}
+      {/* Success Modal - shows for 5 seconds then auto-closes and navigates to sales page */}
       {showSuccessModal && (
         <SuccessModal
-          amount={successData.amount}
-          currency={successData.currency || 'KSh'}
-          reference={successData.reference || successData.transactionId || 'N/A'}
-          onComplete={handleSuccessComplete}
+          amount={totalAmount}
+          currency="KSh"
+          reference={mpesaReceipt || successData.reference || successData.transactionId || 'N/A'}
+          onNavigateToSales={() => {
+            console.log('Closing success modal');
+            setShowSuccessModal(false);
+            handleMpesaModalClose(true);
+          }}
+          onComplete={() => {
+            console.log('Closing success modal (legacy)');
+            setShowSuccessModal(false);
+            handleMpesaModalClose(true);
+          }}
+          autoCloseDelay={5}
         />
       )}
-
-      {/* Failure Modal - shows for 3 seconds then allows retry */}
+      {/* Failure Modal - allows retry or close */}
       {showFailureModal && (
         <FailureModal
           amount={failureData.amount}
           currency={failureData.currency || 'KSh'}
           reference={failureData.reference || 'N/A'}
-          onRetry={handleFailureRetry}
+          errorMessage={failureData.errorMessage || 'Payment failed. Please try again.'}
+          onRetry={() => {
+            console.log('🔄 Retry payment requested');
+            setShowFailureModal(false);
+            setPaymentStatus('idle');
+            setErrorMessage('');
+            setCountdown(180);
+          }}
+          onNavigateToSales={() => {
+            console.log('📍 Navigating back to sales page from failure');
+            setShowFailureModal(false);
+            handleClose(false);
+          }}
+          onComplete={() => {
+            console.log('📍 Legacy failure completion');
+            setShowFailureModal(false);
+            handleClose(false);
+          }}
+          autoCloseDelay={5000}
         />
       )}
     </>

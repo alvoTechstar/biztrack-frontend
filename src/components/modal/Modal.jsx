@@ -11,14 +11,14 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
       style={{
         backdropFilter: "blur(2px)",
         backgroundColor: "rgba(92, 91, 91, 0.1)",
       }}
     >
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full" style={{
-        maxHeight: "calc(100vh - 2rem)", 
+        maxHeight: "calc(100vh - 2rem)",
         display: "flex",
         flexDirection: "column"
       }}>

@@ -1,27 +1,57 @@
-// FailureModal.js
 import React, { useEffect, useState } from "react";
 import failureIcon from "../../assets/modal/error.svg";
+import { RefreshCw, ArrowLeft } from "lucide-react";
 
-const FailureModal = ({ amount, currency, reference, onRetry }) => {
-  const [secondsLeft, setSecondsLeft] = useState(5); // Changed from 10 to 3 seconds
+const FailureModal = ({ 
+  amount, 
+  currency = 'KSh', 
+  reference, 
+  onRetry,
+  onNavigateToSales,
+  onComplete,
+  autoCloseDelay = 5,
+  errorMessage = "Payment failed. Please try again."
+}) => {
+  const [secondsLeft, setSecondsLeft] = useState(autoCloseDelay);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      onRetry?.(); // Call the retry callback when countdown finishes
+      handleNavigation();
       return;
     }
     const timer = setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000);
     return () => clearTimeout(timer);
-  }, [secondsLeft, onRetry]);
+  }, [secondsLeft]);
+
+  const handleRetry = () => {
+    console.log('🔄 User requested to retry payment');
+    if (onRetry) {
+      onRetry();
+    }
+  };
+
+  const handleNavigation = () => {
+    console.log('📍 Failure modal navigating');
+    
+    // Priority: Use the new navigation prop
+    if (onNavigateToSales) {
+      onNavigateToSales();
+    } 
+    // Fallback: Use the old complete prop
+    else if (onComplete) {
+      onComplete();
+    }
+  };
 
   const strokeDasharray = 100;
-  const strokeDashoffset = (secondsLeft / 5) * strokeDasharray; // Changed denominator to 3
+  const strokeDashoffset = (secondsLeft / autoCloseDelay) * strokeDasharray;
 
   const formattedAmount = Number(amount);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-[400px] text-center">
+    // Changed to absolute positioning within the content area
+    <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-[400px] text-center mx-4 border border-gray-200">
         {/* Failure Icon */}
         <div className="flex justify-center items-center mb-4">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
@@ -29,25 +59,35 @@ const FailureModal = ({ amount, currency, reference, onRetry }) => {
           </div>
         </div>
 
-        {/* Text */}
+        {/* Error Message */}
         <h2 className="text-lg font-semibold text-gray-800 mb-2">
           Payment Failed
         </h2>
-        <p className="text-sm text-gray-600">
-          Your payment of{" "}
-          <strong>
-            {currency}{" "}
-            {isNaN(formattedAmount) ? "0.00" : formattedAmount.toFixed(2)}
-          </strong>{" "}
-          was unsuccessful. Ref #:{" "}
-          <span className="bg-red-100 text-red-800 font-mono px-2 py-0.5 rounded">
-            {reference}
-          </span>
+        <p className="text-sm text-gray-600 mb-3">
+          {errorMessage}
         </p>
 
+        {/* Payment Details */}
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="flex justify-between mb-1">
+            <span className="text-gray-500 text-sm">Amount:</span>
+            <span className="font-semibold">
+              {currency} {isNaN(formattedAmount) ? "0.00" : formattedAmount.toFixed(2)}
+            </span>
+          </div>
+          {reference && (
+            <div className="flex justify-between">
+              <span className="text-gray-500 text-sm">Reference:</span>
+              <span className="font-mono text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                {reference}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Countdown */}
-        <div className="mt-6 text-gray-600 text-sm">
-          Returning to payment page in
+        <div className="mt-4 text-gray-600 text-sm">
+          <p className="mb-2">Returning to <strong>Sales Page</strong> in:</p>
           <div className="mt-3 flex justify-center">
             <div className="w-16 h-16 relative">
               <svg
@@ -79,14 +119,38 @@ const FailureModal = ({ amount, currency, reference, onRetry }) => {
               </div>
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            You can retry payment from the sales page
+          </p>
         </div>
 
-        {/* Manual Return */}
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-3 mt-6">
+          {/* Retry Button - goes back to payment modal */}
+          <button
+            onClick={handleRetry}
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry M-PESA Payment
+          </button>
+          
+          {/* Back to Sales Button - goes to main sales page */}
+          <button
+            onClick={handleNavigation}
+            className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Sales Page
+          </button>
+        </div>
+
+        {/* Manual Return Link */}
         <button
-          onClick={onRetry}
-          className="mt-6 text-sm text-blue-600 hover:underline flex items-center justify-center mx-auto"
+          onClick={handleNavigation}
+          className="mt-4 text-sm text-blue-600 hover:underline"
         >
-          &larr; Try again
+          ← Return to sales page
         </button>
       </div>
     </div>

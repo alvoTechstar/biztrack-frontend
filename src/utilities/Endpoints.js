@@ -1,10 +1,10 @@
 // src/utilities/Endpoints.js
 const URLS = {
   // Base URL is prepended to all paths below
-  // TAG_BASE_URL: "http://localhost:3000",
+  TAG_BASE_URL: "http://localhost:3000",
   //  TAG_BASE_URL: "https://dona-southmost-finn.ngrok-free.dev",
   //  TAG_BASE_URL: "https://plenty-rice-travel.loca.lt",
-  TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
+  // TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
 
   AUTH: {
     LOGIN: "/api/auth/login",
