@@ -18,13 +18,13 @@ import {
   VISIT_TYPES_QUEUE,
 } from "./Constants";
 
-import TextInput from "../../../../components/Input/TextInput";
-import AppFormButton from "../../../../components/buttons/AppFormButton";
-import SelectInput from "../../../../components/Input/SelectInput";
+import TextInput from "../../../../../components/Input/TextInput";
+import AppFormButton from "../../../../../components/buttons/AppFormButton";
+import SelectInput from "../../../../../components/Input/SelectInput";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
-import NaviButton from "../../../../components/buttons/Navibutton";
+import NaviButton from "../../../../../components/buttons/Navibutton";
 
-import { useTheme } from "../../../../components/theme/ThemeContext";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
 
 // Define UI states
 const UI_STATE = {

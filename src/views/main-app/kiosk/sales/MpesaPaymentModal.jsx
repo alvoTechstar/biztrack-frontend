@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader, Smartphone, Clock, AlertCircle, X } from "lucide-react";
+import { Loader, Smartphone, Clock, X } from "lucide-react";
 import Modal from "../../../../components/modal/Modal";
 import TextInput from "../../../../components/Input/TextInput";
 import AppFormButton from "../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../components/theme/ThemeContext";
-
-// IMPORT URLS HERE
 import URLS from "../../../../utilities/Endpoints";
-
-// Import your existing modals
 import SuccessModal from "../../../../components/modal/SuccessModal";
 import FailureModal from "../../../../components/modal/FailureModal";
 
@@ -22,22 +18,25 @@ const MpesaPaymentModal = ({
   formatCurrency,
   shopkeeperName,
   validatePhone,
-  onPaymentComplete, // Callback when payment is completed successfully
-  onTransactionCreated, // Callback when transaction is created
-  transactionId, // Optional: Existing transaction ID
+  onPaymentComplete,
+  onTransactionCreated,
+  transactionId,
+  isDebtPayment = false,
+  paymentType = 'TILL',
+  paymentInfo = {},
+  successModalCustomMessage,
 }) => {
   const theme = useTheme();
   const PrimaryColor = theme.primaryColor;
 
-  const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, sending, waiting, completed, failed, cancelled
+  const [paymentStatus, setPaymentStatus] = useState('idle');
   const [currentTransactionId, setCurrentTransactionId] = useState(transactionId || '');
   const [checkoutRequestId, setCheckoutRequestId] = useState('');
-  const [countdown, setCountdown] = useState(180); // 3 minutes
+  const [countdown, setCountdown] = useState(180);
   const [errorMessage, setErrorMessage] = useState('');
   const [mpesaReceipt, setMpesaReceipt] = useState('');
   const [lastPollTime, setLastPollTime] = useState('');
 
-  // States for showing success/failure modals
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [successData, setSuccessData] = useState({});
@@ -47,29 +46,24 @@ const MpesaPaymentModal = ({
   const timeoutRef = useRef(null);
   const isMountedRef = useRef(true);
 
-  // Cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true;
-
     return () => {
       isMountedRef.current = false;
       cleanup();
     };
   }, []);
 
-  // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
       resetState();
     } else {
       cleanup();
-      // Close any open success/failure modals
       setShowSuccessModal(false);
       setShowFailureModal(false);
     }
   }, [isOpen]);
 
-  // Set transaction ID if provided
   useEffect(() => {
     if (transactionId && isOpen) {
       setCurrentTransactionId(transactionId);
@@ -87,9 +81,7 @@ const MpesaPaymentModal = ({
     }
   };
 
-  // Single resetState function declaration
   const resetState = () => {
-    console.log('🔄 Resetting M-PESA modal state');
     if (!transactionId) {
       setCurrentTransactionId('');
     }
@@ -104,7 +96,6 @@ const MpesaPaymentModal = ({
     cleanup();
   };
 
-  // Countdown timer
   useEffect(() => {
     if (paymentStatus === 'waiting' && countdown > 0) {
       const timer = setTimeout(() => {
@@ -119,7 +110,6 @@ const MpesaPaymentModal = ({
     }
   }, [paymentStatus, countdown]);
 
-  // Start polling when we have a transaction to check
   useEffect(() => {
     if (paymentStatus === 'waiting' && currentTransactionId) {
       startPolling();
@@ -128,9 +118,6 @@ const MpesaPaymentModal = ({
   }, [paymentStatus, currentTransactionId]);
 
   const startPolling = () => {
-    console.log('🔄 Starting polling for transaction:', currentTransactionId);
-
-    // Poll every 3 seconds for faster response
     pollingIntervalRef.current = setInterval(() => {
       checkTransactionStatus();
     }, 3000);
@@ -140,13 +127,8 @@ const MpesaPaymentModal = ({
     if (!currentTransactionId) return;
 
     try {
-      console.log('🔍 Checking transaction status for callback:', currentTransactionId);
       setLastPollTime(new Date().toLocaleTimeString());
-
-      // Build the poll URL
       const pollUrl = `${URLS.TAG_BASE_URL}${URLS.MPESA.POLL_STATUS.replace(':transactionId', currentTransactionId)}`;
-      console.log('🌐 Polling URL:', pollUrl);
-
       const response = await fetch(pollUrl, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -154,38 +136,20 @@ const MpesaPaymentModal = ({
         }
       });
 
-      console.log('📊 Poll response status:', response.status);
-
       if (!response.ok) {
-        console.warn('⚠️ Polling request failed:', response.status);
-
-        // If we get 404, the transaction might not exist yet, keep polling
-        if (response.status === 404) {
-          console.log('⏳ Transaction not found yet, continuing to poll...');
-          return;
-        }
-
-        // Don't stop polling on network errors
         return;
       }
 
       const result = await response.json();
 
-      console.log('📊 Callback polling result:', result);
-
       if (result.success) {
-        // Handle based on status returned from your backend
         switch (result.status) {
           case 'completed':
-            // Callback received and payment successful
             cleanup();
-
             if (isMountedRef.current) {
               const receipt = result.mpesaReceipt || result.receipt || 'MPESA Receipt';
               setPaymentStatus('completed');
               setMpesaReceipt(receipt);
-
-              // Prepare success data for modal
               setSuccessData({
                 amount: totalAmount,
                 currency: 'KSh',
@@ -193,76 +157,51 @@ const MpesaPaymentModal = ({
                 transactionId: currentTransactionId
               });
 
-              // IMPORTANT: Add a small delay before showing success modal
-              setTimeout(() => {
-                if (isMountedRef.current) {
-                  // Show success modal
-                  setShowSuccessModal(true);
+              // Show success modal
+              setShowSuccessModal(true);
 
-                  // Call payment complete callback with ALL callback data
-                  if (onPaymentComplete) {
-                    onPaymentComplete({
-                      transactionId: currentTransactionId,
-                      status: 'completed',
-                      receipt: receipt,
-                      amount: result.amountPaid || totalAmount,
-                      phone: mpesaPhone,
-                      callbackData: result,
-                      timestamp: result.timestamp || new Date().toISOString()
-                    });
-                  }
-                }
-              }, 500); // 500ms delay to ensure state is set
+              // Call onPaymentComplete to update the transaction record
+              if (onPaymentComplete) {
+                await onPaymentComplete({
+                  transactionId: currentTransactionId,
+                  status: 'completed',
+                  receipt: receipt,
+                  amount: result.amountPaid || totalAmount,
+                  phone: mpesaPhone,
+                  callbackData: result,
+                  timestamp: result.timestamp || new Date().toISOString(),
+                  isDebtPayment: isDebtPayment,
+                  checkoutRequestId: checkoutRequestId
+                });
+              }
             }
             break;
 
           case 'failed':
-            // Callback received but payment failed
             cleanup();
-
             if (isMountedRef.current) {
               const errorMsg = result.errorMessage || result.message || 'Payment failed. Please try again.';
               setPaymentStatus('failed');
               setErrorMessage(errorMsg);
-
-              // Prepare failure data for modal
               setFailureData({
                 amount: totalAmount,
                 currency: 'KSh',
                 reference: currentTransactionId,
                 errorMessage: errorMsg
               });
-
-              // Show failure modal
               setShowFailureModal(true);
             }
             break;
 
           case 'pending':
-            // Still waiting for callback - continue polling
-            console.log('⏳ Still waiting for M-PESA callback...');
-
-            // Update countdown based on polling result if available
             if (result.timeRemaining) {
               setCountdown(result.timeRemaining);
             }
             break;
-
-          default:
-            console.log('ℹ️ Transaction status:', result.status);
-        }
-      } else {
-        console.warn('⚠️ Polling returned success: false', result.message);
-
-        // If the transaction doesn't exist yet, we might need to wait
-        if (result.message?.includes('not found')) {
-          console.log('⏳ Transaction not found in database yet, continuing to poll...');
         }
       }
-
     } catch (error) {
-      console.error('❌ Error checking transaction callback status:', error);
-      // Don't stop polling on network errors, just log it
+      // Silently handle error
     }
   };
 
@@ -270,11 +209,7 @@ const MpesaPaymentModal = ({
     if (!checkoutRequestId) return null;
 
     try {
-      console.log('🔍 Querying M-PESA directly for checkout:', checkoutRequestId);
-
       const queryUrl = `${URLS.TAG_BASE_URL}${URLS.MPESA.QUERY_STATUS.replace(':checkoutRequestId', checkoutRequestId)}`;
-      console.log('🌐 Query URL:', queryUrl);
-
       const response = await fetch(queryUrl, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -284,10 +219,7 @@ const MpesaPaymentModal = ({
 
       if (response.ok) {
         const result = await response.json();
-        console.log('📊 Direct M-PESA query result:', result);
-
         if (result.success && result.mpesaStatus?.ResultCode === '0') {
-          // Payment was successful on M-PESA side
           return {
             success: true,
             status: 'completed',
@@ -297,26 +229,19 @@ const MpesaPaymentModal = ({
           };
         }
       }
-
       return null;
     } catch (error) {
-      console.error('❌ Error querying M-PESA directly:', error);
       return null;
     }
   };
 
   const handleTimeout = async () => {
     cleanup();
-
-    // Try to query M-PESA directly first
     const directResult = await queryMpesaDirectly();
 
     if (directResult?.success) {
-      // Payment was actually successful
       setPaymentStatus('completed');
       setMpesaReceipt(directResult.receipt);
-
-      // Prepare success data for modal
       setSuccessData({
         amount: totalAmount,
         currency: 'KSh',
@@ -324,39 +249,29 @@ const MpesaPaymentModal = ({
         transactionId: currentTransactionId
       });
 
-      // Add delay before showing success modal
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          // Show success modal
-          setShowSuccessModal(true);
+      setShowSuccessModal(true);
 
-          if (onPaymentComplete) {
-            onPaymentComplete({
-              transactionId: currentTransactionId,
-              status: 'completed',
-              receipt: directResult.receipt,
-              amount: directResult.amount,
-              phone: directResult.phone,
-              source: 'direct_query'
-            });
-          }
-        }
-      }, 500);
+      if (onPaymentComplete) {
+        await onPaymentComplete({
+          transactionId: currentTransactionId,
+          status: 'completed',
+          receipt: directResult.receipt,
+          amount: directResult.amount,
+          phone: directResult.phone,
+          source: 'direct_query',
+          isDebtPayment: isDebtPayment
+        });
+      }
     } else {
-      // Genuine timeout/failure
       setPaymentStatus('failed');
       const errorMsg = 'Payment timeout. Please check with customer if they completed the M-PESA payment.';
       setErrorMessage(errorMsg);
-
-      // Prepare failure data for modal
       setFailureData({
         amount: totalAmount,
         currency: 'KSh',
         reference: currentTransactionId,
         errorMessage: errorMsg
       });
-
-      // Show failure modal
       setShowFailureModal(true);
     }
   };
@@ -367,7 +282,6 @@ const MpesaPaymentModal = ({
       return;
     }
 
-    // Validate phone
     if (validatePhone) {
       const validation = validatePhone(mpesaPhone);
       if (!validation.isValid) {
@@ -380,12 +294,14 @@ const MpesaPaymentModal = ({
       setPaymentStatus('sending');
       setErrorMessage('');
 
-      console.log('📱 Initiating M-PESA payment...');
+      console.log('📱 Initiating M-PESA payment with:', {
+        paymentType,
+        paymentInfo,
+        phone: mpesaPhone,
+        amount: totalAmount
+      });
 
-      // Call the parent's onConfirmPayment function
       const result = await onConfirmPayment();
-
-      console.log('📱 STK push result:', result);
 
       if (result && result.success) {
         const transId = result.transactionId || result.data?.transactionId;
@@ -395,33 +311,24 @@ const MpesaPaymentModal = ({
           setCurrentTransactionId(transId);
           setCheckoutRequestId(checkoutId || '');
           setPaymentStatus('waiting');
-          setCountdown(180); // Reset countdown
+          setCountdown(180);
 
-          // Start polling immediately (first check after 2 seconds)
           setTimeout(() => {
             if (isMountedRef.current && paymentStatus === 'waiting') {
               checkTransactionStatus();
             }
           }, 2000);
 
-          // Notify parent that transaction was created
           if (onTransactionCreated) {
             onTransactionCreated({
               transactionId: transId,
               checkoutRequestId: checkoutId,
               phone: mpesaPhone,
               amount: totalAmount,
+              paymentType,
               timestamp: new Date().toISOString()
             });
           }
-
-          console.log('✅ STK Push sent successfully');
-          console.log('📊 Transaction details:', {
-            transactionId: transId,
-            checkoutRequestId: checkoutId,
-            phone: mpesaPhone,
-            amount: totalAmount
-          });
         } else {
           setPaymentStatus('failed');
           setErrorMessage('Transaction ID not received. Please try again.');
@@ -431,7 +338,7 @@ const MpesaPaymentModal = ({
         setErrorMessage(result?.message || 'Failed to initiate M-PESA payment');
       }
     } catch (error) {
-      console.error("❌ M-PESA payment error:", error);
+      console.error('❌ M-PESA payment error:', error);
       setPaymentStatus('failed');
       setErrorMessage(error.message || 'An unexpected error occurred');
     }
@@ -441,8 +348,6 @@ const MpesaPaymentModal = ({
     if (window.confirm('Are you sure you want to cancel this payment?')) {
       cleanup();
       setPaymentStatus('cancelled');
-
-      // Close after 1 second
       setTimeout(() => {
         if (isMountedRef.current) {
           handleClose(false);
@@ -451,45 +356,31 @@ const MpesaPaymentModal = ({
     }
   };
 
-  const handleClose = (isCompleted = false) => {
-    console.log('🔒 handleClose called with isCompleted:', isCompleted);
-    cleanup();
-    resetState();
-    onClose(isCompleted);
-  };
-
-  // FIXED: Success completion handler
   const handleSuccessComplete = () => {
-    console.log('✅ handleSuccessComplete called - navigating to sales page');
-    // Close success modal first
+    console.log(`✅ Success modal completed - isDebtPayment: ${isDebtPayment}`);
     setShowSuccessModal(false);
-    // Then close the main modal and signal completion
-    // This will trigger the parent's handleMpesaModalClose(true)
     handleClose(true);
   };
 
-  // FIXED: Failure retry handler - returns to payment modal
   const handleFailureRetry = () => {
-    console.log('🔄 handleFailureRetry called - returning to payment modal');
-    // Close failure modal
     setShowFailureModal(false);
-    // Reset to idle state so user can retry
     setPaymentStatus('idle');
     setErrorMessage('');
     setCurrentTransactionId('');
     setCheckoutRequestId('');
     setCountdown(180);
-    // Keep the phone number for convenience
-    // DO NOT close the main modal - let user retry
   };
 
-  // FIXED: Failure close handler - closes everything
   const handleFailureClose = () => {
-    console.log('❌ handleFailureClose called - closing everything and returning to sales');
-    // Close failure modal
     setShowFailureModal(false);
-    // Close main modal without completion (payment failed)
     handleClose(false);
+  };
+
+  const handleClose = (isCompleted = false) => {
+    console.log(`🔄 Closing M-PESA modal - isCompleted: ${isCompleted}, isDebtPayment: ${isDebtPayment}`);
+    cleanup();
+    resetState();
+    onClose(isCompleted);
   };
 
   const formatCountdown = (seconds) => {
@@ -498,24 +389,57 @@ const MpesaPaymentModal = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Phone validation function
   const validatePhoneNumber = (phone) => {
     const cleaned = phone.replace(/\D/g, '');
-
     if (cleaned.length < 9) {
       return { isValid: false, message: 'Phone number too short' };
     }
-
     if (!/^(07|01|2547|2541|7|1)/.test(cleaned)) {
       return { isValid: false, message: 'Invalid Kenyan number format' };
     }
-
     return { isValid: true, message: 'Valid phone number' };
   };
 
-  // Render different views based on status
+  // Render payment instructions based on payment type
+  const renderPaymentInstructions = () => {
+    if (!paymentInfo) return null;
+
+    switch (paymentType) {
+      case 'PAYBILL':
+        return (
+          <div className="bg-blue-50 p-3 rounded-lg mb-3 border border-blue-200">
+            <h4 className="font-semibold text-blue-800 text-sm mb-1">Paybill Details</h4>
+            <p className="text-xs text-blue-600">Business No: <span className="font-bold">{paymentInfo.shortCode}</span></p>
+            <p className="text-xs text-blue-600">Account No: <span className="font-bold">{paymentInfo.accountNumber}</span></p>
+            <p className="text-xs text-blue-500 mt-1">Amount: {formatCurrency(totalAmount)}</p>
+          </div>
+        );
+      case 'TILL':
+        return (
+          <div className="bg-green-50 p-3 rounded-lg mb-3 border border-green-200">
+            <h4 className="font-semibold text-green-800 text-sm mb-1">Till Number</h4>
+            <p className="text-xs text-green-600">Till No: <span className="font-bold">{paymentInfo.shortCode}</span></p>
+            <p className="text-xs text-green-500 mt-1">Amount: {formatCurrency(totalAmount)}</p>
+          </div>
+        );
+      case 'POCHI':
+        return (
+          <div className="bg-purple-50 p-3 rounded-lg mb-3 border border-purple-200">
+            <h4 className="font-semibold text-purple-800 text-sm mb-1">Pochi La Biashara</h4>
+            <p className="text-xs text-purple-600">Business No: <span className="font-bold">{paymentInfo.shortCode}</span></p>
+            <p className="text-xs text-purple-500 mt-1">Amount: {formatCurrency(totalAmount)}</p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   const renderInitialView = () => (
     <div className="space-y-4 p-2">
+      {/* Payment instructions */}
+      {renderPaymentInstructions()}
+
       <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
         <p className="text-sm font-medium text-gray-500">Total:</p>
         <p className="text-lg font-bold text-gray-800">
@@ -572,7 +496,7 @@ const MpesaPaymentModal = ({
           className="flex-1 py-2"
         />
         <AppFormButton
-          text="Send STK Push"
+          text={`Pay with ${paymentType}`}
           color={PrimaryColor}
           action={handleMpesaPayment}
           validation={!!mpesaPhone && validatePhoneNumber(mpesaPhone).isValid}
@@ -590,7 +514,7 @@ const MpesaPaymentModal = ({
       </div>
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          Sending M-PESA Request
+          Sending {paymentType} Request
         </h3>
         <p className="text-gray-600">
           Sending payment request to {mpesaPhone}...
@@ -610,11 +534,11 @@ const MpesaPaymentModal = ({
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">
           Waiting for Payment
         </h3>
         <p className="text-gray-600 mb-1">
-          Check your phone <strong>{mpesaPhone}</strong> and enter your M-PESA PIN
+          Waiting for <strong>{mpesaPhone}</strong> to enter M-PESA PIN
         </p>
         {currentTransactionId && (
           <p className="text-sm text-gray-500 mt-2">
@@ -651,13 +575,6 @@ const MpesaPaymentModal = ({
           </p>
         )}
       </div>
-
-      <div className="text-xs text-gray-500 space-y-1">
-        <p>✅ Check your phone for M-PESA prompt</p>
-        <p>✅ Enter your M-PESA PIN when prompted</p>
-        <p>✅ Wait for confirmation message</p>
-      </div>
-
       <div className="pt-2">
         <AppFormButton
           text="Cancel Payment"
@@ -706,7 +623,7 @@ const MpesaPaymentModal = ({
   const getModalTitle = () => {
     switch (paymentStatus) {
       case 'sending':
-        return "Sending Request...";
+        return `Sending ${paymentType} Request...`;
       case 'waiting':
         return "Complete Payment";
       case 'completed':
@@ -716,68 +633,53 @@ const MpesaPaymentModal = ({
       case 'cancelled':
         return "Payment Cancelled";
       default:
-        return "M-PESA Payment";
+        return `${paymentType} Payment`;
     }
   };
 
+  // If success modal is showing, render ONLY the success modal
+  if (showSuccessModal) {
+    return (
+      <SuccessModal
+        amount={totalAmount}
+        currency="KSh"
+        reference={mpesaReceipt || successData.reference || successData.transactionId || 'N/A'}
+        onNavigateToSales={handleSuccessComplete}
+        onComplete={handleSuccessComplete}
+        autoCloseDelay={5}
+        customMessage={successModalCustomMessage}
+      />
+    );
+  }
+
+  // If failure modal is showing, render ONLY the failure modal
+  if (showFailureModal) {
+    return (
+      <FailureModal
+        amount={failureData.amount}
+        currency={failureData.currency || 'KSh'}
+        reference={failureData.reference || 'N/A'}
+        errorMessage={failureData.errorMessage || 'Payment failed. Please try again.'}
+        onRetry={handleFailureRetry}
+        onNavigateToSales={handleFailureClose}
+        onComplete={handleFailureClose}
+        autoCloseDelay={5}
+      />
+    );
+  }
+
+  // Otherwise render the main modal
   return (
     <>
-
-      {/* Main M-PESA Payment Modal - only show if success/failure modals are not showing */}
-      <Modal
-        isOpen={isOpen && !showSuccessModal && !showFailureModal}
-        onClose={paymentStatus === 'waiting' ? undefined : () => handleClose(false)}
-        title={getModalTitle()}
-        showCloseButton={paymentStatus !== 'waiting'}
-      >
-        {renderContent()}
-      </Modal>
-
-      {/* Success Modal - shows for 5 seconds then auto-closes and navigates to sales page */}
-      {showSuccessModal && (
-        <SuccessModal
-          amount={totalAmount}
-          currency="KSh"
-          reference={mpesaReceipt || successData.reference || successData.transactionId || 'N/A'}
-          onNavigateToSales={() => {
-            console.log('Closing success modal');
-            setShowSuccessModal(false);
-            handleMpesaModalClose(true);
-          }}
-          onComplete={() => {
-            console.log('Closing success modal (legacy)');
-            setShowSuccessModal(false);
-            handleMpesaModalClose(true);
-          }}
-          autoCloseDelay={5}
-        />
-      )}
-      {/* Failure Modal - allows retry or close */}
-      {showFailureModal && (
-        <FailureModal
-          amount={failureData.amount}
-          currency={failureData.currency || 'KSh'}
-          reference={failureData.reference || 'N/A'}
-          errorMessage={failureData.errorMessage || 'Payment failed. Please try again.'}
-          onRetry={() => {
-            console.log('🔄 Retry payment requested');
-            setShowFailureModal(false);
-            setPaymentStatus('idle');
-            setErrorMessage('');
-            setCountdown(180);
-          }}
-          onNavigateToSales={() => {
-            console.log('📍 Navigating back to sales page from failure');
-            setShowFailureModal(false);
-            handleClose(false);
-          }}
-          onComplete={() => {
-            console.log('📍 Legacy failure completion');
-            setShowFailureModal(false);
-            handleClose(false);
-          }}
-          autoCloseDelay={5000}
-        />
+      {isOpen && (
+        <Modal
+          isOpen={true}
+          onClose={paymentStatus === 'waiting' ? undefined : () => handleClose(false)}
+          title={getModalTitle()}
+          showCloseButton={paymentStatus !== 'waiting'}
+        >
+          {renderContent()}
+        </Modal>
       )}
     </>
   );

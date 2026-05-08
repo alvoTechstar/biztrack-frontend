@@ -7,7 +7,8 @@ import { useTheme } from "../theme/ThemeContext";
 import { normalizeRole } from "../../utilities/Sharedfunctions.jsx";
 import URLS from "../../utilities/Endpoints";
 
-const DEFAULT_LOGO = "http://localhost:3000/assets/biztrack-logo.png";
+// const DEFAULT_LOGO = "http://localhost:3000/assets/biztrack-logo.png";  
+const DEFAULT_LOGO = "https://biztrack-backend-ifjk.onrender.com/assets/biztrack-logo.png";  
 const BACKEND_URL = URLS.TAG_BASE_URL || "http://localhost:3000";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {

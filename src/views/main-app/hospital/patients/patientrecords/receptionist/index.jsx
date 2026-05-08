@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { parseISO } from "date-fns";
-import PatientModal from "../../../../../components/modal/PatientModal";
-import AppFormButton from "../../../../../components/buttons/AppFormButton";
-import SearchInput from "../../../../../components/Input/SearchInput";
-import DataTable from "../../../../../components/datatable";
+import PatientModal from "../../../../../../components/modal/PatientModal";
+import AppFormButton from "../../../../../../components/buttons/AppFormButton";
+import SearchInput from "../../../../../../components/Input/SearchInput";
+import DataTable from "../../../../../../components/datatable";
 import AddIcon from "@mui/icons-material/Add";
-import { useTheme } from "../../../../../components/theme/ThemeContext";
-import SelectInput from "../../../../../components/Input/SelectInput";
-import PatientRegistration from "../../../patients/receptionist/PatientRegistration";
+import { useTheme } from "../../../../../../components/theme/ThemeContext";
+import SelectInput from "../../../../../../components/Input/SelectInput";
+import PatientRegistration from "../../receptionist/PatientRegistration";
 
 const ReceptionistPatientRecordsPage = ({ user }) => {
   const initialPatients = [

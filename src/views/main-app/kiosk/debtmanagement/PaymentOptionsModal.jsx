@@ -13,6 +13,23 @@ const PaymentOptionsModal = ({
 }) => {
     if (!showPaymentOptionsModal || !selectedDebt) return null;
 
+    const handleCashPayment = () => {
+        setShowPaymentOptionsModal(false);
+        setShowMpesaPaymentModal(false);
+        setShowCashPaymentModal(true);
+    };
+
+    const handleMpesaPayment = () => {
+        setShowPaymentOptionsModal(false);
+        setShowCashPaymentModal(false);
+        setShowMpesaPaymentModal(true);
+    };
+
+    const handleClose = () => {
+        setShowPaymentOptionsModal(false);
+        setSelectedDebt(null);
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-lg">
             <div className="p-6">
@@ -21,10 +38,7 @@ const PaymentOptionsModal = ({
                         Complete Payment
                     </h3>
                     <button
-                        onClick={() => {
-                            setShowPaymentOptionsModal(false);
-                            setSelectedDebt(null);
-                        }}
+                        onClick={handleClose}
                         className="text-gray-400 hover:text-gray-600"
                         disabled={actionLoading}
                     >
@@ -38,15 +52,12 @@ const PaymentOptionsModal = ({
                 </p>
 
                 <p className="text-sm text-gray-500 mb-6">
-                    Amount to pay: <strong>{formatCurrency(selectedDebt.amount)}</strong>
+                    Amount to pay: <strong>{formatCurrency(selectedDebt.amount || selectedDebt.totalAmount || 0)}</strong>
                 </p>
 
                 <div className="space-y-3">
                     <button
-                        onClick={() => {
-                            setShowPaymentOptionsModal(false);
-                            setShowCashPaymentModal(true);
-                        }}
+                        onClick={handleCashPayment}
                         disabled={actionLoading}
                         className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -55,10 +66,7 @@ const PaymentOptionsModal = ({
                     </button>
 
                     <button
-                        onClick={() => {
-                            setShowPaymentOptionsModal(false);
-                            setShowMpesaPaymentModal(true);
-                        }}
+                        onClick={handleMpesaPayment}
                         disabled={actionLoading}
                         className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -66,17 +74,6 @@ const PaymentOptionsModal = ({
                         Pay with M-PESA
                     </button>
                 </div>
-
-                {/* <button
-                    onClick={() => {
-                        setShowPaymentOptionsModal(false);
-                        setSelectedDebt(null);
-                    }}
-                    disabled={actionLoading}
-                    className="w-full mt-4 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Cancel
-                </button> */}
             </div>
         </div>
     );

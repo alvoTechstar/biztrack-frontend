@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Grid, useMediaQuery, useTheme } from "@mui/material";
 import KPICards from "./KPICards";
-import BusinessTable from "../../User-Management/super-admin/businesses/BusinessTable";
-import UsersTable from "../../User-Management/super-admin/user-management/UsersTable";
+import BusinessTable from "../User-Management/businesses/BusinessTable";
+import UsersTable from "../User-Management/user-management/UsersTable";
 import TransactionsTable from "./TransactionsTable";
 import RevenueTable from "./RevenueTable";
 import RevenueChart from "./RevenueCharts";

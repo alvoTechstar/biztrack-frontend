@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Sidebar from "../components/menu";
 import Topbar from "../components/header";
 import Footer from "../components/footer";
-import MyProfile from "../views/main-app/profile";
+import MyProfile from "../views/main-app/shared/profile";
 
 const MainLayout = ({ children, sidebarOpen, toggleSidebar }) => {
   const [profileViewOpen, setProfileViewOpen] = useState(false);

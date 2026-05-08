@@ -9,6 +9,7 @@ import { ThemeProvider } from "./components/theme/ThemeContext";
 import MainLayout from "./layout";
 import AppRoutes from "./components/AppRoutes";
 import ContentLoader from "./components/Loader/ContentLoader";
+import { useIdleTimeout } from "./hooks/useIdleTimeout";
 
 import Login from "./views/sign-in/Login";
 import ForgotPassword from "./views/sign-in/ForgotPassword";
@@ -63,6 +64,7 @@ const ThemedMainLayout = () => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const dispatch = useDispatch();
   const authState = useSelector((state) => state.auth.value);
+  useIdleTimeout();
 
   // Load user from localStorage if Redux is empty
   useEffect(() => {

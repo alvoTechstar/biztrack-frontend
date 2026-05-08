@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { parseISO } from "date-fns";
-import PatientModal from "../../../../../components/modal/PatientModal";
-import DataTable from "../../../../../components/datatable";
+import PatientModal from "../../../../../../components/modal/PatientModal";
+import DataTable from "../../../../../../components/datatable";
 
 // Import Material-UI icons
 import VisibilityIcon from "@mui/icons-material/Visibility";

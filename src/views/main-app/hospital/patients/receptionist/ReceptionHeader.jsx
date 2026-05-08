@@ -3,7 +3,7 @@
 import React from "react";
 import { Box, Typography, Button } from "@mui/material";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { useTheme } from "../../../../components/theme/ThemeContext";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
 
 const ReceptionHeader = ({ currentDate, onTogglePanel }) => {
   const theme = useTheme();

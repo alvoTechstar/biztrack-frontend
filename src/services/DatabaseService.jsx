@@ -3,10 +3,35 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import URLS from "../utilities/Endpoints";
 
+// Store the logout callback
+let onLogoutCallback = null;
+
+// Add a response interceptor
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Check if the error is due to an expired token (e.g., 401 Unauthorized)
+    if (error.response && error.response.status === 401) {
+      console.log('Token expired or unauthorized access (401). Logging out...');
+      if (onLogoutCallback) {
+        onLogoutCallback(); // Trigger the logout action from AuthContext
+      }
+      // Redirect to login page
+      window.location.href = '/sign-in'; // Adjust this path if your login route is different
+    }
+    return Promise.reject(error);
+  }
+);
+
 class DatabaseService extends Component {
   static settings = {
     url: URLS.TAG_BASE_URL,
   };
+
+  // Static method to set the logout callback
+  static setLogoutCallback(callback) {
+    onLogoutCallback = callback;
+  }
 
   render() {
     return <div />;

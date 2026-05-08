@@ -1,6 +1,6 @@
 import React from "react";
-import DataTable from "../../../components/datatable";
-import { useTheme } from "../../../components/theme/ThemeContext";
+import DataTable from "../../../../components/datatable";
+import { useTheme } from "../../../../components/theme/ThemeContext";
 
 const DebtDataTable = ({
     tableData,

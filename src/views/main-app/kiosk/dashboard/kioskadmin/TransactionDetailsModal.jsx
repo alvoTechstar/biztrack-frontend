@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { CreditCard, User } from "lucide-react";
-import StatusBadge from "../../../reports/kiosk/shopkeeper/StatusBadge";
+import StatusBadge from "../../reports/shopkeeper/StatusBadge";
 import { formatCurrency } from "../../../../../utilities/Sharedfunctions.jsx";
 const TransactionDetailsModal = ({ open, onClose, transaction }) => {
   if (!transaction) return null;

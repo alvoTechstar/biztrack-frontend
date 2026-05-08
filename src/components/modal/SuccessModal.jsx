@@ -9,7 +9,10 @@ const SuccessModal = ({
   reference, 
   onComplete,
   onNavigateToSales,
-  autoCloseDelay = 5
+  autoCloseDelay = 5,
+  customMessage, // New prop for custom message
+  confirmButtonText = "Go to Sales Page & Start New Sale", // New prop for button text
+  countdownMessage = "Returning to Sales Page in:" // New prop for countdown message
 }) => {
   const [secondsLeft, setSecondsLeft] = useState(autoCloseDelay);
 
@@ -23,7 +26,7 @@ const SuccessModal = ({
   }, [secondsLeft]);
 
   const handleNavigation = () => {
-    console.log('📍 Success modal navigating to sales page');
+    console.log('📍 Success modal navigating');
     
     if (onNavigateToSales) {
       onNavigateToSales();
@@ -37,7 +40,10 @@ const SuccessModal = ({
 
   return (
     // Added backdrop with lower opacity so layout is visible
-    <div className="absolute inset-0 bg-white bg-opacity-30 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backdropFilter: "blur(2px)", backgroundColor: "rgba(92, 91, 91, 0.1)" }}
+    >
       <div className="bg-white rounded-lg shadow-xl p-6 w-[400px] text-center mx-4 border border-gray-200">
         {/* Success Icon */}
         <div className="flex justify-center items-center mb-4">
@@ -51,7 +57,7 @@ const SuccessModal = ({
           Payment Successful!
         </h2>
         <p className="text-sm text-gray-600 mb-3">
-          Transaction completed successfully.
+          {customMessage || "Transaction completed successfully."}
         </p>
 
         {/* Payment Details */}
@@ -74,7 +80,7 @@ const SuccessModal = ({
 
         {/* Countdown */}
         <div className="mt-4 text-gray-600 text-sm">
-          <p className="mb-2">Returning to <strong>Sales Page</strong> in:</p>
+          <p className="mb-2">{countdownMessage}</p>
           <div className="mt-3 flex justify-center">
             <div className="w-16 h-16 relative">
               <svg
@@ -115,7 +121,7 @@ const SuccessModal = ({
           className="mt-6 w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
         >
           <ShoppingBag className="h-4 w-4" />
-          Go to Sales Page & Start New Sale
+          {confirmButtonText}
         </button>
 
         {/* Manual Return Link */}
@@ -123,7 +129,7 @@ const SuccessModal = ({
           onClick={handleNavigation}
           className="mt-3 text-sm text-blue-600 hover:underline"
         >
-          ← Return to sales page 
+          ← Return
         </button>
       </div>
     </div>

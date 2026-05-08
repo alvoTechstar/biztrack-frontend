@@ -13,6 +13,7 @@ import ActionModal from '../../../../../components/modal/ActionModal';
 import Toaster from '../../../../../components/Toaster';
 
 const businessTypes = ['Hotel', 'Kiosk', 'Hospital'];
+
 const initialFormData = {
     businessName: '',
     registrationNumber: '',
@@ -28,6 +29,12 @@ const initialFormData = {
     logoUrl: null,
     id: null,
     owner: '',
+    // Payment configuration fields
+    paymentType: 'TILL',
+    tillNumber: '',
+    paybillNumber: '',
+    accountNumber: '',
+    pochiNumber: '',
 };
 
 const getStatusColor = (status) => {
@@ -38,6 +45,7 @@ const getStatusColor = (status) => {
         default: return 'text-gray-600';
     }
 };
+
 const safeDateToString = (dateValue) => {
     if (!dateValue) return 'Never';
     try {
@@ -50,6 +58,7 @@ const safeDateToString = (dateValue) => {
         return 'Never';
     }
 };
+
 const BusinessesPage = () => {
     const theme = useTheme();
     const [businesses, setBusinesses] = useState([]);
@@ -80,7 +89,9 @@ const BusinessesPage = () => {
         title: '',
         message: '',
     });
+
     const { modalState, openModal, closeModal, setReason, handleSubmit } = useActionModal();
+
     const showToaster = (state, title, message) => {
         setToaster({
             open: true,
@@ -89,6 +100,7 @@ const BusinessesPage = () => {
             message,
         });
     };
+
     const extractDataFromResponse = (response) => {
         if (!response) return [];
         if (response.data !== undefined) {
@@ -105,6 +117,7 @@ const BusinessesPage = () => {
         }
         return [];
     };
+
     const fetchBusinesses = useCallback(async () => {
         setLoading(true);
         setLoadingState(true);
@@ -116,6 +129,10 @@ const BusinessesPage = () => {
             let businessData = extractDataFromResponse(result);
             const fetchedBusinesses = businessData.map(business => {
                 const businessObj = business._doc || business;
+
+                // Handle payment config from response
+                const paymentConfig = businessObj.paymentConfig || {};
+
                 return {
                     id: businessObj.id || businessObj._id?.toString(),
                     businessId: businessObj.businessID || businessObj.businessId || '',
@@ -132,6 +149,12 @@ const BusinessesPage = () => {
                     createdAt: safeDateToString(businessObj.createdAt),
                     logoUrl: businessObj.logoUrl || businessObj.logo || null,
                     owner: businessObj.owner || '',
+                    // Payment fields from paymentConfig or root level
+                    paymentType: paymentConfig.paymentType || businessObj.paymentType || 'TILL',
+                    tillNumber: paymentConfig.tillNumber || businessObj.tillNumber || '',
+                    paybillNumber: paymentConfig.paybillNumber || businessObj.paybillNumber || '',
+                    accountNumber: paymentConfig.accountNumber || businessObj.accountNumber || '',
+                    pochiNumber: paymentConfig.pochiNumber || businessObj.pochiNumber || '',
                 };
             });
             setBusinesses(fetchedBusinesses);
@@ -159,6 +182,7 @@ const BusinessesPage = () => {
     useEffect(() => {
         fetchBusinesses();
     }, [fetchBusinesses]);
+
     const openModalWithLoader = async (modalType, business = null) => {
         setModalLoading(true);
         switch (modalType) {
@@ -192,6 +216,12 @@ const BusinessesPage = () => {
                 logoFile: null,
                 logoUrl: business.logoUrl || null,
                 owner: business.owner || '',
+                // Include payment fields when editing
+                paymentType: business.paymentType || 'TILL',
+                tillNumber: business.tillNumber || '',
+                paybillNumber: business.paybillNumber || '',
+                accountNumber: business.accountNumber || '',
+                pochiNumber: business.pochiNumber || '',
             };
             setSelectedBusiness(businessData);
         } else {
@@ -257,12 +287,14 @@ const BusinessesPage = () => {
 
         setModalLoading(false);
     };
+
     const openCreateModal = () => openModalWithLoader('create');
     const openEditModal = (business) => openModalWithLoader('edit', business);
     const openEnableView = (business) => openModalWithLoader('view', business);
     const openEnableModal = (business) => openActionModalWithLoader('enable', business);
     const openDisableModal = (business) => openActionModalWithLoader('disable', business);
     const openDeleteModal = (business) => openActionModalWithLoader('delete', business);
+
     const closeAllModals = () => {
         setShowCreateForm(false);
         setSelectedBusiness(null);
@@ -277,6 +309,30 @@ const BusinessesPage = () => {
 
         try {
             const formData = new FormData();
+
+            // Format phone numbers if they exist
+            let formattedPochiNumber = values.pochiNumber;
+            if (values.paymentType === 'POCHI' && values.pochiNumber) {
+                // Remove any non-digit characters
+                formattedPochiNumber = values.pochiNumber.toString().replace(/\D/g, '');
+
+                // Convert to 254 format for backend
+                if (formattedPochiNumber.startsWith('0')) {
+                    formattedPochiNumber = '254' + formattedPochiNumber.substring(1);
+                } else if (formattedPochiNumber.startsWith('7') && formattedPochiNumber.length === 9) {
+                    formattedPochiNumber = '254' + formattedPochiNumber;
+                } else if (formattedPochiNumber.startsWith('1') && formattedPochiNumber.length === 9) {
+                    formattedPochiNumber = '254' + formattedPochiNumber;
+                }
+
+                console.log('📱 Formatted POCHI number:', {
+                    original: values.pochiNumber,
+                    cleaned: values.pochiNumber.toString().replace(/\D/g, ''),
+                    formatted: formattedPochiNumber
+                });
+            }
+
+            // Include all text fields including payment configuration
             const textFields = {
                 'businessName': values.businessName,
                 'registrationNumber': values.registrationNumber,
@@ -289,12 +345,31 @@ const BusinessesPage = () => {
                 'primaryColor': values.primaryColor,
                 'status': values.status.toLowerCase(),
                 'owner': values.owner || '',
+                // Payment configuration fields
+                'paymentType': values.paymentType || 'TILL',
+                'tillNumber': values.tillNumber || '',
+                'paybillNumber': values.paybillNumber || '',
+                'accountNumber': values.accountNumber || '',
+                'pochiNumber': formattedPochiNumber || '',
             };
+
+            // Log payment fields for debugging
+            console.log('💰 Payment fields being sent:', {
+                paymentType: textFields.paymentType,
+                pochiNumber: textFields.pochiNumber,
+                tillNumber: textFields.tillNumber,
+                paybillNumber: textFields.paybillNumber,
+                accountNumber: textFields.accountNumber
+            });
+
+            // Append all text fields to FormData
             Object.entries(textFields).forEach(([key, value]) => {
-                if (value !== null && value !== undefined) {
+                if (value !== null && value !== undefined && value !== '') {
                     formData.append(key, value);
                 }
             });
+
+            // Handle logo file upload
             if (values.logoFile && values.logoFile instanceof File) {
                 formData.append('logo', values.logoFile);
             } else if (formMode === 'edit') {
@@ -306,6 +381,13 @@ const BusinessesPage = () => {
             } else {
                 formData.append('logoUrl', '');
             }
+
+            // Log the FormData contents for debugging
+            console.log('📤 Submitting business with payment config:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`   ${key}: ${value}`);
+            }
+
             let response;
             let url;
             const token = localStorage.getItem('token') || '';
@@ -325,28 +407,42 @@ const BusinessesPage = () => {
                     },
                 });
             }
+
+            console.log('✅ Business saved successfully:', response.data);
+
             const successMessage = formMode === 'edit'
                 ? `Business "${values.businessName}" updated successfully!`
                 : `Business "${values.businessName}" created successfully!`;
+
             setCreateLoadingText(successMessage);
             showToaster(true, 'Success', successMessage);
+
             await new Promise(resolve => setTimeout(resolve, 1500));
             await fetchBusinesses();
             closeAllModals();
+
         } catch (error) {
+            console.error('❌ Error saving business:', error);
+
             let serverError = 'A server error occurred. Please try again.';
+            let validationErrors = [];
+
             if (error.response?.data?.message) {
                 serverError = error.response.data.message;
             } else if (error.response?.data?.errors) {
-                const validationErrors = error.response.data.errors;
+                validationErrors = error.response.data.errors;
                 serverError = `Validation failed: ${validationErrors.map(err => err.message).join(', ')}`;
             } else if (error.message) {
                 serverError = error.message;
             }
+
             const errorMessage = `Failed to ${formMode === 'edit' ? 'update' : 'create'} business: ${serverError}`;
             setErrorMessage(errorMessage);
             showToaster(false, 'Error', errorMessage);
-            setCreateLoading(false);
+
+            // Scroll to top to show error message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
         } finally {
             setSubmitting(false);
             setCreateLoading(false);
@@ -385,6 +481,7 @@ const BusinessesPage = () => {
             throw error;
         }
     };
+
     const toggleSelectAll = (filteredList) => {
         if (selectedItems.length === filteredList.length && filteredList.length > 0) {
             setSelectedItems([]);
@@ -392,11 +489,13 @@ const BusinessesPage = () => {
             setSelectedItems(filteredList.map(b => b.id));
         }
     };
+
     const toggleSelectItem = (id) => {
         setSelectedItems(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
     };
+
     const filteredBusinesses = businesses.filter(b => {
         const matchesSearch = b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -515,6 +614,7 @@ const BusinessesPage = () => {
                         currentLogoUrl={selectedBusiness?.logoUrl || null}
                         submitting={submitting}
                         readOnly={formMode === 'view'}
+                        errorMessage={errorMessage} // Pass error to form for display
                     />
                 )}
                 {!showCreateForm && !modalState.isOpen && !modalLoading && !createLoading && (
@@ -536,11 +636,6 @@ const BusinessesPage = () => {
                             <>
                                 <div className="space-y-4">
                                     <span className="text-m font-bold text-gray-900">Businesses</span>
-                                    {errorMessage && (
-                                        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                                            <p className="text-red-800">{errorMessage}</p>
-                                        </div>
-                                    )}
                                     <BusinessControls
                                         searchTerm={searchTerm}
                                         setSearchTerm={setSearchTerm}

@@ -32,6 +32,7 @@ const SalesPage = () => {
     businessId: null,
     businessUUID: null,
     shopkeeperInfo: null,
+    paymentConfig: null, // Add payment config
     initialized: false
   });
 
@@ -106,6 +107,35 @@ const SalesPage = () => {
     );
   }, []);
 
+  // Get payment display info based on config
+  const getPaymentDisplayInfo = useCallback(() => {
+    const config = userData.paymentConfig || { paymentType: 'TILL' };
+
+    switch (config.paymentType) {
+      case 'PAYBILL':
+        return {
+          shortCode: config.paybillNumber,
+          accountNumber: config.accountNumber,
+          description: `Paybill: ${config.paybillNumber} - Account: ${config.accountNumber}`
+        };
+      case 'TILL':
+        return {
+          shortCode: config.tillNumber,
+          description: `Till Number: ${config.tillNumber}`
+        };
+      case 'POCHI':
+        return {
+          shortCode: config.pochiNumber,
+          description: `Pochi: ${config.pochiNumber}`
+        };
+      default:
+        return {
+          shortCode: null,
+          description: 'M-PESA Payment'
+        };
+    }
+  }, [userData.paymentConfig]);
+
   // Check authentication and extract user data
   useEffect(() => {
     console.log("🔍 Checking authentication status...");
@@ -131,7 +161,8 @@ const SalesPage = () => {
       id: currentUser.id,
       name: `${currentUser.firstName} ${currentUser.lastName}`,
       email: currentUser.email,
-      role: currentUser.role
+      role: currentUser.role,
+      paymentConfig: currentUser.paymentConfig // Log payment config
     });
 
     const businessId = currentUser.businessId;
@@ -150,7 +181,8 @@ const SalesPage = () => {
       businessId,
       businessUUID,
       businessName: currentUser.businessName,
-      businessType: currentUser.businessType
+      businessType: currentUser.businessType,
+      paymentType: currentUser.paymentConfig?.paymentType
     });
 
     const shopkeeperInfo = {
@@ -176,6 +208,13 @@ const SalesPage = () => {
       businessId,
       businessUUID,
       shopkeeperInfo,
+      paymentConfig: currentUser.paymentConfig || {
+        paymentType: 'TILL',
+        tillNumber: null,
+        paybillNumber: null,
+        accountNumber: null,
+        pochiNumber: null
+      },
       initialized: true
     });
 
@@ -184,7 +223,7 @@ const SalesPage = () => {
 
   }, [currentUser, token, navigate, showNotification]);
 
-  // Load products function
+  // Load products function (unchanged)
   const loadProducts = useCallback(async () => {
     if (!userData.businessId || !userData.initialized) {
       console.log('⏳ Waiting for user data initialization...');
@@ -282,7 +321,7 @@ const SalesPage = () => {
     </button>
   ), [refreshProducts]);
 
-  // Save transaction to backend
+  // Save transaction to backend (unchanged)
   const saveTransaction = useCallback(async (transactionData) => {
     try {
       console.log('💾 Saving transaction:', transactionData);
@@ -305,7 +344,7 @@ const SalesPage = () => {
         shopkeeperId: userData.shopkeeperInfo.shopkeeperId,
         shopkeeperName: userData.shopkeeperInfo.shopkeeperName,
         shopkeeperEmail: userData.shopkeeperInfo.shopkeeperEmail,
-        shopkeeperRole: userData.shopkeeperInfo.shopkeeperRole
+        shopkeeperRole: userData.shopkeeperInfo.shopkeeperRole,
       };
 
       console.log('👤 Transaction with shopkeeper:', transactionWithShopkeeper);
@@ -331,12 +370,11 @@ const SalesPage = () => {
         console.log('✅ Transaction saved successfully:', response.transaction);
         return response.transaction;
       } else {
-        console.warn('⚠️ Transaction save returned success:false', response);
+        const errorMsg = typeof response === 'string' ? response : (response?.message || 'Transaction save failed');
+        console.warn('⚠️ Transaction save failed:', errorMsg);
         return {
-          ...transactionWithShopkeeper,
-          _id: response.transaction?._id || `temp_${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          saveError: true,
+          errorMessage: errorMsg,
         };
       }
     } catch (error) {
@@ -353,12 +391,12 @@ const SalesPage = () => {
     }
   }, [userData]);
 
-  // Find product in current products list by ID
+  // Find product in current products list by ID (unchanged)
   const findProductInList = useCallback((productId) => {
     return productsInStock.find(p => p.id === productId || p._id === productId);
   }, [productsInStock]);
 
-  // Update product stock
+  // Update product stock (unchanged)
   const updateProductStock = useCallback(async (cartItems, isMpesa = false) => {
     try {
       console.log(`📦 Updating stock for ${cartItems.length} products, M-PESA: ${isMpesa}`);
@@ -470,7 +508,7 @@ const SalesPage = () => {
     }
   }, [findProductInList]);
 
-  // Generate transaction ID
+  // Generate transaction ID (unchanged)
   const generateTransactionId = useCallback(() => {
     const timestamp = Date.now().toString();
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -514,7 +552,7 @@ const SalesPage = () => {
     return parts.join(", ");
   }, [cart]);
 
-  // Cart handlers
+  // Cart handlers (unchanged)
   const handleQuantityChange = useCallback(
     (productId, value) => {
       if (value === "") {
@@ -678,7 +716,7 @@ const SalesPage = () => {
     setSearchTerm(searchValue);
   }, []);
 
-  // Phone validation
+  // Phone validation (unchanged)
   const validatePhone = useCallback((phone) => {
     const cleaned = phone.replace(/\D/g, '');
 
@@ -710,15 +748,11 @@ const SalesPage = () => {
     try {
       const paidAmount = parseFloat(amountPaid);
       if (isNaN(paidAmount) || paidAmount <= 0) {
-        showNotification("Please enter a valid amount", "error");
-        setSubmitting(false);
-        return;
+        throw new Error("Please enter a valid amount");
       }
 
       if (paidAmount < totalAmount) {
-        showNotification(`Amount paid (${formatCurrency(paidAmount)}) is less than total amount (${formatCurrency(totalAmount)})`, "error");
-        setSubmitting(false);
-        return;
+        throw new Error(`Amount paid (${formatCurrency(paidAmount)}) is less than total amount (${formatCurrency(totalAmount)})`);
       }
 
       const change = paidAmount - totalAmount;
@@ -759,27 +793,25 @@ const SalesPage = () => {
         console.warn("Stock update had issues:", stockUpdateResult);
       }
 
-      setCart([]);
-      setQuantities({});
-      setAmountPaid("");
-      setCashModal(false);
-
-      showNotification(`Cash payment completed successfully! Change: ${formatCurrency(change)}`, "success");
-
-      setTimeout(() => {
-        refreshProducts();
-      }, 500);
+      // Return a success object that CashPaymentModal can use
+      return {
+        success: true,
+        message: "Cash payment completed successfully!",
+        change: change,
+        totalAmount: totalAmount,
+        transactionId: savedTransaction.transactionId
+      };
 
     } catch (error) {
       console.error("❌ Cash payment error:", error);
-      showNotification(error.message || "Failed to process cash payment", "error");
+      // Return a failure object that CashPaymentModal can use
+      return { success: false, message: error.message || "Failed to process cash payment" };
     } finally {
       setSubmitting(false);
     }
-  }, [cart, totalAmount, amountPaid, submitting, saveTransaction, updateProductStock, refreshProducts, formatCurrency, showNotification, generateTransactionId]);
+  }, [cart, totalAmount, amountPaid, submitting, saveTransaction, updateProductStock, formatCurrency, generateTransactionId, userData.paymentConfig]);
 
-  // M-PESA Payment Handler
-  // M-PESA Payment Handler
+  // M-PESA Payment Handler - FIXED for backend
   const handleMpesaPayment = useCallback(async () => {
     if (submitting || cart.length === 0) return;
 
@@ -841,7 +873,6 @@ const SalesPage = () => {
       // Generate transaction ID
       const transactionId = generateTransactionId();
 
-      // Rest of the function remains the same...
       // First, save the transaction as pending
       const transactionData = {
         transactionId: transactionId,
@@ -862,11 +893,12 @@ const SalesPage = () => {
         })),
         customerName: "MPESA Customer",
         customerPhone: formattedPhone,
-        notes: `MPESA payment initiated for phone: ${formattedPhone}`,
+        notes: `MPESA payment initiated for phone: ${formattedPhone} (${userData.paymentConfig?.paymentType || 'TILL'})`,
         paymentDetails: {
           initiatedAt: new Date().toISOString(),
           phone: formattedPhone,
-          amount: totalAmount
+          amount: totalAmount,
+          paymentType: userData.paymentConfig?.paymentType || 'TILL'
         }
       };
 
@@ -878,17 +910,19 @@ const SalesPage = () => {
         throw new Error(savedTransaction.errorMessage || "Failed to save transaction");
       }
 
-      // Now send STK Push
+      // Now send STK Push with business ID for dynamic shortcode
       if (URLS.MPESA?.STK_PUSH) {
+        // The backend only expects these fields based on your controller
         const mpesaData = {
           phone: formattedPhone,
           amount: totalAmount,
-          businessId: userData.businessId,
           transactionId: transactionId,
-          description: `Payment for ${cart.length} item(s) from ${userData.shopkeeperInfo?.businessName || 'Business'}`
+          description: `Payment for ${cart.length} item(s) from ${userData.shopkeeperInfo?.businessName || 'Business'}`,
+          isDebtPayment: false,
+          businessId: userData.businessId // Send businessId for dynamic shortcode
         };
 
-        console.log('📱 Sending MPESA STK Push request:', mpesaData);
+        console.log('📱 Sending MPESA STK Push request with payload:', mpesaData);
 
         const mpesaResponse = await POST(URLS.MPESA.STK_PUSH, mpesaData);
 
@@ -900,7 +934,8 @@ const SalesPage = () => {
             transactionId: transactionId,
             checkoutRequestId: mpesaResponse.data?.checkoutRequestId,
             phone: formattedPhone,
-            amount: totalAmount
+            amount: totalAmount,
+            paymentType: userData.paymentConfig?.paymentType || 'TILL'
           });
 
           return {
@@ -909,10 +944,12 @@ const SalesPage = () => {
             checkoutRequestId: mpesaResponse.data?.checkoutRequestId,
             phone: formattedPhone,
             amount: totalAmount,
-            message: mpesaResponse.data?.customerMessage || "STK Push sent successfully"
+            message: mpesaResponse.data?.customerMessage || "STK Push sent successfully",
+            data: mpesaResponse.data
           };
         } else {
-          throw new Error(mpesaResponse.message || "MPESA request failed");
+          console.error('❌ MPESA STK Push failed with response:', mpesaResponse);
+          throw new Error(mpesaResponse.message || mpesaResponse.error || "MPESA request failed");
         }
       } else {
         throw new Error("MPESA endpoint not configured");
@@ -928,7 +965,7 @@ const SalesPage = () => {
     }
   }, [cart, totalAmount, mpesaPhone, submitting, saveTransaction, userData, showNotification, generateTransactionId]);
 
-  // FIXED: M-PESA Payment Complete Handler
+  // M-PESA Payment Complete Handler
   const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
     console.log('✅ M-PESA payment completed callback received:', paymentResult);
 
@@ -940,15 +977,15 @@ const SalesPage = () => {
         console.warn("Stock update had issues:", stockUpdateResult);
       }
 
-      // DON'T clear cart or show notification here
-      // The modal's success handler will trigger handleMpesaModalClose(true)
-      // which will handle everything
+      // Show payment type specific message
+      const paymentInfo = getPaymentDisplayInfo();
+      showNotification(`M-PESA (${userData.paymentConfig?.paymentType}) payment completed!`, "success");
 
     } catch (error) {
       console.error('❌ Error after M-PESA payment:', error);
       showNotification('Payment recorded but stock update failed', 'error');
     }
-  }, [cart, updateProductStock, showNotification]);
+  }, [cart, updateProductStock, showNotification, userData.paymentConfig, getPaymentDisplayInfo]);
 
   // M-PESA Transaction Created Callback
   const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
@@ -962,7 +999,7 @@ const SalesPage = () => {
     });
   }, []);
 
-  // FIXED: M-PESA Modal Close Handler
+  // M-PESA Modal Close Handler
   const handleMpesaModalClose = useCallback((completed) => {
     console.log('🔄 M-PESA modal closed, completed:', completed);
     console.log('📊 Current state - Cart:', cart.length, 'items, Quantities:', Object.keys(quantities).length);
@@ -986,15 +1023,16 @@ const SalesPage = () => {
         refreshProducts();
       }, 500);
 
-      // 3. Show success notification
-      showNotification("M-PESA payment completed! Cart cleared. Ready for new sale.", "success");
+      // 3. Show success notification with payment type
+      const paymentInfo = getPaymentDisplayInfo();
+      showNotification(`${userData.paymentConfig?.paymentType} M-PESA payment completed! Cart cleared.`, "success");
 
     } else {
       console.log('❌ Payment not completed - keeping cart for retry');
       // Keep items in cart so user can retry with different payment method
       showNotification("M-PESA payment was not completed. Items remain in cart.", "info");
     }
-  }, [cart, quantities, refreshProducts, showNotification]);
+  }, [cart, quantities, refreshProducts, showNotification, userData.paymentConfig, getPaymentDisplayInfo]);
 
   const handleDebtPayment = useCallback(async () => {
     if (submitting || cart.length === 0) return;
@@ -1065,7 +1103,28 @@ const SalesPage = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [cart, totalAmount, debtCustomerName, debtPhone, debtNotes, submitting, saveTransaction, updateProductStock, refreshProducts, showNotification, generateTransactionId]);
+  }, [cart, totalAmount, debtCustomerName, debtPhone, debtNotes, submitting, saveTransaction, updateProductStock, refreshProducts, showNotification, generateTransactionId, userData.paymentConfig]);
+
+  const handleCashModalClose = useCallback(async (completed) => {
+    setCashModal(false);
+
+    if (completed === true) {
+      console.log('✅ Cash payment completed - CLEARING cart and resetting everything');
+      setCart([]);
+      setQuantities({});
+      setAmountPaid("");
+
+      console.log('✅ Cart cleared - Ready for new sale');
+      setLoadingProducts(true);
+      await refreshProducts();
+      setLoadingProducts(false);
+
+      showNotification("Cash payment completed! Cart cleared. Ready for new sale.", "success");
+    } else {
+      console.log('❌ Cash payment was not completed. Items remain in cart.');
+      showNotification("Cash payment was not completed. Items remain in cart.", "info");
+    }
+  }, [refreshProducts, showNotification]);
 
   // Combined loading state
   const isLoading = loadingUser || loadingProducts;
@@ -1171,6 +1230,9 @@ const SalesPage = () => {
     );
   }
 
+  // Get payment display info for UI
+  const paymentInfo = getPaymentDisplayInfo();
+
   // Main sales page
   return (
     <div className="min-h-screen bg-white p-2 mb-6">
@@ -1179,9 +1241,21 @@ const SalesPage = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             {userData.shopkeeperInfo?.businessName || "Kiosk"} Sales System
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Available products: {productsInStock.length} | Cart: {cartSummary}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-gray-500">
+              Available products: {productsInStock.length} | Cart: {cartSummary}
+            </p>
+            {/* Display payment type badge */}
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+              {userData.paymentConfig?.paymentType || 'TILL'}
+            </span>
+          </div>
+          {/* Display payment info for reference */}
+          {paymentInfo.description && (
+            <p className="text-xs text-gray-400 mt-1">
+              {paymentInfo.description}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -1277,7 +1351,7 @@ const SalesPage = () => {
                       disabled={cart.length === 0}
                     >
                       <Smartphone className="h-5 w-5" />
-                      Pay with M-PESA
+                      Pay with M-PESA ({userData.paymentConfig?.paymentType || 'TILL'})
                     </button>
                     <button
                       onClick={() => setDebtModal(true)}
@@ -1298,7 +1372,7 @@ const SalesPage = () => {
       {/* Modals */}
       <CashPaymentModal
         isOpen={cashModal}
-        onClose={() => setCashModal(false)}
+        onClose={handleCashModalClose}
         totalAmount={totalAmount}
         amountPaid={amountPaid}
         onAmountPaidChange={setAmountPaid}
@@ -1321,6 +1395,8 @@ const SalesPage = () => {
         onPaymentComplete={handleMpesaPaymentComplete}
         onTransactionCreated={handleMpesaTransactionCreated}
         transactionId={currentTransaction?.transactionId}
+        paymentType={userData.paymentConfig?.paymentType} // Pass payment type to modal
+        paymentInfo={paymentInfo} // Pass payment info to modal
       />
 
       <DebtPaymentModal

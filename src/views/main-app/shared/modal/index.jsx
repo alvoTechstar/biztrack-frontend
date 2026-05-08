@@ -1,7 +1,7 @@
 import React from 'react';
 import  { useState } from "react";
-import PaymentMethodModal from "../../../components/modal/PaymentMethodModal";
-import PaymentInputModal from "../../../components/modal/PaymentInputModal";
+import PaymentMethodModal from "../../../../components/modal/PaymentMethodModal";
+import PaymentInputModal from "../../../../components/modal/PaymentInputModal";
 import TransactionForm from './TransactionForm';
 
 const App = () => {

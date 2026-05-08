@@ -49,7 +49,7 @@ import ReportControls from "./ReportControls";
 import ReportStats from "./ReportStats";
 import SalesDashboard from "./SalesDashboard";
 import ProductsDashboard from "./ProductsDashboard";
-import DebtManagement from "../../../debtmanagement";
+import DebtManagement from "../../debtmanagement";
 import StaffDashboard from "./StaffDashboard";
 
 // Import date utilities

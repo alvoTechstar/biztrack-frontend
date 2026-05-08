@@ -1,7 +1,7 @@
 // kiosk-admin/DebtsDashboard.jsx
 import React, { useState, useMemo } from "react";
 import { Download } from "lucide-react";
-import DebtDataTable from "../../../debtmanagement/DebtDataTable";
+import DebtDataTable from "../../debtmanagement/DebtDataTable";
 
 const DebtsDashboard = ({
   debtData,

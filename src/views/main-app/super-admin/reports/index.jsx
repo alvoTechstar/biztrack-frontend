@@ -18,7 +18,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import KPICardsSection from './KpiCardSection';
 import ReportsControls from './ReportsControls';
 import RevenueTrendChart from './RevenueTrendChart'
-import TransactionsTable from '../../dashboard/super-admin/TransactionsTable';
+import TransactionsTable from '../dashboard/TransactionsTable';
 import PaymentBreakdownChart from './PaymentBreakdownChart'
 import BusinessPerformanceChart from './BusinessPerformanceChart'
 // Import your services and utilities

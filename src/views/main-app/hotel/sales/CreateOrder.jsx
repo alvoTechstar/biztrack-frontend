@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, X, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@mui/material";
-import DataTable from "../../../components/datatable";
+import DataTable from "../../../../components/datatable";
 
 export default function CreateOrder() {
   const menuItems = [

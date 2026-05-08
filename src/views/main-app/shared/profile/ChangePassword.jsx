@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import Modal from "../../../components/modal/Modal";
-import PasswordInput from "../../../components/Input/PasswordInput.jsx";
-import AppFormButton from "../../../components/buttons/AppFormButton";
-import { validatePassword } from "../../../utilities/Sharedfunctions.jsx"; 
-import { useTheme } from "../../../components/theme/ThemeContext";
+import Modal from "../../../../components/modal/Modal";
+import PasswordInput from "../../../../components/Input/PasswordInput.jsx";
+import AppFormButton from "../../../../components/buttons/AppFormButton";
+import { validatePassword } from "../../../../utilities/Sharedfunctions.jsx"; 
+import { useTheme } from "../../../../components/theme/ThemeContext";
 
 const ChangePassword = ({
   open,

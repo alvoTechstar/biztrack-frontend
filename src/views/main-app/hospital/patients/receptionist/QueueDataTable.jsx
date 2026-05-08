@@ -4,7 +4,7 @@ import {
   Visibility as ViewIcon,
   Cancel as CancelIcon,
 } from "@mui/icons-material";
-import DataTable from "../../../../components/datatable"; // adjust if needed
+import DataTable from "../../../../../components/datatable"; // adjust if needed
 import ViewQueueModal from "./ViewQueueModal";
 
 // ────────────────────────────────────────────────────────────

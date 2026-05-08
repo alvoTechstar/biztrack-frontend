@@ -1,19 +1,19 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { RefreshCw, AlertTriangle, TrendingUp, CreditCard, CheckCircle } from "lucide-react";
-import { GET, PUT, POST } from "../../../services/DatabaseServiceImp";
-import URLS from "../../../utilities/Endpoints";
-import Toaster from "../../../components/Toaster";
-import CashPaymentModal from "../sales/kiosk/CashPaymentModal";
-import MpesaPaymentModal from "../sales/kiosk/MpesaPaymentModal";
-import ContentLoader from "../../../components/Loader/ContentLoader";
-import { useTheme } from "../../../components/theme/ThemeContext";
+import { GET, POST } from "../../../../services/DatabaseServiceImp";
+import URLS from "../../../../utilities/Endpoints";
+import Toaster from "../../../../components/Toaster";
+import CashPaymentModal from "../sales/CashPaymentModal";
+import MpesaPaymentModal from "../sales/MpesaPaymentModal";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
+import { useTheme } from "../../../../components/theme/ThemeContext";
 import DebtSummaryCards from "./DebtSummaryCards";
 import DebtControls from "./DebtControls";
 import DebtDetailModal from "./DebtDetailModal";
 import PaymentOptionsModal from "./PaymentOptionsModal";
 import DebtDataTable from "./DebtDataTable";
 import { useSelector } from "react-redux";
-import { formatCurrency, formatDate } from "../../../utilities/Sharedfunctions.jsx";
+import { formatCurrency, formatDate } from "../../../../utilities/Sharedfunctions.jsx";
 
 const DebtManagement = () => {
   const { primaryColor } = useTheme();
@@ -34,7 +34,6 @@ const DebtManagement = () => {
   const [showMpesaPaymentModal, setShowMpesaPaymentModal] = useState(false);
   const [amountPaid, setAmountPaid] = useState("");
   const [mpesaPhone, setMpesaPhone] = useState("");
-  const [mpesaLoading, setMpesaLoading] = useState(false);
 
   const [modalLoading, setModalLoading] = useState(false);
   const [modalLoadingText, setModalLoadingText] = useState("");
@@ -44,6 +43,9 @@ const DebtManagement = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
+  const [currentTransaction, setCurrentTransaction] = useState(null);
+  const [pendingMpesaTransactionId, setPendingMpesaTransactionId] = useState(null);
+
   const [notification, setNotification] = useState({
     open: false,
     title: "",
@@ -51,10 +53,15 @@ const DebtManagement = () => {
     type: "success",
   });
 
+  const [debtPaymentSuccessModal, setDebtPaymentSuccessModal] = useState(false);
+  const [debtPaymentFailureModal, setDebtPaymentFailureModal] = useState(false);
+  const [isSalesPageRefreshing, setIsSalesPageRefreshing] = useState(false);
+
   const [businessInfo, setBusinessInfo] = useState({
     businessId: null,
     businessUUID: null,
-    businessName: null
+    businessName: null,
+    shopkeeperInfo: null
   });
 
   useEffect(() => {
@@ -63,37 +70,39 @@ const DebtManagement = () => {
       const userBusinessUUID = currentUser.businessUUID;
       const userBusinessName = currentUser.businessName;
 
+      const shopkeeperInfo = {
+        shopkeeperId: currentUser.id,
+        shopkeeperName: `${currentUser.firstName} ${currentUser.lastName}`,
+        shopkeeperEmail: currentUser.email || "",
+        shopkeeperRole: currentUser.role || "Kiosk_Shopkeeper",
+        businessId: userBusinessId,
+        businessUUID: userBusinessUUID,
+        businessName: userBusinessName
+      };
+
       if (userBusinessId) {
         setBusinessInfo({
           businessId: userBusinessId,
           businessUUID: userBusinessUUID,
-          businessName: userBusinessName
+          businessName: userBusinessName,
+          shopkeeperInfo
         });
       }
     }
   }, [currentUser]);
 
-  const showNotification = useCallback((message, type = "success") => {
-    let title = "";
-    let stateValue = "";
-
-    switch (type) {
-      case "success":
-        title = "Success!";
-        stateValue = "true";
-        break;
-      case "error":
-        title = "Error!";
-        stateValue = "false";
-        break;
-      case "info":
-        title = "Heads Up!";
-        stateValue = "";
-        break;
-      default:
-        title = "Notification";
-        stateValue = "";
+  useEffect(() => {
+    if (showMpesaPaymentModal === false && showPaymentOptionsModal === false &&
+      showCashPaymentModal === false && showDetailModal === false &&
+      selectedDebt === null) {
+      console.log('✅ All modals closed - back to debt table');
     }
+  }, [showMpesaPaymentModal, showPaymentOptionsModal, showCashPaymentModal,
+    showDetailModal, selectedDebt]);
+
+  const showNotification = useCallback((message, type = "success") => {
+    const title = type === "success" ? "Success!" : type === "error" ? "Error!" : "Heads Up!";
+    const stateValue = type === "success" ? "true" : type === "error" ? "false" : "";
 
     setNotification({ open: true, title, message, type: stateValue });
     setTimeout(() => setNotification((prev) => ({ ...prev, open: false })), 3000);
@@ -133,8 +142,8 @@ const DebtManagement = () => {
   };
 
   const generatePaymentReport = useCallback(() => {
-    const paidDebts = debts.filter(debt => debt.status === "completed" || debt.paymentStatus === "paid");
-    const pendingDebts = debts.filter(debt => debt.status === "pending" || debt.paymentStatus === "pending");
+    const paidDebts = debts.filter(debt => debt.debtPaid === true);
+    const pendingDebts = debts.filter(debt => debt.debtPaid !== true);
 
     const totalDebtAmount = debts.reduce((sum, debt) => sum + (debt.totalAmount || debt.amount || 0), 0);
     const totalCollected = paidDebts.reduce((sum, debt) => sum + (debt.totalAmount || debt.amount || 0), 0);
@@ -152,8 +161,8 @@ const DebtManagement = () => {
       paidDebts: paidDebts.map(debt => ({
         customer: debt.customerName,
         amount: debt.totalAmount || debt.amount || 0,
-        paymentMethod: debt.paymentMethod || 'Unknown',
-        datePaid: debt.paidAt || debt.datePaid,
+        paymentMethod: debt.debtPaymentMethod || 'Unknown',
+        datePaid: debt.debtPaymentDate || debt.paidAt || debt.datePaid,
         originalTransaction: debt.transactionId
       })),
       pendingDebts: pendingDebts.map(debt => ({
@@ -179,59 +188,15 @@ const DebtManagement = () => {
     setError(null);
 
     try {
-      const endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS.replace(':businessId', businessInfo.businessId);
-      console.log('📋 Fetching transactions from:', endpoint);
-
+      const endpoint = URLS.TRANSACTIONS.GET_DEBTS_BY_BUSINESS.replace(':businessId', businessInfo.businessId);
       const response = await GET(endpoint);
 
       if (response.success) {
-        console.log('✅ All transactions received:', response.transactions?.length || 0);
-
-        const debtTransactions = response.transactions.filter(transaction => {
-          const isDebtTransaction =
-            transaction.type === 'debt' ||
-            transaction.transactionType === 'debt' ||
-            transaction.paymentMethod === 'debt';
-
-          console.log('Transaction check:', {
-            id: transaction.transactionId,
-            type: transaction.type,
-            paymentMethod: transaction.paymentMethod,
-            status: transaction.status,
-            isDebtTransaction,
-            totalAmount: transaction.totalAmount
-          });
-
-          return isDebtTransaction;
-        });
-
-        console.log('💰 Debt transactions found:', debtTransactions.length);
-
-        debtTransactions.forEach((transaction, index) => {
-          console.log(`Debt ${index + 1}:`, {
-            id: transaction._id,
-            transactionId: transaction.transactionId,
-            type: transaction.type,
-            paymentMethod: transaction.paymentMethod,
-            status: transaction.status,
-            customerName: transaction.customerName,
-            amount: transaction.totalAmount,
-            itemsCount: transaction.items?.length || 0
-          });
-        });
+        const debtTransactions = response.debts || [];
 
         const transformedDebts = debtTransactions.map(transaction => {
           const amount = transaction.totalAmount || 0;
-
-          const isPaid =
-            transaction.status === 'completed' ||
-            transaction.paymentStatus === 'paid' ||
-            transaction.paymentMethod !== 'debt';
-
-          let status = transaction.status || 'pending';
-          if (isPaid) {
-            status = 'completed';
-          }
+          const isPaid = transaction.status === 'completed' && transaction.paymentStatus === 'paid' && transaction.debtPaid === true;
 
           const createdAt = transaction.timestamp || transaction.createdAt;
           let dueDate = transaction.dueDate || transaction.expectedPaymentDate;
@@ -242,18 +207,17 @@ const DebtManagement = () => {
           }
 
           return {
-            id: transaction._id,
-            _id: transaction._id,
+            id: transaction.id,   // Prisma UUID primary key
+            _id: transaction.id,  // kept for any legacy references
             transactionId: transaction.transactionId,
             customerName: transaction.customerName || "Unknown Customer",
             customerPhone: transaction.customerPhone || "N/A",
             amount: amount,
             totalAmount: amount,
-            total: amount,
-            status: status,
-            paymentStatus: transaction.paymentStatus || status,
+            status: transaction.status || 'pending',
+            paymentStatus: transaction.paymentStatus || 'pending',
             paymentMethod: transaction.paymentMethod,
-            originalPaymentMethod: transaction.paymentMethod,
+            originalPaymentMethod: transaction.originalPaymentMethod || transaction.paymentMethod,
             createdDate: createdAt,
             timestamp: createdAt,
             dueDate: dueDate,
@@ -262,32 +226,26 @@ const DebtManagement = () => {
             paidAt: transaction.paidAt || transaction.datePaid,
             notes: transaction.notes || `Debt transaction for ${transaction.customerName || 'customer'}`,
             items: transaction.items || [],
-            discount: transaction.discount || 0,
-            tax: transaction.tax || 0,
-            subtotal: transaction.subtotal || amount,
             businessId: transaction.businessId,
             businessUUID: transaction.businessUUID,
             isDebtTransaction: true,
             debtPaid: isPaid,
-            debtPaymentMethod: transaction.paymentMethod !== 'debt' ? transaction.paymentMethod : null,
-            debtPaymentDate: transaction.datePaid || transaction.paidAt,
+            debtPaymentMethod: transaction.debtPaymentMethod,
+            debtPaymentDate: transaction.debtPaymentDate || transaction.datePaid || transaction.paidAt,
             shopkeeperId: transaction.shopkeeperId,
             shopkeeperName: transaction.shopkeeperName,
-            originalTransaction: transaction
+            checkoutRequestId: transaction.checkoutRequestId,
+            merchantRequestId: transaction.merchantRequestId
           };
         });
 
-        console.log('✅ Transformed debts:', transformedDebts.length);
         setDebts(transformedDebts);
-
       } else {
         const errorMsg = response.message || 'Failed to fetch transactions';
         setError(errorMsg);
-        console.error('❌ Error fetching transactions:', errorMsg);
         showNotification(errorMsg, "error");
       }
     } catch (error) {
-      console.error('❌ Error in fetchDebts:', error);
       const errorMsg = error.message || 'Failed to load debt transactions';
       setError(errorMsg);
       showNotification("Failed to load debt transactions. Please try again.", "error");
@@ -311,16 +269,16 @@ const DebtManagement = () => {
 
       const matchesStatus =
         statusFilter === "All" ||
-        (statusFilter === "Pending" && (debt.status === "pending" || debt.paymentStatus === "pending")) ||
-        (statusFilter === "Completed" && (debt.status === "completed" || debt.paymentStatus === "paid"));
+        (statusFilter === "Pending" && !debt.debtPaid) ||
+        (statusFilter === "Completed" && debt.debtPaid === true);
 
       return matchesSearch && matchesStatus;
     });
   }, [debts, searchFilter, statusFilter]);
 
   const summary = useMemo(() => {
-    const pending = debts.filter(debt => debt.status === "pending" || debt.paymentStatus === "pending");
-    const completed = debts.filter(debt => debt.status === "completed" || debt.paymentStatus === "paid");
+    const pending = debts.filter(debt => !debt.debtPaid);
+    const completed = debts.filter(debt => debt.debtPaid === true);
     const overdue = pending.filter(debt => isOverdue(debt.dueDate || debt.expectedPaymentDate, debt.status));
 
     const totalDebtAmount = debts.reduce((sum, debt) => sum + (debt.totalAmount || debt.amount || 0), 0);
@@ -340,150 +298,328 @@ const DebtManagement = () => {
     };
   }, [debts, isOverdue]);
 
-  const handleDebtPayment = async (paymentMethod, phone = null, cashAmount = null) => {
+  const handleCashPayment = useCallback(async () => {
     if (!selectedDebt || !businessInfo.businessId) return;
+    if (operationLoading) return;
 
     setOperationLoading(true);
-    setOperationLoadingText("Processing payment...");
+    setOperationLoadingText("Processing cash payment...");
 
     try {
-      const paymentAmount = cashAmount || selectedDebt.amount;
       const now = new Date().toISOString();
+      const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
+      const paidAmount = parseFloat(amountPaid);
+      const change = paidAmount - debtAmount;
 
       const paymentData = {
-        status: 'completed',
-        paymentStatus: 'paid',
-        paymentMethod: paymentMethod,
-        originalPaymentMethod: selectedDebt.originalPaymentMethod || 'debt',
-        datePaid: now,
-        paidAt: now,
-        debtPaid: true,
-        debtPaymentDate: now,
-        debtPaymentMethod: paymentMethod,
-        amountPaid: paymentAmount,
-        updatedAt: now
+        paymentMethod: 'cash',
+        amountPaid: debtAmount,
+        notes: `Cash repayment. Received: KSh ${paidAmount}, Change: KSh ${change > 0 ? change : 0}`
       };
 
-      if (paymentMethod === 'Cash' && cashAmount) {
-        paymentData.paymentDetails = {
-          type: 'cash',
-          amountReceived: cashAmount,
-          amountDue: selectedDebt.amount,
-          changeGiven: cashAmount - selectedDebt.amount,
-          paymentDate: now
+      const updateEndpoint = URLS.TRANSACTIONS.REPAY_DEBT.replace(':id', selectedDebt.id);
+      const response = await POST(updateEndpoint, paymentData);
+
+      if (response && response.success) {
+        // Update local state
+        setDebts(prevDebts =>
+          prevDebts.map(debt =>
+            debt.id === selectedDebt.id
+              ? {
+                  ...debt,
+                  status: 'completed',
+                  paymentStatus: 'paid',
+                  paymentMethod: 'cash',
+                  datePaid: now,
+                  paidAt: now,
+                  paymentDetails: paymentData.paymentDetails,
+                  debtPaid: true,
+                  debtPaymentMethod: 'cash',
+                  debtPaymentDate: now,
+                  amountPaid: debtAmount
+                }
+              : debt
+          )
+        );
+
+        // Return success object for the modal
+        return {
+          success: true,
+          transactionId: selectedDebt.transactionId || selectedDebt._id,
+          receiptNumber: `CASH-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000)}`,
+          customerName: selectedDebt.customerName,
+          amount: debtAmount,
+          paidAmount: paidAmount,
+          change: change
         };
-      }
-
-      if (paymentMethod === 'M-PESA' && phone) {
-        paymentData.paymentDetails = {
-          type: 'mpesa',
-          phoneNumber: phone,
-          amount: selectedDebt.amount,
-          timestamp: now,
-          transactionReference: `MPESA-${Date.now()}`
-        };
-      }
-
-      const transactionId = selectedDebt._id || selectedDebt.id;
-
-      if (!transactionId) {
-        throw new Error('Transaction ID not found');
-      }
-
-      let updateEndpoint;
-      if (URLS.TRANSACTIONS?.UPDATE_TRANSACTION) {
-        updateEndpoint = URLS.TRANSACTIONS.UPDATE_TRANSACTION.replace(':id', transactionId);
-      } else if (URLS.TRANSACTIONS?.UPDATE) {
-        updateEndpoint = URLS.TRANSACTIONS.UPDATE.replace(':id', transactionId);
       } else {
-        updateEndpoint = `/api/transactions/${transactionId}`;
-        console.warn('Using fallback transaction update endpoint');
+        throw new Error(response?.message || 'Failed to update transaction');
+      }
+    } catch (error) {
+      console.error('❌ Cash payment error:', error);
+      showNotification(`Payment failed: ${error.message || 'Unknown error'}`, "error");
+      throw error;
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [selectedDebt, businessInfo, amountPaid, operationLoading, formatCurrency, showNotification, fetchDebts]);
+
+  const handleMpesaPayment = useCallback(async () => {
+    if (!selectedDebt || !businessInfo.businessId) return;
+    if (operationLoading) return;
+
+    try {
+      const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
+      const phone = mpesaPhone.trim();
+
+      let formattedPhone = phone;
+      if (phone.startsWith('+')) formattedPhone = phone.substring(1);
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '254' + formattedPhone.substring(1);
+      } else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+        formattedPhone = '254' + formattedPhone;
       }
 
-      console.log('Updating transaction at:', updateEndpoint);
+      setPendingMpesaTransactionId(selectedDebt.transactionId);
 
-      const updateResponse = await PUT(updateEndpoint, paymentData);
+      console.log('📱 Processing M-PESA debt repayment:', {
+        debtId: selectedDebt.id,
+        transactionId: selectedDebt.transactionId,
+        amount: debtAmount,
+        phone: formattedPhone,
+        customer: selectedDebt.customerName,
+      });
 
-      if (!updateResponse || updateResponse.success === false) {
-        const errorMsg = updateResponse?.message || 'Failed to update transaction';
-        throw new Error(errorMsg);
-      }
+      const repayEndpoint = URLS.TRANSACTIONS.REPAY_DEBT.replace(':id', selectedDebt.id);
+      const mpesaResponse = await POST(repayEndpoint, {
+        paymentMethod: 'mpesa',
+        phone: formattedPhone,
+        amountPaid: debtAmount,
+      });
 
-      if (paymentMethod === 'M-PESA' && phone && URLS.MPESA?.STK_PUSH) {
-        setMpesaLoading(true);
-        const mpesaTransactionId = selectedDebt.transactionId || transactionId;
-        try {
-          const mpesaResponse = await POST(URLS.MPESA.STK_PUSH, {
-            phone: phone,
-            amount: selectedDebt.amount,
-            businessId: businessInfo.businessId,
-            businessUUID: businessInfo.businessUUID,
-            transactionId: `DEBT-PAY-${mpesaTransactionId}`,
-            description: `Debt payment for ${selectedDebt.customerName}`,
-            reference: `Debt Payment - ${selectedDebt.transactionId}`
-          });
-
-          if (!mpesaResponse?.success) {
-            console.log('M-PESA notification failed but transaction saved');
+      if (mpesaResponse.success) {
+        return {
+          success: true,
+          transactionId: selectedDebt.transactionId,
+          data: {
+            transactionId: selectedDebt.transactionId,
+            checkoutRequestId: mpesaResponse.data?.checkoutRequestId,
+            customerMessage: mpesaResponse.data?.customerMessage
           }
-        } catch (mpesaError) {
-          console.error('M-PESA API error:', mpesaError);
-        }
+        };
+      } else {
+        throw new Error(mpesaResponse.message || "M-PESA request failed");
       }
+    } catch (error) {
+      console.error("❌ M-PESA payment error:", error);
+      throw error;
+    }
+  }, [selectedDebt, businessInfo, mpesaPhone, operationLoading]);
+
+  // ✅ ADD THIS BACK - handleMpesaPaymentComplete was missing!
+  const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
+    if (!selectedDebt) return;
+
+    if (paymentResult.isDebtPayment !== true) {
+      console.warn('⚠️ Received non-debt payment in DebtManagement - ignoring');
+      return;
+    }
+
+    setOperationLoading(true);
+    setOperationLoadingText("Finalizing M-PESA payment...");
+
+    try {
+      const now = new Date().toISOString();
+      const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
+
+      console.log('💰 M-PESA debt payment successful via callback:', {
+        debtId: selectedDebt._id,
+        amount: debtAmount,
+        receipt: paymentResult.receipt,
+        transactionId: paymentResult.transactionId
+      });
 
       setDebts(prevDebts =>
         prevDebts.map(debt =>
           debt.id === selectedDebt.id
             ? {
-              ...debt,
-              status: 'completed',
-              paymentStatus: 'paid',
-              paymentMethod: paymentMethod,
-              datePaid: now,
-              paidAt: now,
-              paymentDetails: paymentData.paymentDetails || {},
-              debtPaid: true,
-              debtPaymentMethod: paymentMethod,
-              debtPaymentDate: now,
-              amountPaid: paymentAmount
-            }
+                ...debt,
+                status: 'completed',
+                paymentStatus: 'paid',
+                paymentMethod: 'mpesa',
+                datePaid: now,
+                paidAt: now,
+                debtPaid: true,
+                debtPaymentMethod: 'mpesa',
+                debtPaymentDate: now,
+                amountPaid: debtAmount,
+                mpesaReceipt: paymentResult.receipt,
+                mpesaReceiptNumber: paymentResult.receipt
+              }
             : debt
         )
       );
 
-      let notificationMessage = '';
-      if (paymentMethod === 'Cash' && cashAmount) {
-        const changeMessage = cashAmount > selectedDebt.amount
-          ? ` Change: ${formatCurrency(cashAmount - selectedDebt.amount)}`
-          : '';
-        notificationMessage = `Cash payment of ${formatCurrency(selectedDebt.amount)} recorded for ${selectedDebt.customerName}.${changeMessage}`;
-      } else if (paymentMethod === 'M-PESA' && phone) {
-        notificationMessage = `M-PESA payment of ${formatCurrency(selectedDebt.amount)} recorded for ${selectedDebt.customerName}`;
-      }
+      console.log('✅ M-PESA debt payment completed successfully');
 
-      showNotification(notificationMessage, "success");
-      closeAllModals();
+      return {
+        success: true,
+        closeAllModals: true
+      };
+    } catch (error) {
+      console.error('❌ M-PESA payment completion error:', error);
+      showNotification(`Payment processing error: ${error.message}`, "error");
+      throw error;
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [selectedDebt, showNotification, formatCurrency]);
+
+  const handleCashPaymentComplete = useCallback(async (paymentResult) => {
+    if (!selectedDebt) return;
+
+    if (paymentResult.isDebtPayment !== true) {
+      console.warn('⚠️ Received non-debt payment in DebtManagement - ignoring');
+      return;
+    }
+
+    setOperationLoading(true);
+    setOperationLoadingText("Finalizing cash payment...");
+
+    try {
+      const now = new Date().toISOString();
+      const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
+
+      console.log('💰 Cash debt payment successful:', {
+        debtId: selectedDebt._id,
+        amount: debtAmount,
+        receipt: paymentResult.receipt,
+        transactionId: paymentResult.transactionId,
+        change: paymentResult.change
+      });
+
+      setDebts(prevDebts =>
+        prevDebts.map(debt =>
+          debt.id === selectedDebt.id
+            ? {
+                ...debt,
+                status: 'completed',
+                paymentStatus: 'paid',
+                paymentMethod: 'cash',
+                datePaid: now,
+                paidAt: now,
+                debtPaid: true,
+                debtPaymentMethod: 'cash',
+                debtPaymentDate: now,
+                amountPaid: debtAmount,
+                cashReceipt: paymentResult.receipt,
+                paymentDetails: {
+                  type: 'cash',
+                  amountReceived: paymentResult.paidAmount,
+                  amountDue: debtAmount,
+                  changeGiven: paymentResult.change,
+                  paymentDate: now
+                }
+              }
+            : debt
+        )
+      );
+
+      console.log('✅ Cash debt payment completed successfully');
+
+      return {
+        success: true,
+        closeAllModals: true
+      };
+    } catch (error) {
+      console.error('❌ Cash payment completion error:', error);
+      showNotification(`Payment processing error: ${error.message}`, "error");
+      throw error;
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [selectedDebt, showNotification, formatCurrency]);
+
+  const handleMpesaModalClose = useCallback((completed) => {
+    console.log('🔄 M-PESA modal closed in DebtManagement, completed:', completed);
+
+    setShowMpesaPaymentModal(false);
+
+    if (completed === true) {
+      console.log('✅ Debt payment successful - CLOSING ALL MODALS and clearing state');
+
+      setSelectedDebt(null);
+      setShowPaymentOptionsModal(false);
+      setShowCashPaymentModal(false);
+      setShowDetailModal(false);
+
+      setMpesaPhone("");
+      setAmountPaid("");
+      setCurrentTransaction(null);
+      setPendingMpesaTransactionId(null);
 
       setTimeout(() => {
         fetchDebts();
-      }, 1000);
+      }, 500);
+    } else {
+      console.log('❌ Payment not completed - keeping debt selected for retry');
+      setCurrentTransaction(null);
+      setMpesaPhone("");
+      setPendingMpesaTransactionId(null);
 
-    } catch (error) {
-      console.error('❌ Error processing debt payment:', error);
-      showNotification(`Payment failed: ${error.message}`, "error");
-    } finally {
-      setOperationLoading(false);
-      setMpesaLoading(false);
+      showNotification("M-PESA payment was not completed. You can try again.", "info");
     }
-  };
+  }, [fetchDebts, showNotification]);
 
-  const handleCashPayment = (paidAmount) => {
-    handleDebtPayment('Cash', null, paidAmount);
-  };
+  const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
+    console.log('📝 M-PESA transaction created:', transactionInfo);
+    setCurrentTransaction({
+      transactionId: transactionInfo.transactionId,
+      checkoutRequestId: transactionInfo.checkoutRequestId,
+      phone: transactionInfo.phone,
+      amount: transactionInfo.amount
+    });
+  }, []);
 
-  const handleMpesaPayment = (phone) => {
-    handleDebtPayment('M-PESA', phone, null);
-  };
+  const handleCashModalClose = useCallback((completed) => {
+    console.log('🔄 Cash modal closed in DebtManagement, completed:', completed);
+
+    setShowCashPaymentModal(false);
+
+    if (completed === true) {
+      console.log('✅ Cash debt payment successful - CLOSING ALL MODALS and clearing state');
+
+      setSelectedDebt(null);
+      setShowPaymentOptionsModal(false);
+      setShowDetailModal(false);
+      setShowMpesaPaymentModal(false);
+
+      setAmountPaid("");
+      setMpesaPhone("");
+      setCurrentTransaction(null);
+      setPendingMpesaTransactionId(null);
+
+      setTimeout(() => {
+        fetchDebts();
+      }, 500);
+    } else {
+      console.log('❌ Cash payment not completed - keeping debt selected for retry');
+      setAmountPaid("");
+      showNotification("Cash payment was cancelled.", "info");
+    }
+  }, [fetchDebts, showNotification]);
+
+
+  const validatePhoneNumber = useCallback((phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length < 9) {
+      return { isValid: false, message: 'Phone number too short' };
+    }
+    if (!/^(07|01|2547|2541|7|1)/.test(cleaned)) {
+      return { isValid: false, message: 'Invalid Kenyan number format' };
+    }
+    return { isValid: true, message: 'Valid phone number' };
+  }, []);
 
   const handleRowSelect = (event, row) => {
     openModalWithLoader('detail', row.originalData);
@@ -496,7 +632,19 @@ const DebtManagement = () => {
     if (action === 'view') {
       openModalWithLoader('detail', debt);
     } else if (action === 'pay') {
-      if (debt.status === 'pending' || debt.paymentStatus === 'pending') {
+      if (debt.debtPaid === true) {
+        showNotification("This debt has already been paid", "info");
+        return;
+      }
+
+      if (!debt.debtPaid) {
+        setMpesaPhone("");
+        setAmountPaid("");
+        setCurrentTransaction(null);
+        setPendingMpesaTransactionId(null);
+        setShowCashPaymentModal(false);
+        setShowMpesaPaymentModal(false);
+
         openModalWithLoader('payment', debt);
       } else {
         showNotification("This debt is already paid", "info");
@@ -506,8 +654,8 @@ const DebtManagement = () => {
 
   const tableData = useMemo(() => {
     return filteredDebts.map(debt => {
-      const isPaid = debt.status === "completed" || debt.paymentStatus === "paid" || debt.debtPaid;
-      const isCurrentlyOverdue = isOverdue(debt.dueDate || debt.expectedPaymentDate, debt.status);
+      const isPaid = debt.debtPaid === true;
+      const isCurrentlyOverdue = isOverdue(debt.dueDate || debt.expectedPaymentDate, debt.status) && !isPaid;
 
       let statusText = "";
       if (isPaid) {
@@ -521,7 +669,7 @@ const DebtManagement = () => {
       let paymentMethodText = "Debt";
       if (isPaid && debt.debtPaymentMethod) {
         paymentMethodText = debt.debtPaymentMethod;
-      } else if (debt.paymentMethod) {
+      } else if (debt.paymentMethod && debt.paymentMethod !== 'debt') {
         paymentMethodText = debt.paymentMethod;
       }
 
@@ -535,24 +683,14 @@ const DebtManagement = () => {
         paymentMethod: paymentMethodText,
         createdDate: formatDate(debt.createdDate || debt.timestamp),
         expectedPaymentDate: formatDate(debt.dueDate || debt.expectedPaymentDate),
-        datePaid: isPaid ? formatDate(debt.datePaid || debt.paidAt) : "Not Paid",
+        datePaid: isPaid ? formatDate(debt.debtPaymentDate || debt.datePaid || debt.paidAt) : "Not Paid",
         isPaid: isPaid,
         items: debt.items || [],
         originalData: debt,
-        availableActions: isPaid ? ['view'] : ['view', 'pay'] // Add this
+        availableActions: isPaid ? ['view'] : ['view', 'pay']
       };
     });
   }, [filteredDebts, formatCurrency, formatDate, isOverdue]);
-
-  const closeAllModals = () => {
-    setShowDetailModal(false);
-    setShowPaymentOptionsModal(false);
-    setShowCashPaymentModal(false);
-    setShowMpesaPaymentModal(false);
-    setSelectedDebt(null);
-    setAmountPaid("");
-    setMpesaPhone("");
-  };
 
   if (operationLoading || modalLoading) {
     return (
@@ -614,7 +752,7 @@ const DebtManagement = () => {
   const isAnyModalOpen = showDetailModal || showPaymentOptionsModal ||
     showCashPaymentModal || showMpesaPaymentModal;
 
-  if (isAnyModalOpen) {
+  if (isAnyModalOpen && !operationLoading && !modalLoading) {
     return (
       <div className="min-h-screen bg-white p-1 sm:p-2 md:p-3 flex items-center justify-center">
         <div className="w-full max-w-full mx-auto flex flex-col items-center justify-center">
@@ -653,16 +791,22 @@ const DebtManagement = () => {
             <div className="w-full max-w-full sm:max-w-md">
               <CashPaymentModal
                 isOpen={showCashPaymentModal}
-                onClose={() => {
-                  setShowCashPaymentModal(false);
-                  setSelectedDebt(null);
-                  setAmountPaid("");
-                }}
-                totalAmount={selectedDebt?.amount || 0}
+                onClose={handleCashModalClose}
+                totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
                 amountPaid={amountPaid}
                 onAmountPaidChange={setAmountPaid}
                 onConfirmPayment={handleCashPayment}
                 formatCurrency={formatCurrency}
+                submitting={operationLoading}
+                shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
+                isDebtPayment={true}
+                onPaymentComplete={handleCashPaymentComplete}
+                successModalCustomMessage={`Cash debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
+                successModalConfirmButtonText="Go to Debt Management"
+                successModalCountdownMessage="Returning to Debt Management in:"
+                failureModalRetryButtonText="Retry Debt Payment"
+                failureModalBackButtonText="Back to Debt Management"
+                failureModalCountdownMessage="Returning to debt payment modal in:"
               />
             </div>
           )}
@@ -671,17 +815,19 @@ const DebtManagement = () => {
             <div className="w-full max-w-full sm:max-w-md">
               <MpesaPaymentModal
                 isOpen={showMpesaPaymentModal}
-                onClose={() => {
-                  setShowMpesaPaymentModal(false);
-                  setSelectedDebt(null);
-                  setMpesaPhone("");
-                }}
-                totalAmount={selectedDebt?.amount || 0}
+                onClose={handleMpesaModalClose}
+                totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
                 mpesaPhone={mpesaPhone}
                 onMpesaPhoneChange={setMpesaPhone}
                 onConfirmPayment={handleMpesaPayment}
-                mpesaLoading={mpesaLoading || operationLoading}
                 formatCurrency={formatCurrency}
+                shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
+                validatePhone={validatePhoneNumber}
+                onPaymentComplete={handleMpesaPaymentComplete}
+                onTransactionCreated={handleMpesaTransactionCreated}
+                transactionId={pendingMpesaTransactionId || selectedDebt?.transactionId}
+                isDebtPayment={true}
+                successModalCustomMessage={`M-PESA debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
               />
             </div>
           )}

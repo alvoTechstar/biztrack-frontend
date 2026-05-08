@@ -1,4 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
+import DatabaseService from '../services/DatabaseService';
+import URLS from '../utilities/Endpoints';
 
 const AuthContext = createContext();
 
@@ -24,7 +26,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Tell the backend to blacklist the current token
+    try {
+      await DatabaseService.POST(URLS.AUTH.LOGOUT, {});
+    } catch (_) {
+      // Ignore — token may already be expired; we still clear local state
+    }
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('businessId');
@@ -35,6 +43,11 @@ export const AuthProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...userData }));
     localStorage.setItem('user', JSON.stringify({ ...user, ...userData }));
   };
+
+  // Register the logout function with DatabaseService when AuthProvider mounts
+  useEffect(() => {
+    DatabaseService.setLogoutCallback(logout);
+  }, [logout]); // Depend on logout to ensure the latest version is registered
 
   return (
     <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>

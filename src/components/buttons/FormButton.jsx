@@ -1,5 +1,6 @@
 // components/Buttons/FormButton.jsx
 import React from "react";
+import { CircularProgress } from "@mui/material";
 
 const FormButton = ({
   text,
@@ -12,7 +13,7 @@ const FormButton = ({
     <button
       onClick={action}
       disabled={isLoading || !validation || disabled}
-      className={`w-full py-3 text-white rounded-lg ${
+      className={`w-full py-3 text-white rounded-lg flex items-center justify-center ${
         isLoading
           ? "bg-gray-600 cursor-not-allowed"
           : validation
@@ -21,7 +22,13 @@ const FormButton = ({
       } transition-colors duration-300`}
     >
       {isLoading ? (
-        <span className="animate-spin">🔄</span> // Simple spinner (you can use Material UI spinner as well)
+        <CircularProgress
+          size={24}
+          thickness={4}
+          sx={{
+            color: "white",
+          }}
+        />
       ) : (
         text
       )}

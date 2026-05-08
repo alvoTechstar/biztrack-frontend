@@ -1,77 +1,88 @@
 // src/utilities/Endpoints.js
 const URLS = {
   // Base URL is prepended to all paths below
-  // TAG_BASE_URL: "http://localhost:3000",
+  TAG_BASE_URL: "http://localhost:5000",
   //  TAG_BASE_URL: "https://dona-southmost-finn.ngrok-free.dev",
   //  TAG_BASE_URL: "https://plenty-rice-travel.loca.lt",
-  TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
+  // TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
 
   AUTH: {
     LOGIN: "/api/auth/login",
     VERIFY_OTP: "/api/auth/verify-otp",
+    RESEND_OTP: "/api/auth/resend-otp",
     FORGOT_PASSWORD: "/api/auth/forgot-password",
     VERIFY_RESET_OTP: "/api/auth/verify-reset-otp",
     RESET_PASSWORD: "/api/auth/reset-password",
-    RESEND_OTP: "/api/auth/resend-otp",
     RESEND_RESET_OTP: "/api/auth/resend-reset-otp",
-    TEST_EMAIL: "/api/auth/test-email"
+    LOGOUT: "/api/auth/logout",
+    TEST_EMAIL: "/api/auth/test-email",
   },
 
   BUSINESS: {
     CREATE_BUSINESS: "/api/business/create-business",
-    GET_ALL_BUSINESSES: "/api/business",
-    GET_BUSINESS_BY_ID: "/api/business/:id",
-    UPDATE_BUSINESS: "/api/business/:id",
-    DELETE_BUSINESS: "/api/business/:id",
-    TOGGLE_BUSINESS_STATUS: "/api/business/:id/status",
+    GET_ALL_BUSINESSES: "/api/business/get-all-businesses",
+    GET_BUSINESS_BY_ID: "/api/business/get-business/:id",
+    UPDATE_BUSINESS: "/api/business/update-business/:id",
+    DELETE_BUSINESS: "/api/business/delete-business/:id",
+    TOGGLE_BUSINESS_STATUS: "/api/business/update-status/:id",
+    GET_BUSINESS_STATUS: "/api/business/business-status/:id",
   },
 
   USERS: {
     CREATE_USER: "/api/users/create-user",
-    GET_ALL_USERS: "/api/users",
-    GET_USER_BY_ID: "/api/users/:id",
-    UPDATE_USER: "/api/users/update-user/:id",
-    DELETE_USER: "/api/users/:id",
-    TOGGLE_USER_STATUS: "/api/users/:id/status",
-    RESET_PASSWORD: "/api/users/:id/reset-password",
-    GET_USERS_BY_BUSINESS: "/api/users/business/:businessId",
-    GET_USER_BY_EMAIL: "/api/users/email/:email",
-    GET_USER_BY_USERNAME: "/api/users/username/:username",
+    GET_ALL_USERS: "/api/users/get-all-users",
+    GET_USER_BY_ID: "/api/users/get-user/:id",
+    UPDATE_USER: "/api/users/update-user/:id", // NOTE: backend expects PATCH, not PUT
+    DELETE_USER: "/api/users/delete-user/:id",
+    TOGGLE_USER_STATUS: "/api/users/update-status/:id",
+    GET_USERS_BY_BUSINESS: "/api/users/by-business/:businessId",
+    GET_USER_BY_EMAIL: "/api/users/by-email/:email",
+    GET_USER_BY_USERNAME: "/api/users/by-username/:username",
+    // Not in backend reference — remove if backend doesn't support:
+    // RESET_PASSWORD: "/api/users/:id/reset-password",
   },
 
   PRODUCTS: {
-    CREATE_PRODUCT: "/api/products",
-    GET_PRODUCTS_BY_KIOSK: "/api/products/:kioskId",
-    GET_PRODUCTS_BY_BUSINESS: "/api/products/business/:businessId",
-    UPDATE_PRODUCT: "/api/products/:id",
-    DELETE_PRODUCT: "/api/products/:id",
-    GET_PRODUCT_BY_ID: "/api/products/single/:id",
-    GET_PRODUCTS_BY_CATEGORY: "/api/products/category/:kioskId/:category",
-    SEARCH_PRODUCTS: "/api/products/search/:kioskId",
-    UPDATE_STOCK: "/api/products/:id/stock",
-    BULK_UPDATE_PRODUCTS: "/api/products/bulk-update",
-    GET_LOW_STOCK_PRODUCTS: "/api/products/:kioskId/low-stock",
-    GET_OUT_OF_STOCK_PRODUCTS: "/api/products/:kioskId/out-of-stock",
+    CREATE_PRODUCT: "/api/products/add-product",
+    GET_PRODUCTS_BY_BUSINESS: "/api/products/get-products/:businessId",
+    UPDATE_PRODUCT: "/api/products/update-product/:id",
+    UPDATE_STOCK: "/api/products/update-stock/:id",
+    DELETE_PRODUCT: "/api/products/delete-product/:id",
+
+    // ⚠️ The endpoints below are NOT in the backend reference.
+    // Remove them, or confirm with backend team if they exist:
+    // GET_PRODUCTS_BY_KIOSK: "/api/products/:kioskId",
+    // GET_PRODUCT_BY_ID: "/api/products/single/:id",
+    // GET_PRODUCTS_BY_CATEGORY: "/api/products/category/:kioskId/:category",
+    // SEARCH_PRODUCTS: "/api/products/search/:kioskId",
+    // BULK_UPDATE_PRODUCTS: "/api/products/bulk-update",
+    // GET_LOW_STOCK_PRODUCTS: "/api/products/:kioskId/low-stock",
+    // GET_OUT_OF_STOCK_PRODUCTS: "/api/products/:kioskId/out-of-stock",
   },
 
   TRANSACTIONS: {
-    CREATE_TRANSACTION: '/api/transactions',
-    GET_ALL_TRANSACTIONS: '/api/transactions',
-    GET_TRANSACTIONS_BY_BUSINESS: '/api/transactions/business/:businessId',
-    GET_DAILY_REPORT_BY_BUSINESS: '/api/transactions/report/business/:businessId/:date',
-    UPDATE_TRANSACTION: '/api/transactions/:id/update',
-    GET_TRANSACTION_BY_ID: '/api/transactions/by-id/:transactionId',
-    GET_BY_ID: '/api/transactions/by-id/:transactionId'
-
-
+    CREATE_TRANSACTION: "/api/transactions/create-transaction",
+    GET_ALL_TRANSACTIONS: "/api/transactions/get-all-transactions",
+    GET_TRANSACTIONS_BY_BUSINESS: "/api/transactions/get-transactions/:businessId",
+    GET_DAILY_REPORT_BY_BUSINESS: "/api/transactions/daily-report/:businessId/:date",
+    GET_TRANSACTION_BY_ID: "/api/transactions/get-transaction/:transactionId",
+    GET_BY_ID: "/api/transactions/get-transaction/:transactionId",
+    UPDATE_TRANSACTION: "/api/transactions/update-transaction/:id",
+    // Debt-specific
+    GET_DEBTS_BY_BUSINESS: "/api/transactions/get-debts/:businessId",
+    REPAY_DEBT: "/api/transactions/repay-debt/:id",
   },
+
   MPESA: {
-    STK_PUSH: '/api/mpesa/stk-push',
-    CALLBACK: '/api/mpesa/callback',
-    POLL_STATUS: '/api/mpesa/poll/:transactionId',
-    QUERY_STATUS: '/api/mpesa/status/:checkoutRequestId',
-    GET_TRANSACTION: '/api/mpesa/transaction/:transactionId'
+    STK_PUSH: "/api/mpesa/stk-push",
+    CALLBACK: "/api/mpesa/callback",
+    GET_TRANSACTION: "/api/mpesa/get-transaction/:transactionId",
+    QUERY_STATUS: "/api/mpesa/payment-status/:checkoutRequestId",
+    POLL_STATUS: "/api/mpesa/poll-status/:transactionId",
   },
+
+  // ⚠️ The sections below are NOT in the backend reference document.
+  // Confirm with backend team whether these routes exist before using.
 
   KIOSKS: {
     CREATE_KIOSK: "/api/kiosks",
@@ -119,7 +130,7 @@ const URLS = {
     GET_PROFIT_LOSS_REPORT: "/api/reports/profit-loss",
     GET_STOCK_MOVEMENT_REPORT: "/api/reports/stock-movement",
     EXPORT_REPORT: "/api/reports/export",
-  }
+  },
 };
 
 export default URLS;

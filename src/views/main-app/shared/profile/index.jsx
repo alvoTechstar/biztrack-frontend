@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
-import TextInput from "../../../components/Input/TextInput";
-import AppFormButton from "../../../components/buttons/AppFormButton";
+import TextInput from "../../../../components/Input/TextInput";
+import AppFormButton from "../../../../components/buttons/AppFormButton";
 import CloseIcon from "@mui/icons-material/Close";
 import IconButton from "@mui/material/IconButton";
-import { useTheme } from "../../../components/theme/ThemeContext";
+import { useTheme } from "../../../../components/theme/ThemeContext";
 import ChangePassword from "./ChangePassword";
-import ContentLoader from "../../../components/Loader/ContentLoader";
-import Toaster from "../../../components/Toaster";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
+import Toaster from "../../../../components/Toaster";
 
 const MyProfile = ({ onClose }) => {
   const { primaryColor } = useTheme();

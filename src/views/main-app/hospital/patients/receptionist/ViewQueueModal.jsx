@@ -9,7 +9,7 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useTheme } from "../../../../components/theme/ThemeContext";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
 
 const ViewQueueModal = ({ open, onClose, data }) => {
   const theme = useTheme();
