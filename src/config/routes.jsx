@@ -5,6 +5,8 @@ import ForgotPassword from "../views/sign-in/ForgotPassword";
 import SuperAdminDashboard from "../views/main-app/super-admin/dashboard";
 import HotelAdminDashboard from "../views/main-app/hotel/dashboard/admin";
 import CashierDashboard from "../views/main-app/hotel/dashboard/cashier";
+import WaiterDashboard from "../views/main-app/hotel/dashboard/waiter";
+import KitchenDisplay from "../views/main-app/hotel/dashboard/kitchen";
 import CreateOrder from "../views/main-app/hotel/sales/CreateOrder";
 import CompleteOrder from "../views/main-app/hotel/sales/CompleteOrder";
 import MenuManagement from "../views/main-app/hotel/products/menumanagement";
@@ -13,6 +15,7 @@ import StaffManagement from "../views/main-app/hotel/User-Management";
 import StaffPayment from "../views/main-app/hotel/User-Management/staff/StaffPayment";
 import HotelOrders from "../views/main-app/hotel/sales/hotel-orders";
 import HotelExpenses from "../views/main-app/hotel/expenses/Hotelexpenses";
+import HotelReports from "../views/main-app/hotel/reports/admin";
 import Dashboard from "../views/main-app/kiosk/dashboard/kioskadmin";
 import InventoryPage from "../views/main-app/kiosk/products/inventory";
 import KioskStaffManagement from "../views/main-app/kiosk/User-Management";
@@ -23,7 +26,7 @@ import DebtManagement from "../views/main-app/kiosk/debtmanagement/index.jsx";
 import HospitalAdminDashboard from "../views/main-app/hospital/dashboard/hospitaladmin/HospitalAdminDashboard";
 import PharmacyStock from "../views/main-app/hospital/products/PharmacyStock";
 import HospitalStaff from "../views/main-app/hospital/User-Management/hospitalStaff";
-import HospitalReports from "../views/main-app/hospital/reports/hospitaladmin/HospitalAdminReports";
+import HospitalReportsPage from "../views/main-app/hospital/reports/hospitaladmin/HospitalAdminReports";
 import NotFound from "../components/notfound";
 import Unauthorized from "../components/notfound/Unauthorized";
 import ReceptionistQueuePage from "../views/main-app/hospital/patients/receptionist/index.jsx";
@@ -43,7 +46,7 @@ export const routes = [
   { path: "/not-found", element: <NotFound />, isPrivate: false, allowedRoles: [] },
   { path: "/unauthorized", element: <Unauthorized />, isPrivate: false, allowedRoles: [] },
 
-  // Super Admin (Biztrack Admin)
+  // Super Admin
   { path: "/dashboard/super-admin", element: <SuperAdminDashboard />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
   { path: "/businesses", element: <BusinessesPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
   { path: "/user-management", element: <UsersPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
@@ -51,19 +54,22 @@ export const routes = [
 
   // Hotel Admin
   { path: "/dashboard/hotel-admin", element: <HotelAdminDashboard />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/menu-management", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/products", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin", "kiosk-admin"] },
   { path: "/products/ingredient-management", element: <IngredientsManagementPage />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/staff", element: <StaffManagement />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/staffpayment", element: <StaffPayment />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/orders/hotel", element: <HotelOrders />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/hotel/expenses", element: <HotelExpenses />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/hotel/reports", element: <HotelReports />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/hotel/kitchen", element: <KitchenDisplay />, isPrivate: true, allowedRoles: ["hotel-admin"] },
 
   // Cashier
   { path: "/dashboard/cashier", element: <CashierDashboard />, isPrivate: true, allowedRoles: ["hotel-cashier"] },
   { path: "/orders/complete", element: <CompleteOrder />, isPrivate: true, allowedRoles: ["hotel-cashier"] },
 
   // Waiter
-  { path: "/dashboard/waiter", element: <CreateOrder />, isPrivate: true, allowedRoles: ["hotel-waiter"] },
+  { path: "/dashboard/waiter", element: <WaiterDashboard />, isPrivate: true, allowedRoles: ["hotel-waiter"] },
   { path: "/dashboard/create-order", element: <CreateOrder />, isPrivate: true, allowedRoles: ["hotel-waiter"] },
 
   // Kiosk Admin
@@ -84,7 +90,7 @@ export const routes = [
   { path: "/pharmacy/stock", element: <PharmacyStock />, isPrivate: true, allowedRoles: ["hospital-admin"] },
   { path: "/hospital/staff", element: <HospitalStaff />, isPrivate: true, allowedRoles: ["hospital-admin"] },
   { path: "/hospital/patients", element: <AdminPatientRecordsPage />, isPrivate: true, allowedRoles: ["hospital-admin"] },
-  { path: "/hospital/admin-reports", element: <HospitalReports />, isPrivate: true, allowedRoles: ["hospital-admin"] },
+  { path: "/hospital/admin-reports", element: <HospitalReportsPage />, isPrivate: true, allowedRoles: ["hospital-admin"] },
 
   // Receptionist
   { path: "/patient/queue", element: <ReceptionistQueuePage />, isPrivate: true, allowedRoles: ["hospital-receptionist"] },

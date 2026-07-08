@@ -25,19 +25,24 @@ export const businessValidationSchema = Yup.object({
 
     phone: Yup.string()
         .required('Phone number is required')
-        .matches(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,4}$/, 'Invalid phone number format'),
+        .matches(
+            /^\+?[\d\s\-().]{6,20}$/,
+            'Invalid phone number format'
+        ),
 
     owner: Yup.string()
         .required('Owner name is required')
         .min(2, 'Owner name must be at least 2 characters'),
 
     website: Yup.string()
-        .url('Invalid website URL')
-        .nullable(),
+        .url('Invalid website URL — must start with http:// or https://')
+        .nullable()
+        .transform((value) => value === '' ? null : value),
 
     description: Yup.string()
         .max(500, 'Description must be at most 500 characters')
-        .nullable(),
+        .nullable()
+        .transform((value) => value === '' ? null : value),
 
     primaryColor: Yup.string()
         .required('Primary color is required')

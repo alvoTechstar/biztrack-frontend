@@ -18,9 +18,10 @@ const NaviButton = ({ text, action, alignment = "left" }) => {
   return (
     <div className={`${alignmentClasses[alignment]} w-full`}>
       <button
+        type="button"
         onClick={action}
-        className="text-[14px] leading-4 font-bold" 
-        style={buttonTextStyle} 
+        className="text-[14px] leading-4 font-bold"
+        style={buttonTextStyle}
       >
         {text}
       </button>

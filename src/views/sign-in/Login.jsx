@@ -64,22 +64,29 @@ const Login = () => {
     setErrorMessage("");
 
     try {
-      const response = await axios.post(`${URLS.TAG_BASE_URL}${URLS.AUTH.LOGIN}`, {
-        email: email,
-        password: password
-      });
+      const response = await axios.post(
+        `${URLS.TAG_BASE_URL}${URLS.AUTH.LOGIN}`,
+        { email, password },
+        { timeout: 15000 }
+      );
+
       if (response.data.success) {
         showToaster("true", "Login Successful", "OTP sent to your email");
         setView(1);
+      } else {
+        const errorMsg = response.data.message || "Invalid credentials. Please try again.";
+        setErrorMessage(errorMsg);
+        showToaster("false", "Login Failed", errorMsg);
       }
     } catch (error) {
-      console.error("❌ Login error:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
-      });
-
-      const errorMsg = error.response?.data?.message || "Login failed";
+      let errorMsg;
+      if (error.code === "ECONNABORTED") {
+        errorMsg = "Request timed out. Please check your connection and try again.";
+      } else if (!error.response) {
+        errorMsg = "Cannot reach the server. Please try again later.";
+      } else {
+        errorMsg = error.response?.data?.message || "Login failed. Please try again.";
+      }
       setErrorMessage(errorMsg);
       showToaster("false", "Login Failed", errorMsg);
     } finally {
@@ -113,10 +120,11 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${URLS.TAG_BASE_URL}${URLS.AUTH.VERIFY_OTP}`, {
-        email: email,
-        otp: otp
-      });
+      const response = await axios.post(
+        `${URLS.TAG_BASE_URL}${URLS.AUTH.VERIFY_OTP}`,
+        { email, otp },
+        { timeout: 15000 }
+      );
       if (response.data.success) {
         showToaster("true", "Success", "Login successful!");
         let userData = response.data.user;
@@ -145,8 +153,12 @@ const Login = () => {
         }, 1500);
       }
     } catch (error) {
-      console.error("❌ OTP verification error:", error);
-      const errorMsg = error.response?.data?.message || "OTP verification failed";
+      let errorMsg;
+      if (error.code === "ECONNABORTED") {
+        errorMsg = "Request timed out. Please try again.";
+      } else {
+        errorMsg = error.response?.data?.message || "OTP verification failed. Please try again.";
+      }
       showToaster("false", "Verification Failed", errorMsg);
     } finally {
       setLoading(false);
@@ -173,7 +185,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-gray-100 relative">
+    <div
+      className="grid lg:grid-cols-2 bg-gray-100 relative"
+      style={{ zoom: "90%", minHeight: "calc(100vh / 0.9)" }}
+    >
       <Toaster
         open={toastOpen}
         state={toastState}
@@ -232,15 +247,15 @@ const Login = () => {
                     type="submit"
                   />
                 </div>
-
-                <div className="mt-3 mb-4 text-right">
-                  <NaviButton
-                    text="Forgot Password?"
-                    alignment="right"
-                    action={() => navigate("/reset-password")}
-                  />
-                </div>
               </form>
+
+              <div className="mt-3 mb-4 text-right">
+                <NaviButton
+                  text="Forgot Password?"
+                  alignment="right"
+                  action={() => navigate("/reset-password")}
+                />
+              </div>
             </>
           )}
 

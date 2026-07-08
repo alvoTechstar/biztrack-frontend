@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Box, Typography, Button } from "@mui/material"; // Added Button to imports
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSelector } from "react-redux";
+import { Box, Typography } from "@mui/material";
 import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
@@ -7,243 +8,246 @@ import {
   Restaurant as RestaurantIcon,
   Warning as WarningIcon,
 } from "@mui/icons-material";
+import dayjs from "dayjs";
 
-// Import the new components
 import KpiCard from "./KpiCard";
 import RevenueChartCard from "./RevenueChartCard";
 import OrdersByCategoryChartCard from "./OrdersByCategoryChartCard";
 import RecentOrdersTable from "./recentOrdersTable";
 import DateRangeInput from "../../../../../components/Input/DateRangeInput";
 import SearchInput from "../../../../../components/Input/SearchInput";
-import dayjs from "dayjs";
+import { GET } from "../../../../../services/DatabaseServiceImp";
+import URLS from "../../../../../utilities/Endpoints";
 
-// --- Sample Data (updated to include 'date' property) ---
-const revenueDataDaily = [
-  { name: "Mon", value: 4200 },
-  { name: "Tue", value: 3800 },
-  { name: "Wed", value: 5100 },
-  { name: "Thu", value: 4700 },
-  { name: "Fri", value: 6200 },
-  { name: "Sat", value: 7800 },
-  { name: "Sun", value: 7200 },
-];
+// ── Helpers ────────────────────────────────────────────────────
+const isToday = (iso) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const n = new Date();
+  return d.getFullYear() === n.getFullYear() &&
+    d.getMonth() === n.getMonth() &&
+    d.getDate() === n.getDate();
+};
 
-const revenueDataMonthly = [
-  { name: "Jan", value: 150000 },
-  { name: "Feb", value: 145000 },
-  { name: "Mar", value: 160000 },
-  { name: "Apr", value: 155000 },
-  { name: "May", value: 170000 },
-  { name: "Jun", value: 185000 },
-  { name: "Jul", value: 175000 },
-];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const ordersByCategoryData = [
-  { name: "Food", value: 67 },
-  { name: "Beverage", value: 33 },
-];
+function buildDailyChartData(transactions) {
+  // Last 7 days, keyed by day name
+  const totals = {};
+  DAY_NAMES.forEach((d) => (totals[d] = 0));
+  const now = new Date();
+  transactions.forEach((t) => {
+    if (!t.createdAt) return;
+    const d = new Date(t.createdAt);
+    const diffDays = Math.floor((now - d) / 86400000);
+    if (diffDays < 7) {
+      totals[DAY_NAMES[d.getDay()]] += Number(t.total) || 0;
+    }
+  });
+  // Return in order starting from 7 days ago → today
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const name = DAY_NAMES[d.getDay()];
+    result.push({ name, value: totals[name] });
+  }
+  return result;
+}
 
-const recentOrders = [
-  {
-    id: "ORD-5678",
-    waiter: "John Smith",
-    amount: 12450, // Changed to number for easier formatting
-    date: "2025-07-24", // Added date
-    time: "12:45:00", // Added seconds for consistency with format
-    status: "Completed",
-    foodItems: ["Ugali & Sukuma", "Chapati & Ndengu"],
-  },
-  {
-    id: "ORD-5677",
-    waiter: "Sarah Lee",
-    amount: 7825,
-    date: "2025-07-24", // Added date
-    time: "12:30:00", // Added seconds
-    status: "In Progress",
-    foodItems: ["Mokimo", "Kienyeji Chicken"],
-  },
-  {
-    id: "ORD-5676",
-    waiter: "Mike Chen",
-    amount: 9500,
-    date: "2025-07-23", // Added date
-    time: "17:15:00", // Added seconds
-    status: "Completed",
-    foodItems: ["Pilau Beef", "Fresh Juice"],
-  },
-  {
-    id: "ORD-5675",
-    waiter: "Lisa Johnson",
-    amount: 4375,
-    date: "2025-07-23", // Added date
-    time: "11:50:00", // Added seconds
-    status: "Completed",
-    foodItems: ["Fish Fry", "Fries"],
-  },
-  {
-    id: "ORD-56776",
-    waiter: "Lisa Johnson",
-    amount: 4375,
-    date: "2025-07-23", // Added date
-    time: "11:50:00", // Added seconds
-    status: "Completed",
-    foodItems: ["Fish Fry", "Fries"],
-  },
-  {
-    id: "ORD-5685",
-    waiter: "Lisa Johnson",
-    amount: 4375,
-    date: "2025-07-23", // Added date
-    time: "11:50:00", // Added seconds
-    status: "Completed",
-    foodItems: ["Fish Fry", "Fries"],
-  },
-  {
-    id: "ORD-5674",
-    waiter: "Robert Davis",
-    amount: 11280,
-    date: "2025-07-22", // Added date
-    time: "09:30:00", // Added seconds
-    status: "Completed",
-    foodItems: ["Nyama Choma", "Samosa"],
-  },
-];
+function buildMonthlyChartData(transactions) {
+  const totals = {};
+  MONTH_NAMES.forEach((m) => (totals[m] = 0));
+  transactions.forEach((t) => {
+    if (!t.createdAt) return;
+    const m = MONTH_NAMES[new Date(t.createdAt).getMonth()];
+    totals[m] += Number(t.total) || 0;
+  });
+  return MONTH_NAMES.map((name) => ({ name, value: totals[name] }))
+    .filter((_, i) => i <= new Date().getMonth()); // Only up to current month
+}
 
+function buildCategoryData(transactions) {
+  const counts = {};
+  transactions.forEach((t) => {
+    (t.items || []).forEach((item) => {
+      const cat = item.category || "Food";
+      counts[cat] = (counts[cat] || 0) + item.quantity;
+    });
+  });
+  const total = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
+  return Object.entries(counts).map(([name, v]) => ({
+    name,
+    value: Math.round((v / total) * 100),
+  }));
+}
+
+function toRecentOrder(t) {
+  const dt = t.createdAt ? new Date(t.createdAt) : new Date();
+  return {
+    id:        t.orderId || t.orderNumber || t._id,
+    waiter:    t.waiter || "—",
+    amount:    Number(t.total) || 0,
+    date:      dt.toISOString().split("T")[0],
+    time:      dt.toTimeString().slice(0, 8),
+    status:    t.status
+      ? t.status.charAt(0).toUpperCase() + t.status.slice(1)
+      : "Pending",
+    foodItems: (t.items || []).map((i) => i.name),
+  };
+}
+
+// ── Component ──────────────────────────────────────────────────
 function HotelAdminDashboard() {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [revenueChartData, setRevenueChartData] = useState(revenueDataDaily);
+  const currentUser = useSelector((s) => s.auth?.value);
+  const businessId  = String(
+    currentUser?.businessId || currentUser?.institutionId ||
+    currentUser?.associatedBusinessId || ""
+  ).trim();
+
+  const [currentTime, setCurrentTime]         = useState(new Date());
   const [revenueDateRange, setRevenueDateRange] = useState("7_days");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState(false);
-  const [selectedDates, setSelectedDates] = useState(null); // This will hold { startDate, endDate } from DateInput
-  const [dateAnchorEl, setDateAnchorEl] = useState(null);
+  const [searchTerm, setSearchTerm]           = useState("");
+  const [dateFilter, setDateFilter]           = useState(false);
+  const [selectedDates, setSelectedDates]     = useState(null);
+  const [dateAnchorEl, setDateAnchorEl]       = useState(null);
 
-  // Filter recent orders based on search and date range
+  // API state
+  const [transactions, setTransactions] = useState([]);
+  const [staffCount, setStaffCount]     = useState(0);
+  const [menuCount, setMenuCount]       = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  // ── Fetch all dashboard data ──────────────────────────────────
+  const fetchData = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      // Transactions (orders)
+      const txEndpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS
+        .replace(":businessId", businessId);
+      const txRes = await GET(txEndpoint);
+      if (txRes?.success) {
+        setTransactions(
+          (txRes.data || txRes.transactions || [])
+            .filter((t) => t.type === "hotel_order" || !t.type)
+        );
+      }
+    } catch (_) {}
+
+    try {
+      // Products (menu)
+      const pEndpoint = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS
+        .replace(":businessId", businessId);
+      const pRes = await GET(pEndpoint);
+      if (pRes?.success) {
+        const products = pRes.products || pRes.data || [];
+        setMenuCount(products.filter((p) => p.available !== false).length);
+        setLowStockCount(products.filter((p) =>
+          p.stock !== undefined && p.stock <= (p.lowStockThreshold || 5)
+        ).length);
+      }
+    } catch (_) {}
+
+    try {
+      // Staff (users for this business)
+      const uEndpoint = `/api/users/business/${businessId}`;
+      const uRes = await GET(uEndpoint);
+      if (uRes?.success) {
+        const users = uRes.data || [];
+        setStaffCount(users.filter((u) =>
+          (u.status || "").toUpperCase() === "ACTIVE"
+        ).length);
+      }
+    } catch (_) {}
+  }, [businessId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Clock ticker
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ── Derived KPI values ────────────────────────────────────────
+  const todayTx     = useMemo(() => transactions.filter((t) => isToday(t.createdAt)), [transactions]);
+  const todayOrders = todayTx.length;
+  const todayRev    = useMemo(() => todayTx.reduce((s, t) => s + Number(t.total || 0), 0), [todayTx]);
+
+  // ── Chart data ────────────────────────────────────────────────
+  const revenueChartData = useMemo(
+    () => revenueDateRange === "this_month"
+      ? buildMonthlyChartData(transactions)
+      : buildDailyChartData(transactions),
+    [transactions, revenueDateRange]
+  );
+
+  const categoryChartData = useMemo(
+    () => buildCategoryData(transactions),
+    [transactions]
+  );
+
+  // ── Recent orders ─────────────────────────────────────────────
+  const allRecentOrders = useMemo(
+    () => [...transactions]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 50)
+      .map(toRecentOrder),
+    [transactions]
+  );
+
   const filteredRecentOrders = useMemo(() => {
-    let result = [...recentOrders];
-
-    // Apply search filter
+    let result = [...allRecentOrders];
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
-        (order) =>
-          order.id.toLowerCase().includes(term) ||
-          order.waiter.toLowerCase().includes(term) ||
-          order.foodItems.some((item) => item.toLowerCase().includes(term)) ||
-          order.status.toLowerCase().includes(term)
+        (o) =>
+          o.id.toLowerCase().includes(term) ||
+          o.waiter.toLowerCase().includes(term) ||
+          (o.foodItems || []).some((i) => i.toLowerCase().includes(term)) ||
+          o.status.toLowerCase().includes(term)
       );
     }
-
-    // Apply date filter if enabled and selectedDates are available
-    if (
-      dateFilter &&
-      selectedDates &&
-      selectedDates.startDate &&
-      selectedDates.endDate
-    ) {
+    if (dateFilter && selectedDates?.startDate && selectedDates?.endDate) {
       const { startDate, endDate } = selectedDates;
-      result = result.filter((order) => {
-        const orderDateTime = dayjs(`${order.date}T${order.time}`);
-        // Ensure dayjs objects are created correctly for comparison
-        const filterStartDate = dayjs(startDate, "DD-MM-YYYY").startOf("day");
-        const filterEndDate = dayjs(endDate, "DD-MM-YYYY").endOf("day");
-        return (
-          orderDateTime.isAfter(filterStartDate) &&
-          orderDateTime.isBefore(filterEndDate)
-        );
+      result = result.filter((o) => {
+        const dt   = dayjs(`${o.date}T${o.time}`);
+        const from = dayjs(startDate, "DD-MM-YYYY").startOf("day");
+        const to   = dayjs(endDate,   "DD-MM-YYYY").endOf("day");
+        return dt.isAfter(from) && dt.isBefore(to);
       });
     }
-
     return result;
-  }, [recentOrders, searchTerm, dateFilter, selectedDates]);
+  }, [allRecentOrders, searchTerm, dateFilter, selectedDates]);
 
-  const handleDateClick = (event) => {
-    setDateAnchorEl(event.currentTarget);
-  };
-
-  const handleDateClose = () => {
-    setDateAnchorEl(null);
-  };
-
-  const handleDateFilter = (isFiltered) => {
-    setDateFilter(isFiltered);
-  };
-
-  // This function receives the { startDate, endDate } object from DateInput
-  const handleSelectedDates = (dates) => {
-    setSelectedDates(dates);
-  };
-
-  // For SearchInput component
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm("");
-  };
-
-  const handleViewAll = () => {
-    setDateFilter(false);
-    setSelectedDates(null); // Reset selected dates
-    setSearchTerm(""); // Clear search term
-  };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-
-    return () => {
-      clearInterval(timer);
-    };
-  }, []);
-
-  const formatDate = (date) => {
-    const options = {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    return date.toLocaleDateString("en-US", options);
-  };
+  // ── Handlers ──────────────────────────────────────────────────
+  const handleRevenueDateRangeChange = (e) => setRevenueDateRange(e.target.value);
+  const handleOrderAction            = (_orderId, _type) => {};
+  const handleDateClick              = (e) => setDateAnchorEl(e.currentTarget);
+  const handleDateClose              = ()  => setDateAnchorEl(null);
+  const handleDateFilter             = (v) => setDateFilter(v);
+  const handleSelectedDates          = (d) => setSelectedDates(d);
+  const handleSearchChange           = (v) => setSearchTerm(v);
+  const handleClearSearch            = ()  => setSearchTerm("");
 
   const getGreeting = () => {
-    const hour = currentTime.getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
+    const h = currentTime.getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 18) return "Good Afternoon";
     return "Good Evening";
   };
 
-  const handleRevenueDateRangeChange = (event) => {
-    const selectedRange = event.target.value;
-    setRevenueDateRange(selectedRange);
-    if (selectedRange === "7_days") {
-      setRevenueChartData(revenueDataDaily);
-    } else if (selectedRange === "this_month") {
-      setRevenueChartData(revenueDataMonthly);
-    } else {
-      setRevenueChartData(revenueDataDaily); // Default
-    }
-  };
+  const formatDate = (date) =>
+    date.toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
 
-  const handleOrderAction = (orderId, actionType) => {
-    console.log(`Order ${orderId}: ${actionType} action triggered.`);
-    // You'd typically add logic here to handle 'edit' or 'print'
-    // e.g., if (actionType === 'edit') { openEditModal(orderId); }
-    // else if (actionType === 'print') { initiatePrint(orderId); }
-  };
-
+  // ── Render — JSX identical to original ───────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 p-2 pb-20 ">
-      {/* Header and Dynamic Greeting */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
+    <div className="min-h-screen bg-gray-50 p-2 pb-20">
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">
           {getGreeting()}, Admin!
         </Typography>
@@ -255,58 +259,51 @@ function HotelAdminDashboard() {
         </Box>
       </Box>
 
-      {/* --- KPI Cards - Cover full width --- */}
+      {/* KPI Cards */}
       <div className="flex flex-wrap gap-4 mb-8">
         <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
           <KpiCard
             icon={<ShoppingCartIcon />}
             title="Total Orders Today"
-            value="142"
+            value={todayOrders}
             color="#3f51b5"
-            trend={{ type: "up", value: 7.2 }}
-            onClick={() => console.log("Clicked Total Orders")}
           />
         </div>
         <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
           <KpiCard
             icon={<AttachMoneyIcon />}
             title="Total Revenue Today"
-            value="KSh 8,245"
+            value={`KSh ${todayRev.toLocaleString()}`}
             color="#f44336"
-            trend={{ type: "up", value: 5.1 }}
-            onClick={() => console.log("Clicked Total Revenue")}
           />
         </div>
         <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
           <KpiCard
             icon={<PeopleIcon />}
             title="Active Staff"
-            value="18"
+            value={staffCount}
             color="#4caf50"
-            trend={{ type: "down", value: 1.5 }}
-            onClick={() => console.log("Clicked Active Staff")}
           />
         </div>
         <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
           <KpiCard
             icon={<RestaurantIcon />}
             title="Menu Items Available"
-            value="84"
+            value={menuCount}
             color="#ff9800"
-            onClick={() => console.log("Clicked Menu Items")}
           />
         </div>
         <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
           <KpiCard
             icon={<WarningIcon />}
             title="Low Stock Alerts"
-            value="5"
+            value={lowStockCount}
             color="#e91e63"
-            onClick={() => console.log("Navigating to Manage Inventory...")}
           />
         </div>
       </div>
 
+      {/* Charts */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="w-full md:w-3/4">
           <RevenueChartCard
@@ -315,56 +312,45 @@ function HotelAdminDashboard() {
             onDateRangeChange={handleRevenueDateRangeChange}
           />
         </div>
-
         <div className="w-full md:w-1/4">
-          <OrdersByCategoryChartCard data={ordersByCategoryData} />
+          <OrdersByCategoryChartCard
+            data={categoryChartData.length > 0 ? categoryChartData : [{ name: "No data", value: 100 }]}
+          />
         </div>
       </div>
 
-   <div className="mb-8">
-  <Box
-    sx={{
-      borderRadius: 2,
-      boxShadow: 1,
-      padding: 3,
-      marginBottom: 2,
-    }}
-  >
-    <Box
-      display="flex"
-      alignItems="center"
-      gap={4}
-      mb={2}
-    >
-      <Box display="flex" alignItems="center" gap={4}>
-        <span className="text-xl text-semibold">Recent Orders</span>
-        <SearchInput
-          id="order-search"
-          placeholder="Search orders"
-          input={searchTerm}
-          handleInput={handleSearchChange}
-          handleClear={handleClearSearch}
-        />
-        <DateRangeInput
-          type="orders"
-          color="#4F46E5"
-          selected={selectedDates}
-          dateFilter={dateFilter}
-          anchorEl={dateAnchorEl}
-          selectedAction={handleSelectedDates}
-          handleDateFilter={handleDateFilter}
-          handleClose={handleDateClose}
-          handleClick={handleDateClick}
-        />
-      </Box>
-    </Box>
-
-    <RecentOrdersTable
-      orders={filteredRecentOrders}
-      onActionClick={handleOrderAction}
-    />
-  </Box>
-</div>
+      {/* Recent Orders */}
+      <div className="mb-8">
+        <Box sx={{ borderRadius: 2, boxShadow: 1, padding: 3, marginBottom: 2 }}>
+          <Box display="flex" alignItems="center" gap={4} mb={2}>
+            <Box display="flex" alignItems="center" gap={4}>
+              <span className="text-xl text-semibold">Recent Orders</span>
+              <SearchInput
+                id="order-search"
+                placeholder="Search orders"
+                input={searchTerm}
+                handleInput={handleSearchChange}
+                handleClear={handleClearSearch}
+              />
+              <DateRangeInput
+                type="orders"
+                color="#4F46E5"
+                selected={selectedDates}
+                dateFilter={dateFilter}
+                anchorEl={dateAnchorEl}
+                selectedAction={handleSelectedDates}
+                handleDateFilter={handleDateFilter}
+                handleClose={handleDateClose}
+                handleClick={handleDateClick}
+              />
+            </Box>
+          </Box>
+          <RecentOrdersTable
+            orders={filteredRecentOrders}
+            onActionClick={handleOrderAction}
+          />
+        </Box>
+      </div>
     </div>
   );
 }

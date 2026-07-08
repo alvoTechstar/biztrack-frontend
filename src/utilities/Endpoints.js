@@ -1,10 +1,6 @@
 // src/utilities/Endpoints.js
 const URLS = {
-  // Base URL is prepended to all paths below
-  TAG_BASE_URL: "http://localhost:5000",
-  //  TAG_BASE_URL: "https://dona-southmost-finn.ngrok-free.dev",
-  //  TAG_BASE_URL: "https://plenty-rice-travel.loca.lt",
-  // TAG_BASE_URL: "https://biztrack-backend-ifjk.onrender.com",
+  TAG_BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
 
   AUTH: {
     LOGIN: "/api/auth/login",
@@ -58,6 +54,14 @@ const URLS = {
     // BULK_UPDATE_PRODUCTS: "/api/products/bulk-update",
     // GET_LOW_STOCK_PRODUCTS: "/api/products/:kioskId/low-stock",
     // GET_OUT_OF_STOCK_PRODUCTS: "/api/products/:kioskId/out-of-stock",
+  },
+
+  // Hotel menu management — separate from kiosk stock PRODUCTS
+  MENU: {
+    CREATE_ITEM: "/api/menu/add-item",
+    GET_ITEMS_BY_BUSINESS: "/api/menu/get-items/:businessId",
+    UPDATE_ITEM: "/api/menu/update-item/:id",
+    DELETE_ITEM: "/api/menu/delete-item/:id",
   },
 
   TRANSACTIONS: {

@@ -43,7 +43,7 @@ const CreateBusinessForm = ({
         website: '',
         description: '',
         primaryColor: theme.primaryColor || '#1976d2',
-        status: 'NEW',
+        status: 'ACTIVE',
         logoFile: null,
         logoUrl: null,
         id: null,
@@ -101,7 +101,7 @@ const CreateBusinessForm = ({
 
     const statusOptions = [
         { value: 'ACTIVE', label: 'ACTIVE' },
-        { value: 'INACTIVE', label: 'INACTIVE' }
+        { value: 'INACTIVE', label: 'INACTIVE' },
     ];
 
     const paymentTypeOptions = PAYMENT_TYPES.map(type => ({
@@ -436,18 +436,20 @@ const CreateBusinessForm = ({
                                 errorMessage={getErrorMessage('primaryColor')}
                             />
 
-                            <SelectInput
-                                id="status"
-                                name="status"
-                                label="Status"
-                                options={statusOptions}
-                                value={formik.values.status}
-                                onChange={handleSelectChange}
-                                onBlur={handleSelectBlur}
-                                disabled={submitting}
-                                error={shouldShowError('status')}
-                                errorMessage={getErrorMessage('status')}
-                            />
+                            {isEditing && (
+                                <SelectInput
+                                    id="status"
+                                    name="status"
+                                    label="Status"
+                                    options={statusOptions}
+                                    value={formik.values.status}
+                                    onChange={handleSelectChange}
+                                    onBlur={handleSelectBlur}
+                                    disabled={submitting}
+                                    error={shouldShowError('status')}
+                                    errorMessage={getErrorMessage('status')}
+                                />
+                            )}
                         </div>
                     </div>
 

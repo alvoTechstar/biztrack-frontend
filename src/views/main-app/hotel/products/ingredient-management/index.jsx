@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { Search, Plus, Edit, Trash, Filter, ChevronDown, Package, Utensils, X, Save, ShoppingCart, DollarSign } from 'lucide-react';
+import DeleteConfirmationModal from '../../../../../components/modal/DeleteConfirmationModal';
 
 export default function IngredientsManagementPage() {
   const [activeView, setActiveView] = useState('ingredients'); // 'ingredients' or 'products'
@@ -9,6 +10,7 @@ export default function IngredientsManagementPage() {
   const [currentIngredient, setCurrentIngredient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [deleteModal, setDeleteModal] = useState({ open: false, ingredientId: null, ingredientName: '' });
   
   // Sample ingredient data
   const [ingredients, setIngredients] = useState([
@@ -54,9 +56,13 @@ export default function IngredientsManagementPage() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this ingredient?')) {
-      setIngredients(ingredients.filter(ing => ing.id !== id));
-    }
+    const ing = ingredients.find((i) => i.id === id);
+    setDeleteModal({ open: true, ingredientId: id, ingredientName: ing?.name || '' });
+  };
+
+  const confirmDeleteIngredient = () => {
+    setIngredients(ingredients.filter((ing) => ing.id !== deleteModal.ingredientId));
+    setDeleteModal({ open: false, ingredientId: null, ingredientName: '' });
   };
 
   const handleSaveAdd = () => {
@@ -202,7 +208,7 @@ export default function IngredientsManagementPage() {
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-500">Total Ingredient Cost</h3>
-                  <p className="text-2xl font-bold">${totalIngredientCost.toFixed(2)}</p>
+                  <p className="text-2xl font-bold">KSh {totalIngredientCost.toLocaleString()}</p>
                 </div>
               </div>
               
@@ -259,10 +265,10 @@ export default function IngredientsManagementPage() {
                         {ingredient.quantity} {ingredient.unit}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${ingredient.costPerUnit.toFixed(2)} / {ingredient.unit}
+                        KSh {ingredient.costPerUnit.toLocaleString()} / {ingredient.unit}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
-                        ${ingredient.totalCost.toFixed(2)}
+                        KSh {ingredient.totalCost.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
@@ -306,11 +312,11 @@ export default function IngredientsManagementPage() {
                 <div className="p-4">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-500">Cost per unit:</span>
-                    <span className="font-medium">${product.costPerUnit.toFixed(2)}</span>
+                    <span className="font-medium">KSh {product.costPerUnit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between mb-4">
                     <span className="text-gray-500">Selling price:</span>
-                    <span className="font-bold text-green-600">${product.price.toFixed(2)}</span>
+                    <span className="font-bold text-green-600">KSh {product.price.toLocaleString()}</span>
                   </div>
                   
                   <h4 className="font-medium mb-2">Ingredients:</h4>
@@ -561,6 +567,17 @@ export default function IngredientsManagementPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        open={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, ingredientId: null, ingredientName: '' })}
+        onConfirm={confirmDeleteIngredient}
+        title="Delete Ingredient"
+        message="This will permanently remove the ingredient from your inventory."
+        confirmText="Delete"
+        cancelText="Cancel"
+        itemName={deleteModal.ingredientName}
+      />
     </div>
   );
 }

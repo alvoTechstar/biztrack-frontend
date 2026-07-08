@@ -225,7 +225,10 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 relative">
+    <div
+      className="w-full bg-gray-100 relative"
+      style={{ zoom: "90%", minHeight: "calc(100vh / 0.9)" }}
+    >
       <Toaster
         open={showToaster}
         state={toasterState}
@@ -235,7 +238,7 @@ export default function ForgotPassword() {
         position="right"
       />
       
-      <div className="lg:hidden min-h-screen w-full relative">
+      <div className="lg:hidden min-h-[calc(100vh/0.9)] w-full relative">
         <div
           className="fixed inset-0 w-full h-full bg-cover bg-center z-0"
           style={{
@@ -248,12 +251,12 @@ export default function ForgotPassword() {
         
         <div className="fixed inset-0 w-full h-full bg-black/20 z-5"></div>
         
-        <div className="relative z-10 min-h-screen flex flex-col justify-center items-center p-4">
+        <div className="relative z-10 min-h-[calc(100vh/0.9)] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-md bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/30 mt-4">
             <h2 className="text-xl sm:text-xl font-semibold mb-1 text-left">
               BizTrack Application
             </h2>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 mt-2 text-left">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 mt-2 text-left">
               {view === 0 ? "Reset Password" : view === 1 ? "Verify OTP" : "Set New Password"}
             </h1>
             
@@ -266,13 +269,13 @@ export default function ForgotPassword() {
         </div>
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-2 min-h-screen">
+      <div className="hidden lg:grid lg:grid-cols-2 min-h-[calc(100vh/0.9)]">
         <div className="flex items-center justify-center p-8 relative z-10">
           <div className="bg-white p-8 rounded-xl shadow-md border border-gray-300 w-full max-w-md">
             <h2 className="text-xl font-semibold mb-1 text-left">
               BizTrack Application
             </h2>
-            <h1 className="text-3xl font-bold text-gray-700 mb-6 mt-3 text-left">
+            <h1 className="text-2xl font-bold text-gray-700 mb-2 mt-2 text-left">
               {view === 0 ? "Reset Password" : view === 1 ? "Verify OTP" : "Set New Password"}
             </h1>
             

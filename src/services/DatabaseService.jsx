@@ -10,14 +10,19 @@ let onLogoutCallback = null;
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Check if the error is due to an expired token (e.g., 401 Unauthorized)
     if (error.response && error.response.status === 401) {
-      console.log('Token expired or unauthorized access (401). Logging out...');
-      if (onLogoutCallback) {
-        onLogoutCallback(); // Trigger the logout action from AuthContext
+      // Don't redirect when the error comes from an auth endpoint (login, OTP, etc.)
+      // — that 401 means wrong credentials, not an expired session.
+      const isAuthEndpoint = error.config?.url?.includes('/api/auth/');
+      const isAlreadyOnLogin = window.location.pathname === '/login';
+
+      if (!isAuthEndpoint && !isAlreadyOnLogin) {
+        console.log('Session expired (401). Redirecting to login.');
+        if (onLogoutCallback) {
+          onLogoutCallback();
+        }
+        window.location.href = '/login';
       }
-      // Redirect to login page
-      window.location.href = '/sign-in'; // Adjust this path if your login route is different
     }
     return Promise.reject(error);
   }

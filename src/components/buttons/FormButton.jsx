@@ -8,9 +8,11 @@ const FormButton = ({
   validation,
   action,
   disabled = false,
+  type = "submit",
 }) => {
   return (
     <button
+      type={type}
       onClick={action}
       disabled={isLoading || !validation || disabled}
       className={`w-full py-3 text-white rounded-lg flex items-center justify-center ${

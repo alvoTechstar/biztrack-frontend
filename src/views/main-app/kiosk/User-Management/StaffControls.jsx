@@ -14,7 +14,8 @@ const StaffControls = ({
   setFilters,
   selectedItems,
   setSelectedItems,
-  openModal
+  openModal,
+  filterRoles = [],
 }) => {
   const theme = useTheme();
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -22,78 +23,82 @@ const StaffControls = ({
   const [tableFilter, setTableFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState(false);
 
-  // Handle search input
-  const handleSearchInput = (value) => {
-    setSearchTerm(value);
-  };
+  // Separate state for status/role filter selections — not row selection
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedRoles, setSelectedRoles] = useState([]);
 
-  const handleSearchClear = () => {
-    setSearchTerm('');
-  };
+  // ── Search ──────────────────────────────────────────────────
+  const handleSearchInput = (value) => setSearchTerm(value);
+  const handleSearchClear = ()      => setSearchTerm('');
 
-  // Handle date filter
-  const handleDateFilterClick = (event) => {
-    setDateFilterAnchorEl(event.currentTarget);
-  };
-
-  const handleDateFilterClose = () => {
-    setDateFilterAnchorEl(null);
-  };
-
-  const handleDateFilter = (isFiltered) => {
-    setDateFilter(isFiltered);
-  };
+  // ── Date filter ─────────────────────────────────────────────
+  const handleDateFilterClick = (e) => setDateFilterAnchorEl(e.currentTarget);
+  const handleDateFilterClose = ()  => setDateFilterAnchorEl(null);
+  const handleDateFilter      = (v) => setDateFilter(v);
 
   const handleDateSelected = (dateRange) => {
-    if (dateRange) {
+    setFilters(prev => ({
+      ...prev,
+      startDate: dateRange?.startDate || null,
+      endDate:   dateRange?.endDate   || null,
+    }));
+  };
+
+  // ── Advanced filter ─────────────────────────────────────────
+  const handleFilterClick = (e) => setFilterAnchorEl(e.currentTarget);
+  const handleFilterClose = ()  => setFilterAnchorEl(null);
+
+  // Called by FilterInput: true = Apply clicked, false = checkbox interaction or Reset
+  const handleTableFilter = (isFiltered) => {
+    setTableFilter(isFiltered);
+    if (isFiltered) {
+      // Apply — push current selections into parent filters
       setFilters(prev => ({
         ...prev,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate
-      }));
-    } else {
-      setFilters(prev => ({
-        ...prev,
-        startDate: null,
-        endDate: null
+        status: selectedStatuses.length > 0 ? selectedStatuses[0] : '',
+        role:   selectedRoles.length   > 0 ? selectedRoles[0]   : '',
       }));
     }
   };
 
-  // Handle advanced filter
-  const handleFilterClick = (event) => {
-    setFilterAnchorEl(event.currentTarget);
+  // Wrap selectedAction so clearing statuses also clears the parent filter
+  const handleStatusAction = (newStatuses) => {
+    setSelectedStatuses(newStatuses);
+    if (newStatuses.length === 0) {
+      setFilters(prev => ({ ...prev, status: '' }));
+    }
   };
 
-  const handleFilterClose = () => {
-    setFilterAnchorEl(null);
+  // Wrap selectedAction2 so clearing roles also clears the parent filter
+  const handleRoleAction = (newRoles) => {
+    setSelectedRoles(newRoles);
+    if (newRoles.length === 0) {
+      setFilters(prev => ({ ...prev, role: '' }));
+    }
   };
 
-  const handleTableFilter = (isFiltered) => {
-    setTableFilter(isFiltered);
-  };
-
-  // Filter options for the FilterInput component
+  // ── Filter options ───────────────────────────────────────────
   const filterOptions = ['Status', 'Role'];
 
   const statusFilters = [
-    { label: 'ACTIVE', value: 'ACTIVE' },
-    { label: 'INACTIVE', value: 'INACTIVE' }
+    { label: 'ACTIVE',   value: 'ACTIVE'   },
+    { label: 'INACTIVE', value: 'INACTIVE' },
   ];
 
-  const roleFilters = [
-    { label: 'Admin', value: 'Admin' },
-    { label: 'Shopkeeper', value: 'Shopkeeper' },
-    { label: 'Manager', value: 'Manager' },
-    { label: 'Staff', value: 'Staff' }
-  ];
+  // Build role filters from the prop — falls back to empty if not provided
+  const roleFilters = filterRoles.map(r => ({
+    label: typeof r === 'string' ? r : r.label,
+    value: typeof r === 'string' ? r : r.value,
+  }));
 
   return (
     <div className="bg-white p-4 mb-4 ml-2 sm:p-1 m-0">
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        {/* Left Side: Search and Filters */}
+
+        {/* Left: Search + Date + Filter */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
-          {/* Search Input - Full width on mobile, normal on desktop */}
+
+          {/* Search */}
           <div className="w-full sm:w-auto sm:flex-1 mb-2 sm:mb-0">
             <SearchInput
               id="staff-search"
@@ -106,17 +111,17 @@ const StaffControls = ({
             />
           </div>
 
-          {/* Date Range and Filter - Right next to search on all sizes */}
           <div className="flex gap-0 sm:gap-4 w-full sm:w-auto">
-            {/* Date Range Filter */}
+            {/* Date Range */}
             <div className="flex-1 sm:flex-none">
               <DateRangeInput
                 type="staff"
                 color={theme.primaryColor}
-                selected={filters.startDate && filters.endDate ? {
-                  startDate: filters.startDate,
-                  endDate: filters.endDate
-                } : null}
+                selected={
+                  filters.startDate && filters.endDate
+                    ? { startDate: filters.startDate, endDate: filters.endDate }
+                    : null
+                }
                 dateFilter={dateFilter}
                 anchorEl={dateFilterAnchorEl}
                 selectedAction={handleDateSelected}
@@ -126,7 +131,7 @@ const StaffControls = ({
               />
             </div>
 
-            {/* Advanced Filter Button - No gap on mobile */}
+            {/* Advanced Filter */}
             <div className="flex-1 sm:flex-none ml-0 sm:ml-0">
               <FilterInput
                 color={theme.primaryColor}
@@ -134,8 +139,10 @@ const StaffControls = ({
                 filters={statusFilters}
                 filters2={roleFilters}
                 options={filterOptions}
-                selected={selectedItems || []}
-                selectedAction={setSelectedItems}
+                selected={selectedStatuses}
+                selectedAction={handleStatusAction}
+                selected2={selectedRoles}
+                selectedAction2={handleRoleAction}
                 tableFilter={tableFilter}
                 handleTableFilter={handleTableFilter}
                 anchorEl={filterAnchorEl}
@@ -146,7 +153,7 @@ const StaffControls = ({
           </div>
         </div>
 
-        {/* Right Side: Add Staff Button - Full width on mobile, normal on desktop */}
+        {/* Right: Add Staff */}
         <div className="w-full lg:w-auto mt-4 lg:mt-0">
           <AppFormButton
             text={

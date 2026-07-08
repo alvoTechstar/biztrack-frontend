@@ -1,284 +1,281 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Eye, Check, X, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { hotelOrderActions } from "../../../../../store";
+import { Clock, ChevronDown, ChevronUp, CheckCircle, XCircle, ChefHat, Bell, RefreshCw } from "lucide-react";
+import { GET } from "../../../../../services/DatabaseServiceImp";
+import URLS from "../../../../../utilities/Endpoints";
+
+const STATUS_STYLES = {
+  pending:       "bg-yellow-100 text-yellow-800",
+  "in-progress": "bg-blue-100 text-blue-800",
+  ready:         "bg-purple-100 text-purple-800",
+  served:        "bg-green-100 text-green-800",
+  completed:     "bg-emerald-100 text-emerald-800",
+  cancelled:     "bg-red-100 text-red-800",
+};
+
+const STATUS_LABEL = {
+  pending:       "Pending",
+  "in-progress": "In Progress",
+  ready:         "Ready",
+  served:        "Served",
+  completed:     "Completed",
+  cancelled:     "Cancelled",
+};
+
+const formatKsh = (amount) => `KSh ${Number(amount).toLocaleString()}`;
+
+const formatTime = (iso) =>
+  new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+const elapsed = (iso) => {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+};
+
+const FILTERS = ["all", "active", "served", "cancelled"];
+
+// Backend transaction items use productName/unitPrice; local ones use name/price
+const normalizeItems = (items = []) =>
+  items.map((it) => ({
+    name: it.productName || it.name || "",
+    quantity: Number(it.quantity) || 1,
+    price: Number(it.unitPrice ?? it.price) || 0,
+    category: it.category || "",
+    image: it.image || "",
+  }));
+
+// Transform a backend transaction to our Redux order shape
+const toOrder = (t) => ({
+  id:           t.transactionId || t.orderId || t.orderNumber || t._id || t.id,
+  backendId:    t._id || t.id,
+  tableNumber:  t.tableNumber || "—",
+  items:        normalizeItems(t.items),
+  total:        Number(t.totalAmount ?? t.total) || 0,
+  status:       t.status || "pending",
+  waiter:       t.shopkeeperName || t.waiter || "",
+  note:         t.notes || t.note || "",
+  paymentMethod: t.paymentMethod || null,
+  createdAt:    t.createdAt || t.timestamp,
+  updatedAt:    t.updatedAt,
+});
 
 export default function HotelOrders() {
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('active');
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch    = useDispatch();
+  const currentUser = useSelector((s) => s.auth?.value);
+  const orders      = useSelector((state) => state.hotelOrders.orders);
 
-  // Simulate fetching data from an API
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true);
-      try {
-        // In a real application, this would be an API call
-        // For now, we'll use mock data
-        const mockOrders = [
-          {
-            id: 'ORD-5432',
-            location: 'Room 301',
-            items: ['Club Sandwich', 'French Fries', 'Coke'],
-            waiter: 'John Doe',
-            total: 28.50,
-            status: 'pending',
-            timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 mins ago
-          },
-          {
-            id: 'ORD-5431',
-            location: 'Table 12',
-            items: ['Caesar Salad', 'Grilled Chicken', 'White Wine'],
-            waiter: 'Emily Smith',
-            total: 45.75,
-            status: 'in-progress',
-            timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(), // 25 mins ago
-          },
-          {
-            id: 'ORD-5430',
-            location: 'Room 205',
-            items: ['Breakfast Buffet', 'Coffee'],
-            waiter: 'Robert Johnson',
-            total: 32.00,
-            status: 'served',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
-          },
-          {
-            id: 'ORD-5429',
-            location: 'Pool Bar',
-            items: ['Margarita', 'Nachos'],
-            waiter: 'Lisa Wong',
-            total: 18.25,
-            status: 'cancelled',
-            timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), // 2 hours ago
-          },
-          {
-            id: 'ORD-5428',
-            location: 'Table 7',
-            items: ['Steak', 'Mashed Potatoes', 'Red Wine'],
-            waiter: 'Mark Davis',
-            total: 64.50,
-            status: 'served',
-            timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(), // 3 hours ago
-          },
-        ];
-        
-        setOrders(mockOrders);
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      } finally {
-        setIsLoading(false);
+  const businessId = String(
+    currentUser?.businessId || currentUser?.institutionId ||
+    currentUser?.associatedBusinessId || ""
+  ).trim();
+
+  const [activeFilter, setActiveFilter]   = useState("active");
+  const [expandedOrder, setExpandedOrder] = useState(null);
+  const [refreshing, setRefreshing]       = useState(false);
+
+  // ── Fetch & merge on mount ────────────────────────────────────
+  const fetchOrders = useCallback(async () => {
+    if (!businessId) return;
+    setRefreshing(true);
+    try {
+      const endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS
+        .replace(":businessId", businessId);
+      const res = await GET(endpoint);
+      if (res?.success) {
+        const incoming = (res.data || res.transactions || [])
+          .filter((t) => t.type === "hotel_order" || !t.type)
+          .map(toOrder);
+        dispatch(hotelOrderActions.mergeOrders(incoming));
       }
-    };
-    
-    fetchOrders();
+    } catch (_) {}
+    finally { setRefreshing(false); }
+  }, [businessId, dispatch]);
 
-    // Simulate real-time updates with polling
-    const pollingInterval = setInterval(() => {
-      fetchOrders();
-    }, 30000); // Poll every 30 seconds
-    
-    return () => clearInterval(pollingInterval);
-  }, []);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  // Filter orders based on active filter
-  useEffect(() => {
-    if (activeFilter === 'active') {
-      setFilteredOrders(orders.filter(order => 
-        order.status === 'pending' || order.status === 'in-progress'));
-    } else if (activeFilter === 'completed') {
-      setFilteredOrders(orders.filter(order => order.status === 'served'));
-    } else if (activeFilter === 'cancelled') {
-      setFilteredOrders(orders.filter(order => order.status === 'cancelled'));
-    } else {
-      setFilteredOrders(orders);
-    }
-  }, [orders, activeFilter]);
+  const filtered = orders.filter((o) => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "active") return ["pending", "in-progress", "ready"].includes(o.status);
+    if (activeFilter === "served") return o.status === "served" || o.status === "completed";
+    if (activeFilter === "cancelled") return o.status === "cancelled";
+    return true;
+  });
 
-  // Handle status change
-  const handleStatusChange = (orderId, newStatus) => {
-    setOrders(prevOrders => prevOrders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
+  const counts = {
+    active: orders.filter((o) => ["pending", "in-progress", "ready"].includes(o.status)).length,
+    served: orders.filter((o) => o.status === "served" || o.status === "completed").length,
+    cancelled: orders.filter((o) => o.status === "cancelled").length,
   };
 
-  // Format timestamp
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
-
-  // Get status badge color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'served':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Format status text
-  const formatStatus = (status) => {
-    switch (status) {
-      case 'in-progress':
-        return 'In Progress';
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
+  const updateStatus = (id, status) =>
+    dispatch(hotelOrderActions.updateOrderStatus({ id, status }));
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Orders</h1>
-      
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Hotel Orders</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{orders.length} total orders</span>
+          <button
+            onClick={fetchOrders}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
       {/* Filter Tabs */}
-      <div className="flex mb-6 border-b">
-        <button
-          className={`px-4 py-2 font-medium ${activeFilter === 'active' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-          onClick={() => setActiveFilter('active')}
-        >
-          Active Orders
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeFilter === 'completed' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-          onClick={() => setActiveFilter('completed')}
-        >
-          Completed
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeFilter === 'cancelled' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-          onClick={() => setActiveFilter('cancelled')}
-        >
-          Cancelled
-        </button>
+      <div className="flex border-b border-gray-200 mb-6 gap-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors ${
+              activeFilter === f
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {f === "active" ? `Active (${counts.active})`
+              : f === "served" ? `Served (${counts.served})`
+              : f === "cancelled" ? `Cancelled (${counts.cancelled})`
+              : "All"}
+          </button>
+        ))}
       </div>
 
       {/* Orders Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Order ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Table/Room
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Items
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Waiter
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Total
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Time
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {isLoading ? (
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <Clock size={44} className="mb-3 opacity-30" />
+          <p>No orders in this category.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
               <tr>
-                <td colSpan="8" className="px-6 py-4 text-center">
-                  <div className="flex justify-center items-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                    <span className="ml-2">Loading orders...</span>
-                  </div>
-                </td>
+                <th className="px-5 py-3 text-left">Order</th>
+                <th className="px-5 py-3 text-left">Table</th>
+                <th className="px-5 py-3 text-left">Items</th>
+                <th className="px-5 py-3 text-left">Waiter</th>
+                <th className="px-5 py-3 text-right">Total</th>
+                <th className="px-5 py-3 text-left">Status</th>
+                <th className="px-5 py-3 text-left">Time</th>
+                <th className="px-5 py-3 text-right">Actions</th>
               </tr>
-            ) : filteredOrders.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                  No orders found
-                </td>
-              </tr>
-            ) : (
-              filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {order.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.location}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <ul className="space-y-1">
-                      {order.items.map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.waiter}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${order.total.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                      {formatStatus(order.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {formatTime(order.timestamp)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        className="p-1 rounded-full hover:bg-gray-100"
-                        title="View Details"
-                      >
-                        <Eye className="h-5 w-5 text-gray-500" />
-                      </button>
-                      
-                      {(order.status === 'pending' || order.status === 'in-progress') && (
-                        <>
-                          <button
-                            className="p-1 rounded-full hover:bg-green-100"
-                            title="Mark as Served"
-                            onClick={() => handleStatusChange(order.id, 'served')}
-                          >
-                            <Check className="h-5 w-5 text-green-500" />
-                          </button>
-                          
-                          <button
-                            className="p-1 rounded-full hover:bg-red-100"
-                            title="Cancel Order"
-                            onClick={() => handleStatusChange(order.id, 'cancelled')}
-                          >
-                            <X className="h-5 w-5 text-red-500" />
-                          </button>
-                        </>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map((order) => {
+                const total = order.total ?? order.items.reduce((s, i) => s + i.price * i.quantity, 0);
+                const isExpanded = expandedOrder === order.id;
+                return (
+                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-sm font-mono font-semibold text-gray-800">{order.id}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600">{order.tableNumber}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <span>{order.items.length} item{order.items.length !== 1 ? "s" : ""}</span>
+                        <button
+                          onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div className="mt-2 pl-3 border-l-2 border-indigo-200 space-y-1">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span>{item.quantity}× {item.name}</span>
+                              <span className="text-gray-400">{formatKsh(item.price * item.quantity)}</span>
+                            </div>
+                          ))}
+                          {order.note && (
+                            <p className="text-xs text-amber-600 mt-1 italic">"{order.note}"</p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="px-5 py-3 text-sm text-gray-600">{order.waiter || "—"}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-gray-800 text-right">
+                      {formatKsh(total)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[order.status] || "bg-gray-100 text-gray-500"}`}>
+                        {STATUS_LABEL[order.status] || order.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {order.createdAt ? elapsed(order.createdAt) : "—"}
+                      </div>
+                      {order.createdAt && (
+                        <div className="text-gray-300">{formatTime(order.createdAt)}</div>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                        {order.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => updateStatus(order.id, "in-progress")}
+                              title="Send to Kitchen"
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors"
+                            >
+                              <ChefHat size={12} /> Kitchen
+                            </button>
+                            <button
+                              onClick={() => updateStatus(order.id, "cancelled")}
+                              title="Cancel Order"
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              <XCircle size={16} />
+                            </button>
+                          </>
+                        )}
+                        {order.status === "in-progress" && (
+                          <>
+                            <button
+                              onClick={() => updateStatus(order.id, "ready")}
+                              title="Mark as Ready"
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 font-medium transition-colors"
+                            >
+                              <Bell size={12} /> Ready
+                            </button>
+                            <button
+                              onClick={() => updateStatus(order.id, "cancelled")}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              <XCircle size={16} />
+                            </button>
+                          </>
+                        )}
+                        {order.status === "ready" && (
+                          <button
+                            onClick={() => updateStatus(order.id, "served")}
+                            title="Mark as Served"
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium transition-colors"
+                          >
+                            <CheckCircle size={12} /> Served
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

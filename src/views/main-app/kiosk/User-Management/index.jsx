@@ -344,11 +344,10 @@ const KioskStaffManagement = () => {
         (member.username?.toLowerCase() || '').includes(searchLower) ||
         (member.role?.toLowerCase() || '').includes(searchLower);
 
-      const matchesStatus = !filters.status ||
-        (filters.status === 'ACTIVE' && member.status === 'ACTIVE') ||
-        (filters.status === 'INACTIVE' && member.status === 'INACTIVE');
+      const matchesStatus = !filters.status || member.status === filters.status;
 
-      const matchesRole = !filters.role || member.role === filters.role;
+      const norm = (r) => (r || '').replace(/_/g, ' ').toLowerCase();
+      const matchesRole = !filters.role || norm(member.role) === norm(filters.role);
 
       // Add date filtering logic
       let matchesDate = true;
@@ -550,9 +549,6 @@ const KioskStaffManagement = () => {
   // FIXED FORM SUBMISSION WITH SAFE PROPERTY ACCESS
   const handleFormSubmit = async (values) => {
     setSubmitting(true);
-    setCreateLoading(true);
-    setCreateSuccess(false);
-    setCreateLoadingText(isEditing ? "Updating staff member..." : "Creating staff member...");
     setErrorMessage(null);
 
     try {
@@ -669,23 +665,16 @@ const KioskStaffManagement = () => {
             )
           );
 
-          // Show success message in loader
+          setCreateLoading(true);
           setCreateSuccess(true);
           setCreateLoadingText(`✓ Success! ${staffName} has been updated successfully.`);
           await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Show toaster
           showToaster("Staff Updated", `${staffName} has been updated successfully`, "success");
-
-          // Navigate back to table
           closeAllModals();
         } else {
           throw new Error(result?.message || "Failed to update staff member");
         }
       } else {
-        // Create new staff
-        setCreateLoadingText(`Creating ${staffName}...`);
-
         result = await POST(URLS.USERS.CREATE_USER, staffData);
 
         console.log('📥 Create result:', result);
@@ -711,15 +700,11 @@ const KioskStaffManagement = () => {
 
           setStaff((prevStaff) => [newStaff, ...prevStaff]);
 
-          // Show success message in loader
+          setCreateLoading(true);
           setCreateSuccess(true);
           setCreateLoadingText(`✓ Success! ${staffName} has been added to your team.`);
           await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Show toaster
           showToaster("Staff Created", `${staffName} has been added to your team`, "success");
-
-          // Navigate back to table
           closeAllModals();
         } else {
           throw new Error(result?.message || "Failed to create staff member");
@@ -727,22 +712,11 @@ const KioskStaffManagement = () => {
       }
 
     } catch (error) {
-      console.error('❌ Error submitting staff form:', error);
-
-      // Show error in loader for 3 seconds, then return to form
       const errorMsg = error.message || 'Failed to save staff member. Please try again.';
-      setCreateSuccess(false);
-      setCreateLoadingText(`✗ Error: ${errorMsg}`);
       setErrorMessage(errorMsg);
-
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      // Return to form so user can fix the error
-      setCreateLoading(false);
-      setSubmitting(false);
-
-      // Show error toaster
       showToaster("Error", errorMsg, "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -959,8 +933,9 @@ const KioskStaffManagement = () => {
             show={true}
             onClose={closeAllModals}
             staff={currentStaff}
-            onEnable={() => handleEnableStaff(currentStaff?.id)}
-            onReject={handleRejectStaff}
+            onEnable={() => openActionModalWithLoader('enable', currentStaff)}
+            onDisable={() => openActionModalWithLoader('disable', currentStaff)}
+            onReject={closeAllModals}
             submitting={submitting}
             currentBusiness={currentBusiness}
           />
@@ -1042,6 +1017,7 @@ const KioskStaffManagement = () => {
             isOpen={modalState.isOpen}
             onClose={closeModal}
             entityName={modalState.entityName}
+            entityType={modalState.entityType}
             actionType={modalState.actionType}
             reason={modalState.reason}
             setReason={setReason}

@@ -6,6 +6,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import MedicationIcon from "@mui/icons-material/Medication";
 import ScienceIcon from "@mui/icons-material/Science";
@@ -51,11 +52,11 @@ export const MENU = [
     path: "/dashboard/hotel-admin",
   },
   {
-    key: "products",
+    key: "menu-management",
     title: "Menu Management",
     icon: <StoreIcon />,
     permissions: ["Hotel Admin"],
-    path: "/products",
+    path: "/menu-management",
   },
   {
     key: "ingredients",
@@ -86,6 +87,20 @@ export const MENU = [
     path: "/staffpayment",
   },
   {
+    key: "hotel-orders",
+    title: "All Orders",
+    icon: <ListIcon />,
+    permissions: ["Hotel Admin"],
+    path: "/orders/hotel",
+  },
+  {
+    key: "hotel-kitchen",
+    title: "Kitchen Display",
+    icon: <RestaurantIcon />,
+    permissions: ["Hotel Admin"],
+    path: "/hotel/kitchen",
+  },
+  {
     key: "expenses",
     title: "Expenses",
     icon: <AccountBalanceWalletIcon />,
@@ -97,7 +112,7 @@ export const MENU = [
     title: "Reports",
     icon: <BarChartIcon />,
     permissions: ["Hotel Admin"],
-    path: "/reports",
+    path: "/hotel/reports",
   },
 
   // Cashier
@@ -110,40 +125,26 @@ export const MENU = [
   },
   {
     key: "complete-order",
-    title: "Complete Order",
+    title: "Process Payments",
     icon: <ListIcon />,
     permissions: ["Cashier"],
     path: "/orders/complete",
   },
-  {
-    key: "cashier-reports",
-    title: "Reports",
-    icon: <BarChartIcon />,
-    permissions: ["Cashier"],
-    path: "/sales/reports",
-  },
 
   // Waiter
   {
-    key: "waiter-menu",
-    title: "Menu",
-    icon: <ListIcon />,
+    key: "waiter-dashboard",
+    title: "My Orders",
+    icon: <DashboardIcon />,
     permissions: ["Waiter"],
     path: "/dashboard/waiter",
   },
   {
     key: "waiter-create-order",
-    title: "Create Order",
+    title: "New Order",
     icon: <ListIcon />,
     permissions: ["Waiter"],
     path: "/dashboard/create-order",
-  },
-  {
-    key: "waiter-reports",
-    title: "Reports",
-    icon: <BarChartIcon />,
-    permissions: ["Waiter"],
-    path: "/sales/reports",
   },
 
   // Kiosk Admin
