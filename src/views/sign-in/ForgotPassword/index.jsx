@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "./forgotPassword.css";
 import OTPRequest from "./OTPRequest";
 import OTPInput from "./OTPInput";
@@ -11,16 +11,19 @@ import loginBg from "../../../assets/Backgrounds/background.png";
 import ModalFooter from "../../../components/footer/ModalFooter";
 
 export default function ForgotPassword() {
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get("token") || "";
+
   const [email, setEmail] = useState("");
   const [otp, setOTP] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(tokenFromUrl);
   const [showToaster, setShowToaster] = useState(false);
   const [toasterState, setToasterState] = useState("");
   const [toasterTitle, setToasterTitle] = useState("");
   const [toasterMessage, setToasterMessage] = useState("");
-  const [view, setView] = useState(0); 
+  const [view, setView] = useState(tokenFromUrl ? 2 : 0);
   const [loading, setLoading] = useState(false);
   const [loadingOTP, setLoadingOTP] = useState(false);
 
