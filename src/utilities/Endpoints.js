@@ -1,6 +1,6 @@
 // src/utilities/Endpoints.js
 const URLS = {
-  TAG_BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
+  TAG_BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
 
   AUTH: {
     LOGIN: "/api/auth/login",

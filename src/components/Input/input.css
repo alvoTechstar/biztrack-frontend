@@ -311,53 +311,6 @@
   min-height: 150px !important;
 }
 
-.File-Container {
-  width: 100%;
-  padding: 10px 12px;
-  background-color: #f8f8f8 !important;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font-family: "Averta-Bold", sans-serif;
-  font-size: 12px;
-  line-height: 21px;
-  color: #353f50 !important;
-}
-
-.File-Flex {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.File-Text {
-  font-style: normal;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 20px;
-  display: block;
-}
-
-.File-Subtitle {
-  font-weight: normal;
-  color: #5f738c;
-}
-
-.File-Success {
-  color: #519e47 !important;
-}
-
-.File-Icon {
-  font-size: 20px !important;
-}
-
-.File-Icon-Delete {
-  color: #353f50 !important;
-}
-
-.File-Margin {
-  margin-bottom: 15px;
-}
-
 .filter-flex {
   display: flex;
 }

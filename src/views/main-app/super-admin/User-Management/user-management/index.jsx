@@ -12,6 +12,7 @@ import ActionModal from '../../../../../components/modal/ActionModal';
 import { GET, POST, PUT, DELETE } from "../../../../../services/DatabaseServiceImp";
 import URLS from '../../../../../utilities/Endpoints';
 import { formatDate, getInitials } from '../../../../../utilities/Sharedfunctions.jsx';
+import { isFailureResponse, getResponseErrorMessage } from '../../../../../utilities/apiResponse';
 import Toaster from '../../../../../components/Toaster';
 
 const UsersPage = () => {
@@ -43,8 +44,6 @@ const UsersPage = () => {
   const [loadingState, setLoadingState] = useState(true);
   const [loadingText, setLoadingText] = useState("");
   const [loadedText, setLoadedText] = useState("");
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createLoadingText, setCreateLoadingText] = useState("");
   const [toaster, setToaster] = useState({
     open: false,
     state: 'true',
@@ -352,8 +351,6 @@ const UsersPage = () => {
 
   const handleFormSubmit = async (values) => {
     setSubmitting(true);
-    setCreateLoading(true);
-    setCreateLoadingText(isEditing ? "Updating user..." : "Creating user...");
     setErrorMessage(null);
 
     try {
@@ -377,11 +374,13 @@ const UsersPage = () => {
         response = await POST(URLS.USERS.CREATE_USER, userData);
       }
 
+      if (isFailureResponse(response)) {
+        throw new Error(getResponseErrorMessage(response, `Failed to ${isEditing ? 'update' : 'create'} user.`));
+      }
+
       const successMessage = isEditing
         ? `User "${values.firstName} ${values.lastName}" updated successfully!`
         : `User "${values.firstName} ${values.lastName}" created successfully!`;
-
-      setCreateLoadingText(successMessage);
 
       showToaster(true, 'Success', successMessage);
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -403,11 +402,8 @@ const UsersPage = () => {
 
       // Show error toaster
       showToaster(false, 'Error', errorMessage);
-
-      setCreateLoading(false);
     } finally {
       setSubmitting(false);
-      setCreateLoading(false);
     }
   };
 
@@ -416,16 +412,21 @@ const UsersPage = () => {
     setSubmitting(true);
     try {
       const response = await DELETE(URLS.USERS.DELETE_USER.replace(':id', userId), { reason });
+
+      if (isFailureResponse(response)) {
+        throw new Error(getResponseErrorMessage(response, 'Failed to delete user.'));
+      }
+
       const user = users.find(u => u.id === userId);
       const userName = user ? `${user.firstName} ${user.lastName}` : 'User';
       showToaster(true, 'Success', `User "${userName}" deleted successfully!`);
       await fetchUsersAndBusinesses();
-      closeModal();
     } catch (error) {
       console.error('Error deleting user:', error);
-      const errorMsg = 'Failed to delete user. Please try again.';
+      const errorMsg = error.message || 'Failed to delete user. Please try again.';
       setErrorMessage(errorMsg);
       showToaster(false, 'Error', errorMsg);
+      throw error;
     } finally {
       setSubmitting(false);
     }
@@ -439,6 +440,10 @@ const UsersPage = () => {
         reason: reason
       });
 
+      if (isFailureResponse(response)) {
+        throw new Error(getResponseErrorMessage(response, 'Failed to update user status.'));
+      }
+
       const user = users.find(u => u.id === userId);
       const userName = user ? `${user.firstName} ${user.lastName}` : 'User';
       const statusMessage = newStatus === 'active' ? 'enabled' : 'disabled';
@@ -446,14 +451,12 @@ const UsersPage = () => {
       showToaster(true, 'Success', `User "${userName}" ${statusMessage} successfully!`);
 
       await fetchUsersAndBusinesses();
-      closeModal();
     } catch (error) {
       console.error('Error toggling user status:', error);
-      const errorMsg = 'Failed to update user status. Please try again.';
+      const errorMsg = error.message || 'Failed to update user status. Please try again.';
       setErrorMessage(errorMsg);
-
-      // Show error toaster
       showToaster(false, 'Error', errorMsg);
+      throw error;
     } finally {
       setSubmitting(false);
     }
@@ -464,9 +467,8 @@ const UsersPage = () => {
     try {
       await handleToggleStatus(userId, 'active', 'Enabled via EnableUserView');
       closeAllModals();
-    } catch (error) {
-      console.error('Error enabling user:', error);
-      showToaster(false, 'Error', 'Failed to enable user. Please try again.');
+    } catch {
+      // handleToggleStatus already reports the error via toaster; nothing more to do here.
     } finally {
       setSubmitting(false);
     }
@@ -523,25 +525,6 @@ const UsersPage = () => {
     }
   };
 
-  if (createLoading) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={createLoadingText}
-                loadedText=""
-                color={theme.primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
   if (loading) {
     return (
       <div className="min-h-screen bg-white p-8">

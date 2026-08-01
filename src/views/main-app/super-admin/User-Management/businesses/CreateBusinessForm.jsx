@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFormik } from 'formik';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
-import { Building2, CreditCard, Smartphone, Receipt } from 'lucide-react';
+import { Building2, CreditCard, Smartphone, Receipt, Settings as SettingsIcon, Image as ImageIcon } from 'lucide-react';
 import { useTheme } from '../../../../../components/theme/ThemeContext';
 import TextInput from '../../../../../components/Input/TextInput';
 import SelectInput from '../../../../../components/Input/SelectInput';
@@ -149,6 +149,11 @@ const CreateBusinessForm = ({
         return shouldShowError(fieldName) ? formik.errors[fieldName] : '';
     };
 
+    const getSubmitButtonText = () => {
+        if (submitting) return 'Saving...';
+        return isEditing ? 'Save Changes' : 'Add Business';
+    };
+
     const renderPaymentFields = () => {
         switch (paymentType) {
             case 'TILL':
@@ -235,20 +240,29 @@ const CreateBusinessForm = ({
     };
 
     return (
-        <div className="bg-white rounded-lg w-full sm:w-11/12 md:w-4/5 lg:w-3/5 xl:w-1/2 max-w-4xl mx-auto shadow-lg border border-gray-200 mb-8 my-4 sm:my-8">
+        <div className="bg-white rounded-2xl w-full sm:w-11/12 md:w-4/5 lg:w-3/5 xl:w-1/2 max-w-4xl mx-auto shadow-xl border border-gray-100 mb-8 my-4 sm:my-8 overflow-hidden">
             <div
-                className="flex items-center justify-between p-4 sm:p-6 border-gray-200 bg-gray-50 rounded-t-lg"
-                style={{ borderBottom: `1px solid ${theme.borderColor || '#e5e7eb'}` }}
+                className="flex items-center justify-between p-4 sm:p-6"
+                style={{
+                    background: `linear-gradient(135deg, ${theme.primaryColor || '#2563eb'}, ${theme.primaryColor || '#2563eb'}cc)`,
+                }}
             >
-                <h3
-                    className="text-lg sm:text-xl font-semibold"
-                    style={{ color: theme.textPrimary || '#1f2937' }}
-                >
-                    {isEditing ? 'Edit Business' : 'Add New Business'}
-                </h3>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="text-white" size={20} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg sm:text-xl font-semibold text-white leading-tight">
+                            {isEditing ? 'Edit Business' : 'Add New Business'}
+                        </h3>
+                        <p className="text-white/80 text-xs sm:text-sm">
+                            {isEditing ? 'Update the business details below' : 'Fill in the details to onboard a new business'}
+                        </p>
+                    </div>
+                </div>
                 <button
                     onClick={() => setShowModal(false)}
-                    className="hover:bg-gray-100 transition rounded-full p-1"
+                    className="hover:bg-white/20 transition rounded-full p-1"
                     disabled={submitting}
                     type="button"
                     aria-label="Close modal"
@@ -256,7 +270,7 @@ const CreateBusinessForm = ({
                     <CancelRoundedIcon
                         className="main-form-close"
                         style={{
-                            fill: theme.textSecondary || '#6b7280',
+                            fill: '#ffffff',
                             fontSize: '20px',
                             width: '20px',
                             height: '20px'
@@ -265,16 +279,19 @@ const CreateBusinessForm = ({
                 </button>
             </div>
 
-            <form onSubmit={formik.handleSubmit} className="p-4 sm:p-6">
+            <form onSubmit={formik.handleSubmit} className="p-4 sm:p-6 max-h-[75vh] overflow-y-auto">
                 {errorMessage && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                         <p className="text-red-600 text-sm">{errorMessage}</p>
                     </div>
                 )}
-                <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-4 sm:space-y-5">
                     {/* Business Information Section */}
-                    <div className="border-b border-gray-200 pb-4">
-                        <h4 className="text-md font-semibold text-gray-700 mb-4">Business Information</h4>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Building2 size={16} style={{ color: theme.primaryColor || '#2563eb' }} />
+                            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Business Information</h4>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <TextInput
                                 id="businessName"
@@ -397,8 +414,11 @@ const CreateBusinessForm = ({
                     </div>
 
                     {/* Payment Configuration Section */}
-                    <div className="border-b border-gray-200 pb-4">
-                        <h4 className="text-md font-semibold text-gray-700 mb-4">Payment Configuration</h4>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <CreditCard size={16} style={{ color: theme.primaryColor || '#2563eb' }} />
+                            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Payment Configuration</h4>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <SelectInput
                                 id="paymentType"
@@ -422,8 +442,11 @@ const CreateBusinessForm = ({
                     </div>
 
                     {/* Business Settings Section */}
-                    <div className="border-b border-gray-200 pb-4">
-                        <h4 className="text-md font-semibold text-gray-700 mb-4">Business Settings</h4>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <SettingsIcon size={16} style={{ color: theme.primaryColor || '#2563eb' }} />
+                            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Business Settings</h4>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <ColorInput
                                 id="primaryColor"
@@ -454,8 +477,11 @@ const CreateBusinessForm = ({
                     </div>
 
                     {/* Business Media Section */}
-                    <div className="pb-4">
-                        <h4 className="text-md font-semibold text-gray-700 mb-4">Business Media</h4>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <ImageIcon size={16} style={{ color: theme.primaryColor || '#2563eb' }} />
+                            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Business Media</h4>
+                        </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <FileInput
                                 id="logoFile"
@@ -502,7 +528,7 @@ const CreateBusinessForm = ({
                         fullWidthOnMobile={true}
                     />
                     <AppFormButton
-                        text={submitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add Business')}
+                        text={getSubmitButtonText()}
                         color={theme.primaryColor || '#2563eb'}
                         isLoading={submitting}
                         validation={formik.isValid && formik.dirty && !submitting}

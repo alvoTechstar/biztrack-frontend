@@ -11,6 +11,7 @@ import URLS from '../../../../../utilities/Endpoints';
 import "../../../../../App.css";
 import ActionModal from '../../../../../components/modal/ActionModal';
 import Toaster from '../../../../../components/Toaster';
+import { isFailureResponse, getResponseErrorMessage } from '../../../../../utilities/apiResponse';
 
 const businessTypes = ['Hotel', 'Kiosk', 'Hospital'];
 
@@ -24,7 +25,7 @@ const initialFormData = {
     website: '',
     description: '',
     primaryColor: '#1976d2',
-    status: 'NEW',
+    status: 'ACTIVE',
     logoFile: null,
     logoUrl: null,
     id: null,
@@ -78,8 +79,6 @@ const BusinessesPage = () => {
     const [selectedBusiness, setSelectedBusiness] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalLoadingText, setModalLoadingText] = useState('');
-    const [createLoading, setCreateLoading] = useState(false);
-    const [createLoadingText, setCreateLoadingText] = useState("");
     const [loadingState, setLoadingState] = useState(true);
     const [loadingText, setLoadingText] = useState("");
     const [loadedText, setLoadedText] = useState("");
@@ -303,8 +302,6 @@ const BusinessesPage = () => {
     };
     const handleFormSubmit = async (values) => {
         setSubmitting(true);
-        setCreateLoading(true);
-        setCreateLoadingText(formMode === 'edit' ? "Updating business..." : "Creating business...");
         setErrorMessage(null);
 
         try {
@@ -408,13 +405,16 @@ const BusinessesPage = () => {
                 });
             }
 
-            console.log('✅ Business saved successfully:', response.data);
+            if (isFailureResponse(response)) {
+                throw new Error(getResponseErrorMessage(response, `Failed to ${formMode === 'edit' ? 'update' : 'create'} business.`));
+            }
+
+            console.log('✅ Business saved successfully:', response);
 
             const successMessage = formMode === 'edit'
                 ? `Business "${values.businessName}" updated successfully!`
                 : `Business "${values.businessName}" created successfully!`;
 
-            setCreateLoadingText(successMessage);
             showToaster(true, 'Success', successMessage);
 
             await new Promise(resolve => setTimeout(resolve, 1500));
@@ -445,7 +445,6 @@ const BusinessesPage = () => {
 
         } finally {
             setSubmitting(false);
-            setCreateLoading(false);
         }
     };
 
@@ -453,13 +452,17 @@ const BusinessesPage = () => {
         try {
             const response = await DELETE(URLS.BUSINESS.DELETE_BUSINESS.replace(':id', businessId), { reason });
 
+            if (isFailureResponse(response)) {
+                throw new Error(getResponseErrorMessage(response, 'Failed to delete business.'));
+            }
+
             const business = businesses.find(b => b.id === businessId);
             const businessName = business?.name || 'Business';
             showToaster(true, 'Success', `Business "${businessName}" deleted successfully!`);
             await fetchBusinesses();
         } catch (error) {
             console.error('Error deleting business:', error);
-            showToaster(false, 'Error', 'Failed to delete business. Please try again.');
+            showToaster(false, 'Error', error.message || 'Failed to delete business. Please try again.');
             throw error;
         }
     };
@@ -470,6 +473,11 @@ const BusinessesPage = () => {
                 status: newStatus,
                 reason: reason
             });
+
+            if (isFailureResponse(response)) {
+                throw new Error(getResponseErrorMessage(response, 'Failed to update business status.'));
+            }
+
             const business = businesses.find(b => b.id === businessId);
             const businessName = business?.name || 'Business';
             const statusMessage = newStatus === 'active' ? 'enabled' : 'disabled';
@@ -477,7 +485,7 @@ const BusinessesPage = () => {
             await fetchBusinesses();
         } catch (error) {
             console.error('Error toggling status:', error);
-            showToaster(false, 'Error', 'Failed to update business status. Please try again.');
+            showToaster(false, 'Error', error.message || 'Failed to update business status. Please try again.');
             throw error;
         }
     };
@@ -504,30 +512,6 @@ const BusinessesPage = () => {
         const matchesType = !filters.type || b.type === filters.type;
         return matchesSearch && matchesStatus && matchesType;
     });
-
-    if (createLoading) {
-        return (
-            <div className="min-h-screen bg-white p-3 xs:p-4 sm:p-6">
-                <div className="w-full max-w-7xl mx-auto">
-                    <div className='main-app-view'>
-                        <div className="main-app-content-container w-full">
-                            <div className="w-full flex items-center justify-center min-h-[200px] sm:min-h-[300px]">
-                                <div className="w-full px-2 xs:px-4">
-                                    <ContentLoader
-                                        state={true}
-                                        loading={true}
-                                        loadingText={loadingText}
-                                        loadedText={loadedText}
-                                        color={theme.primaryColor}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     if (loading) {
         return (
@@ -617,7 +601,7 @@ const BusinessesPage = () => {
                         errorMessage={errorMessage} // Pass error to form for display
                     />
                 )}
-                {!showCreateForm && !modalState.isOpen && !modalLoading && !createLoading && (
+                {!showCreateForm && !modalState.isOpen && !modalLoading && (
                     <>
                         {businesses.length === 0 && filteredBusinesses.length === 0 && !searchTerm ? (
                             <div className="flex flex-col items-center justify-center h-96 bg-white rounded-lg border-2 border-dashed border-gray-300">
