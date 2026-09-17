@@ -66,31 +66,31 @@ const ProductsTable = ({
     const product = safeProducts.find(p => p._id === id || p.id === id);
     
     if (!product) {
-      console.error('❌ Product not found with id:', id);
+      console.error('Product not found with id:', id);
       return;
     }
 
-    console.log(`✅ Action "${action}" selected for product: ${product.name}`);
-    console.log('📦 Product data passed:', product);
+    console.log(`Action "${action}" selected for product: ${product.name}`);
+    console.log('Product data passed:', product);
 
     switch (action.toLowerCase()) {
       case 'view':
-        console.log('👀 View product:', product.name);
+        console.log('View product:', product.name);
         break;
       case 'edit':
-        console.log('✏️ Edit product:', product.name);
+        console.log('Edit product:', product.name);
         onEditProduct?.(product);
         break;
       case 'restock':
-        console.log('📦 Restock product:', product.name);
+        console.log('Restock product:', product.name);
         onRestockProduct?.(product);
         break;
       case 'delete':
-        console.log('🗑️ Delete product:', product.name);
+        console.log('Delete product:', product.name);
         onDeleteProduct?.(product);
         break;
       default:
-        console.warn('⚠️ Unknown action:', action);
+        console.warn('Unknown action:', action);
     }
   };
 

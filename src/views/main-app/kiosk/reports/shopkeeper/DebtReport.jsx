@@ -1,38 +1,15 @@
 import React, { useMemo } from "react";
-import { Clock, AlertCircle, DollarSign, Eye, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, DollarSign, Eye, TrendingUp } from "lucide-react";
 import DataTable from "../../../../../components/datatable";
 import SummaryCard from "./SummaryCard";
 import StatusBadge from "./StatusBadge";
+import renderFirstItemWithCount from "./renderFirstItemWithCount";
 import { formatCurrency, formatTime } from "../../../../../utilities/Sharedfunctions.jsx";
-
-// Custom function to show only first item + count (EXACT SAME AS SALES REPORT)
-const renderFirstItemWithCount = (items) => {
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return <span className="text-gray-500">No items</span>;
-  }
-  
-  const firstItem = items[0];
-  const itemName = firstItem.productName || firstItem.name || "Unknown Product";
-  const quantity = firstItem.quantity || 1;
-  
-  return (
-    <div className="flex items-center gap-2">
-      <span className="font-medium text-sm">
-        {itemName} ({quantity}x)
-      </span>
-      {items.length > 1 && (
-        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-          +{items.length - 1} more
-        </span>
-      )}
-    </div>
-  );
-};
 
 const DebtReport = ({ debtData, color, onViewTransaction }) => {
   // Add safe access with defaults
   const safeDebtData = debtData || {};
-  
+
   const debtTransactions = safeDebtData.debtTransactions || [];
   const statusCounts = safeDebtData.statusCounts || {
     pending: 0,
@@ -76,18 +53,18 @@ const DebtReport = ({ debtData, color, onViewTransaction }) => {
     { key: "customerName", title: "Customer" },
     { key: "customerPhone", title: "Phone" },
     { key: "amount", title: "Amount" },
-    { 
-      key: "status", 
+    {
+      key: "status",
       title: "Status",
       render: (value) => <StatusBadge status={value} />
     },
-    { 
-      key: "items", 
+    {
+      key: "items",
       title: "Items",
-      render: (value) => renderFirstItemWithCount(value) // USING THE SAME FUNCTION
+      render: (value) => renderFirstItemWithCount(value)
     },
-    { 
-      key: "action", 
+    {
+      key: "action",
       title: "Actions",
       isAction: true
     },
@@ -98,7 +75,7 @@ const DebtReport = ({ debtData, color, onViewTransaction }) => {
       return <StatusBadge status={column.status} />;
     }
     if (header.key === "items") {
-      return renderFirstItemWithCount(column.items); // USING THE SAME FUNCTION
+      return renderFirstItemWithCount(column.items);
     }
     if (header.key === "action") {
       return column.action;
@@ -108,7 +85,7 @@ const DebtReport = ({ debtData, color, onViewTransaction }) => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <SummaryCard
           title="Outstanding Debt"
           value={formatCurrency(totalOutstanding)}
@@ -135,9 +112,9 @@ const DebtReport = ({ debtData, color, onViewTransaction }) => {
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
+          <div className="flex flex-wrap justify-between items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               Today's Debt Transactions ({statusCounts.total})
             </h3>
@@ -170,12 +147,6 @@ const DebtReport = ({ debtData, color, onViewTransaction }) => {
               data={debtTableData}
               headers={debtHeaders}
               actions={[]}
-              selectedRow={(e, row) => {
-                console.log('Row clicked:', row.id);
-              }}
-              actionSelected={(action, id) => {
-                console.log('Action selected:', action, id);
-              }}
               customRenderCell={customRenderCell}
               showActionsColumn={true}
             />

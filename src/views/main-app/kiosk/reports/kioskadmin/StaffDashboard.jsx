@@ -44,11 +44,6 @@ const StaffDashboard = ({
 
   // ===== STEP 1: PROCESS STAFF DATA WITH FILTERED TRANSACTIONS =====
   const performanceData = useMemo(() => {
-    console.log('📊 Processing staff data...', {
-      staffCount: staffData?.length || 0,
-      transactionCount: filteredTransactions?.length || 0
-    });
-
     if (!staffData || staffData.length === 0) return [];
 
     const staffPerformance = staffData.map(staff => {
@@ -196,19 +191,6 @@ const StaffDashboard = ({
       };
     }).sort((a, b) => b.totalSales - a.totalSales);
 
-    const totalMatchedTransactions = staffPerformance.reduce((sum, staff) => sum + staff.transactions, 0);
-    console.log('📊 Staff Performance Summary:', {
-      totalStaff: staffPerformance.length,
-      totalTransactions: totalMatchedTransactions,
-      unmatchedTransactions: filteredTransactions?.length - totalMatchedTransactions || 0,
-      sampleStaff: staffPerformance[0] ? {
-        name: staffPerformance[0].fullName,
-        transactions: staffPerformance[0].transactions,
-        totalSales: staffPerformance[0].totalSales,
-        status: staffPerformance[0].status
-      } : 'No staff data'
-    });
-
     return staffPerformance;
   }, [staffData, filteredTransactions]);
 
@@ -333,23 +315,17 @@ const StaffDashboard = ({
     }
   };
 
-  const handleRowClick = (event, column) => {
-    console.log('Row clicked:', column);
-  };
+  const handleRowClick = (event, column) => {};
 
-  const handleSelectAll = (allSelected) => {
-    console.log('Select all:', allSelected);
-  };
+  const handleSelectAll = (allSelected) => {};
 
-  const handleSelectedAction = (selectedIds) => {
-    console.log('Selected items changed:', selectedIds);
-  };
+  const handleSelectedAction = (selectedIds) => {};
 
   // ===== RENDERING LOGIC =====
   if (loading) {
     return (
       <div className="space-y-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded mb-4 w-1/3"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -362,8 +338,8 @@ const StaffDashboard = ({
 
   if (!staffData || staffData.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-gray-200 mt-4">
-        <Users size={48} className="text-gray-400 mx-auto mb-3" />
+      <div className="flex flex-col items-center justify-center h-80 bg-white rounded-2xl border-2 border-dashed border-gray-200 text-center px-4">
+        <Users size={48} className="text-gray-400 mb-3" />
         <h3 className="text-lg font-semibold text-gray-700 mb-1">No staff members found</h3>
         <p className="text-gray-500">Try adjusting your search or filters</p>
       </div>
@@ -373,16 +349,10 @@ const StaffDashboard = ({
   return (
     <div className="space-y-8">
       {/* ===== HEADER SECTION ===== */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Staff Performance Dashboard</h1>
-            <p className="text-gray-600 mt-1">
-              {isToday ? "Today's staff performance metrics and analytics" : "Staff performance metrics and analytics"}
-            </p>
-            <div className="text-sm text-gray-500 mt-2">
-              Analyzing {summaryStats.totalFiltered} transactions • {summaryStats.matchedTransactions} matched to staff • {summaryStats.unmatchedTransactions} unmatched
-            </div>
+          <div className="text-sm text-gray-500">
+            Analyzing {summaryStats.totalFiltered} transactions • {summaryStats.matchedTransactions} matched to staff • {summaryStats.unmatchedTransactions} unmatched
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Users size={20} />
@@ -393,7 +363,7 @@ const StaffDashboard = ({
         {/* ===== SUMMARY STATS CARDS ===== */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
           {/* Total Sales Card */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-blue-600 mb-1">Total Team Sales</p>
@@ -411,7 +381,7 @@ const StaffDashboard = ({
           </div>
 
           {/* Total Transactions Card */}
-          <div className="bg-green-50 border border-green-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="bg-green-50 border border-green-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-green-600 mb-1">Staff Transactions</p>
@@ -429,7 +399,7 @@ const StaffDashboard = ({
           </div>
 
           {/* Average Rating Card */}
-          <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-purple-600 mb-1">Average Rating</p>
@@ -447,7 +417,7 @@ const StaffDashboard = ({
           </div>
 
           {/* Top Performer Card */}
-          <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-orange-600 mb-1">Top Performer</p>
@@ -469,7 +439,7 @@ const StaffDashboard = ({
       </div>
 
       {/* ===== STAFF PERFORMANCE TABLE ===== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="p-3">
           <div className="flex items-center justify-between">
             <div>

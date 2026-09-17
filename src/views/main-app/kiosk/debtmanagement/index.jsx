@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { RefreshCw, AlertTriangle, TrendingUp, CreditCard, CheckCircle } from "lucide-react";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import { RefreshCw, AlertTriangle, TrendingUp, CreditCard } from "lucide-react";
 import { GET, POST } from "../../../../services/DatabaseServiceImp";
 import URLS from "../../../../utilities/Endpoints";
 import Toaster from "../../../../components/Toaster";
+import Modal from "../../../../components/modal/Modal";
 import CashPaymentModal from "../sales/CashPaymentModal";
 import MpesaPaymentModal from "../sales/MpesaPaymentModal";
 import ContentLoader from "../../../../components/Loader/ContentLoader";
@@ -15,6 +18,8 @@ import DebtDataTable from "./DebtDataTable";
 import { useSelector } from "react-redux";
 import { formatCurrency, formatDate } from "../../../../utilities/Sharedfunctions.jsx";
 
+dayjs.extend(customParseFormat);
+
 const DebtManagement = () => {
   const { primaryColor } = useTheme();
   const currentUser = useSelector((state) => state.auth?.value);
@@ -25,6 +30,7 @@ const DebtManagement = () => {
   const [error, setError] = useState(null);
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
 
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPaymentOptionsModal, setShowPaymentOptionsModal] = useState(false);
@@ -35,10 +41,7 @@ const DebtManagement = () => {
   const [amountPaid, setAmountPaid] = useState("");
   const [mpesaPhone, setMpesaPhone] = useState("");
 
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalLoadingText, setModalLoadingText] = useState("");
   const [operationLoading, setOperationLoading] = useState(false);
-  const [operationLoadingText, setOperationLoadingText] = useState("");
 
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -52,10 +55,6 @@ const DebtManagement = () => {
     message: "",
     type: "success",
   });
-
-  const [debtPaymentSuccessModal, setDebtPaymentSuccessModal] = useState(false);
-  const [debtPaymentFailureModal, setDebtPaymentFailureModal] = useState(false);
-  const [isSalesPageRefreshing, setIsSalesPageRefreshing] = useState(false);
 
   const [businessInfo, setBusinessInfo] = useState({
     businessId: null,
@@ -91,15 +90,6 @@ const DebtManagement = () => {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    if (showMpesaPaymentModal === false && showPaymentOptionsModal === false &&
-      showCashPaymentModal === false && showDetailModal === false &&
-      selectedDebt === null) {
-      console.log('✅ All modals closed - back to debt table');
-    }
-  }, [showMpesaPaymentModal, showPaymentOptionsModal, showCashPaymentModal,
-    showDetailModal, selectedDebt]);
-
   const showNotification = useCallback((message, type = "success") => {
     const title = type === "success" ? "Success!" : type === "error" ? "Error!" : "Heads Up!";
     const stateValue = type === "success" ? "true" : type === "error" ? "false" : "";
@@ -116,30 +106,20 @@ const DebtManagement = () => {
     return expected < today;
   }, []);
 
-  const openModalWithLoader = async (modalType, debt = null) => {
-    setModalLoading(true);
-    switch (modalType) {
-      case 'detail':
-        setModalLoadingText("Loading debt details...");
-        break;
-      case 'payment':
-        setModalLoadingText("Loading payment options...");
-        break;
-      default:
-        setModalLoadingText("Loading...");
-    }
-    await new Promise(resolve => setTimeout(resolve, 300));
-    if (debt) setSelectedDebt(debt);
-    setModalLoading(false);
-    switch (modalType) {
-      case 'detail':
-        setShowDetailModal(true);
-        break;
-      case 'payment':
-        setShowPaymentOptionsModal(true);
-        break;
-    }
-  };
+  const openDetailModal = useCallback((debt) => {
+    setSelectedDebt(debt);
+    setShowDetailModal(true);
+  }, []);
+
+  const closeDetailModal = useCallback(() => {
+    setShowDetailModal(false);
+    setSelectedDebt(null);
+  }, []);
+
+  const closePaymentOptionsModal = useCallback(() => {
+    setShowPaymentOptionsModal(false);
+    setSelectedDebt(null);
+  }, []);
 
   const generatePaymentReport = useCallback(() => {
     const paidDebts = debts.filter(debt => debt.debtPaid === true);
@@ -175,7 +155,7 @@ const DebtManagement = () => {
 
     showNotification(`Payment report generated. Recovered: ${formatCurrency(totalCollected)}`, "info");
     return report;
-  }, [debts, formatCurrency, isOverdue, showNotification]);
+  }, [debts, isOverdue, showNotification]);
 
   const fetchDebts = useCallback(async () => {
     if (!businessInfo.businessId) {
@@ -188,11 +168,13 @@ const DebtManagement = () => {
     setError(null);
 
     try {
-      const endpoint = URLS.TRANSACTIONS.GET_DEBTS_BY_BUSINESS.replace(':businessId', businessInfo.businessId);
+      // includeResolved=true — the backend excludes paid-off debts by default, but this
+      // page needs the full history so recovered debts still show (status filter, summary cards).
+      const endpoint = `${URLS.TRANSACTIONS.GET_DEBTS_BY_BUSINESS.replace(':businessId', businessInfo.businessId)}?includeResolved=true`;
       const response = await GET(endpoint);
 
       if (response.success) {
-        const debtTransactions = response.debts || [];
+        const debtTransactions = response.data || [];
 
         const transformedDebts = debtTransactions.map(transaction => {
           const amount = transaction.totalAmount || 0;
@@ -267,14 +249,26 @@ const DebtManagement = () => {
         debt.transactionId?.toLowerCase().includes(searchFilter.toLowerCase()) ||
         debt.customerPhone?.includes(searchFilter);
 
+      const debtIsOverdue = !debt.debtPaid && isOverdue(debt.dueDate || debt.expectedPaymentDate, debt.status);
+
       const matchesStatus =
         statusFilter === "All" ||
         (statusFilter === "Pending" && !debt.debtPaid) ||
-        (statusFilter === "Completed" && debt.debtPaid === true);
+        (statusFilter === "Completed" && debt.debtPaid === true) ||
+        (statusFilter === "Overdue" && debtIsOverdue);
 
-      return matchesSearch && matchesStatus;
+      const matchesDate = (() => {
+        if (!dateRange.startDate || !dateRange.endDate) return true;
+        const created = dayjs(debt.createdDate || debt.timestamp);
+        if (!created.isValid()) return false;
+        const start = dayjs(dateRange.startDate, 'DD-MM-YYYY').startOf('day');
+        const end = dayjs(dateRange.endDate, 'DD-MM-YYYY').endOf('day');
+        return !created.isBefore(start) && !created.isAfter(end);
+      })();
+
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [debts, searchFilter, statusFilter]);
+  }, [debts, searchFilter, statusFilter, dateRange, isOverdue]);
 
   const summary = useMemo(() => {
     const pending = debts.filter(debt => !debt.debtPaid);
@@ -303,7 +297,6 @@ const DebtManagement = () => {
     if (operationLoading) return;
 
     setOperationLoading(true);
-    setOperationLoadingText("Processing cash payment...");
 
     try {
       const now = new Date().toISOString();
@@ -321,7 +314,6 @@ const DebtManagement = () => {
       const response = await POST(updateEndpoint, paymentData);
 
       if (response && response.success) {
-        // Update local state
         setDebts(prevDebts =>
           prevDebts.map(debt =>
             debt.id === selectedDebt.id
@@ -342,7 +334,6 @@ const DebtManagement = () => {
           )
         );
 
-        // Return success object for the modal
         return {
           success: true,
           transactionId: selectedDebt.transactionId || selectedDebt._id,
@@ -356,13 +347,13 @@ const DebtManagement = () => {
         throw new Error(response?.message || 'Failed to update transaction');
       }
     } catch (error) {
-      console.error('❌ Cash payment error:', error);
+      console.error('Cash payment error:', error);
       showNotification(`Payment failed: ${error.message || 'Unknown error'}`, "error");
       throw error;
     } finally {
       setOperationLoading(false);
     }
-  }, [selectedDebt, businessInfo, amountPaid, operationLoading, formatCurrency, showNotification, fetchDebts]);
+  }, [selectedDebt, businessInfo, amountPaid, operationLoading, showNotification]);
 
   const handleMpesaPayment = useCallback(async () => {
     if (!selectedDebt || !businessInfo.businessId) return;
@@ -381,14 +372,6 @@ const DebtManagement = () => {
       }
 
       setPendingMpesaTransactionId(selectedDebt.transactionId);
-
-      console.log('📱 Processing M-PESA debt repayment:', {
-        debtId: selectedDebt.id,
-        transactionId: selectedDebt.transactionId,
-        amount: debtAmount,
-        phone: formattedPhone,
-        customer: selectedDebt.customerName,
-      });
 
       const repayEndpoint = URLS.TRANSACTIONS.REPAY_DEBT.replace(':id', selectedDebt.id);
       const mpesaResponse = await POST(repayEndpoint, {
@@ -411,33 +394,20 @@ const DebtManagement = () => {
         throw new Error(mpesaResponse.message || "M-PESA request failed");
       }
     } catch (error) {
-      console.error("❌ M-PESA payment error:", error);
+      console.error("M-PESA payment error:", error);
       throw error;
     }
   }, [selectedDebt, businessInfo, mpesaPhone, operationLoading]);
 
-  // ✅ ADD THIS BACK - handleMpesaPaymentComplete was missing!
   const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
     if (!selectedDebt) return;
-
-    if (paymentResult.isDebtPayment !== true) {
-      console.warn('⚠️ Received non-debt payment in DebtManagement - ignoring');
-      return;
-    }
+    if (paymentResult.isDebtPayment !== true) return;
 
     setOperationLoading(true);
-    setOperationLoadingText("Finalizing M-PESA payment...");
 
     try {
       const now = new Date().toISOString();
       const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
-
-      console.log('💰 M-PESA debt payment successful via callback:', {
-        debtId: selectedDebt._id,
-        amount: debtAmount,
-        receipt: paymentResult.receipt,
-        transactionId: paymentResult.transactionId
-      });
 
       setDebts(prevDebts =>
         prevDebts.map(debt =>
@@ -460,43 +430,28 @@ const DebtManagement = () => {
         )
       );
 
-      console.log('✅ M-PESA debt payment completed successfully');
-
       return {
         success: true,
         closeAllModals: true
       };
     } catch (error) {
-      console.error('❌ M-PESA payment completion error:', error);
+      console.error('M-PESA payment completion error:', error);
       showNotification(`Payment processing error: ${error.message}`, "error");
       throw error;
     } finally {
       setOperationLoading(false);
     }
-  }, [selectedDebt, showNotification, formatCurrency]);
+  }, [selectedDebt, showNotification]);
 
   const handleCashPaymentComplete = useCallback(async (paymentResult) => {
     if (!selectedDebt) return;
-
-    if (paymentResult.isDebtPayment !== true) {
-      console.warn('⚠️ Received non-debt payment in DebtManagement - ignoring');
-      return;
-    }
+    if (paymentResult.isDebtPayment !== true) return;
 
     setOperationLoading(true);
-    setOperationLoadingText("Finalizing cash payment...");
 
     try {
       const now = new Date().toISOString();
       const debtAmount = selectedDebt.amount || selectedDebt.totalAmount || 0;
-
-      console.log('💰 Cash debt payment successful:', {
-        debtId: selectedDebt._id,
-        amount: debtAmount,
-        receipt: paymentResult.receipt,
-        transactionId: paymentResult.transactionId,
-        change: paymentResult.change
-      });
 
       setDebts(prevDebts =>
         prevDebts.map(debt =>
@@ -525,29 +480,23 @@ const DebtManagement = () => {
         )
       );
 
-      console.log('✅ Cash debt payment completed successfully');
-
       return {
         success: true,
         closeAllModals: true
       };
     } catch (error) {
-      console.error('❌ Cash payment completion error:', error);
+      console.error('Cash payment completion error:', error);
       showNotification(`Payment processing error: ${error.message}`, "error");
       throw error;
     } finally {
       setOperationLoading(false);
     }
-  }, [selectedDebt, showNotification, formatCurrency]);
+  }, [selectedDebt, showNotification]);
 
   const handleMpesaModalClose = useCallback((completed) => {
-    console.log('🔄 M-PESA modal closed in DebtManagement, completed:', completed);
-
     setShowMpesaPaymentModal(false);
 
     if (completed === true) {
-      console.log('✅ Debt payment successful - CLOSING ALL MODALS and clearing state');
-
       setSelectedDebt(null);
       setShowPaymentOptionsModal(false);
       setShowCashPaymentModal(false);
@@ -558,11 +507,8 @@ const DebtManagement = () => {
       setCurrentTransaction(null);
       setPendingMpesaTransactionId(null);
 
-      setTimeout(() => {
-        fetchDebts();
-      }, 500);
+      fetchDebts();
     } else {
-      console.log('❌ Payment not completed - keeping debt selected for retry');
       setCurrentTransaction(null);
       setMpesaPhone("");
       setPendingMpesaTransactionId(null);
@@ -572,7 +518,6 @@ const DebtManagement = () => {
   }, [fetchDebts, showNotification]);
 
   const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
-    console.log('📝 M-PESA transaction created:', transactionInfo);
     setCurrentTransaction({
       transactionId: transactionInfo.transactionId,
       checkoutRequestId: transactionInfo.checkoutRequestId,
@@ -582,13 +527,9 @@ const DebtManagement = () => {
   }, []);
 
   const handleCashModalClose = useCallback((completed) => {
-    console.log('🔄 Cash modal closed in DebtManagement, completed:', completed);
-
     setShowCashPaymentModal(false);
 
     if (completed === true) {
-      console.log('✅ Cash debt payment successful - CLOSING ALL MODALS and clearing state');
-
       setSelectedDebt(null);
       setShowPaymentOptionsModal(false);
       setShowDetailModal(false);
@@ -599,16 +540,12 @@ const DebtManagement = () => {
       setCurrentTransaction(null);
       setPendingMpesaTransactionId(null);
 
-      setTimeout(() => {
-        fetchDebts();
-      }, 500);
+      fetchDebts();
     } else {
-      console.log('❌ Cash payment not completed - keeping debt selected for retry');
       setAmountPaid("");
       showNotification("Cash payment was cancelled.", "info");
     }
   }, [fetchDebts, showNotification]);
-
 
   const validatePhoneNumber = useCallback((phone) => {
     const cleaned = phone.replace(/\D/g, '');
@@ -622,7 +559,7 @@ const DebtManagement = () => {
   }, []);
 
   const handleRowSelect = (event, row) => {
-    openModalWithLoader('detail', row.originalData);
+    openDetailModal(row.originalData);
   };
 
   const handleActionSelected = async (action, id) => {
@@ -630,25 +567,22 @@ const DebtManagement = () => {
     if (!debt) return;
 
     if (action === 'view') {
-      openModalWithLoader('detail', debt);
+      openDetailModal(debt);
     } else if (action === 'pay') {
       if (debt.debtPaid === true) {
         showNotification("This debt has already been paid", "info");
         return;
       }
 
-      if (!debt.debtPaid) {
-        setMpesaPhone("");
-        setAmountPaid("");
-        setCurrentTransaction(null);
-        setPendingMpesaTransactionId(null);
-        setShowCashPaymentModal(false);
-        setShowMpesaPaymentModal(false);
+      setMpesaPhone("");
+      setAmountPaid("");
+      setCurrentTransaction(null);
+      setPendingMpesaTransactionId(null);
+      setShowCashPaymentModal(false);
+      setShowMpesaPaymentModal(false);
 
-        openModalWithLoader('payment', debt);
-      } else {
-        showNotification("This debt is already paid", "info");
-      }
+      setSelectedDebt(debt);
+      setShowPaymentOptionsModal(true);
     }
   };
 
@@ -690,57 +624,32 @@ const DebtManagement = () => {
         availableActions: isPaid ? ['view'] : ['view', 'pay']
       };
     });
-  }, [filteredDebts, formatCurrency, formatDate, isOverdue]);
-
-  if (operationLoading || modalLoading) {
-    return (
-      <div className="min-h-screen bg-white p-2 sm:p-3 md:p-4">
-        <div className="max-w-full mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={operationLoadingText || modalLoadingText}
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [filteredDebts, isOverdue]);
 
   if (loading && debts.length === 0) {
     return (
-      <div className="min-h-screen bg-white p-2 sm:p-3 md:p-4">
-        <div className="max-w-full mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={loadingText}
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText={loadingText}
+          loadedText=""
+          color={primaryColor}
+        />
       </div>
     );
   }
 
   if (!businessInfo.businessId && !loading) {
     return (
-      <div className="min-h-screen bg-white p-2 sm:p-3 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <h2 className="text-sm sm:text-base font-bold text-gray-700 mb-1">Business Not Available</h2>
-          <p className="text-gray-600 mb-2 text-xs sm:text-sm">Unable to load debts.</p>
+          <div className="text-red-500 text-xl mb-4">Business Not Available</div>
+          <div className="text-gray-600 mb-6">Unable to load debts. Your account is not associated with any business.</div>
           <button
             onClick={() => window.location.reload()}
-            className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
+            className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: primaryColor || '#3b82f6' }}
           >
             Retry
           </button>
@@ -749,233 +658,154 @@ const DebtManagement = () => {
     );
   }
 
-  const isAnyModalOpen = showDetailModal || showPaymentOptionsModal ||
-    showCashPaymentModal || showMpesaPaymentModal;
-
-  if (isAnyModalOpen && !operationLoading && !modalLoading) {
-    return (
-      <div className="min-h-screen bg-white p-1 sm:p-2 md:p-3 flex items-center justify-center">
-        <div className="w-full max-w-full mx-auto flex flex-col items-center justify-center">
-          {showDetailModal && (
-            <div className="w-full max-w-full md:max-w-4xl">
-              <DebtDetailModal
-                showDetailModal={showDetailModal}
-                setShowDetailModal={setShowDetailModal}
-                selectedDebt={selectedDebt}
-                setSelectedDebt={setSelectedDebt}
-                setShowPaymentOptionsModal={setShowPaymentOptionsModal}
-                actionLoading={operationLoading}
-                formatCurrency={formatCurrency}
-                formatDate={formatDate}
-                isOverdue={isOverdue}
-              />
-            </div>
-          )}
-
-          {showPaymentOptionsModal && (
-            <div className="w-full max-w-full sm:max-w-md">
-              <PaymentOptionsModal
-                showPaymentOptionsModal={showPaymentOptionsModal}
-                setShowPaymentOptionsModal={setShowPaymentOptionsModal}
-                selectedDebt={selectedDebt}
-                setSelectedDebt={setSelectedDebt}
-                setShowCashPaymentModal={setShowCashPaymentModal}
-                setShowMpesaPaymentModal={setShowMpesaPaymentModal}
-                actionLoading={operationLoading}
-                formatCurrency={formatCurrency}
-              />
-            </div>
-          )}
-
-          {showCashPaymentModal && (
-            <div className="w-full max-w-full sm:max-w-md">
-              <CashPaymentModal
-                isOpen={showCashPaymentModal}
-                onClose={handleCashModalClose}
-                totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
-                amountPaid={amountPaid}
-                onAmountPaidChange={setAmountPaid}
-                onConfirmPayment={handleCashPayment}
-                formatCurrency={formatCurrency}
-                submitting={operationLoading}
-                shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
-                isDebtPayment={true}
-                onPaymentComplete={handleCashPaymentComplete}
-                successModalCustomMessage={`Cash debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
-                successModalConfirmButtonText="Go to Debt Management"
-                successModalCountdownMessage="Returning to Debt Management in:"
-                failureModalRetryButtonText="Retry Debt Payment"
-                failureModalBackButtonText="Back to Debt Management"
-                failureModalCountdownMessage="Returning to debt payment modal in:"
-              />
-            </div>
-          )}
-
-          {showMpesaPaymentModal && (
-            <div className="w-full max-w-full sm:max-w-md">
-              <MpesaPaymentModal
-                isOpen={showMpesaPaymentModal}
-                onClose={handleMpesaModalClose}
-                totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
-                mpesaPhone={mpesaPhone}
-                onMpesaPhoneChange={setMpesaPhone}
-                onConfirmPayment={handleMpesaPayment}
-                formatCurrency={formatCurrency}
-                shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
-                validatePhone={validatePhoneNumber}
-                onPaymentComplete={handleMpesaPaymentComplete}
-                onTransactionCreated={handleMpesaTransactionCreated}
-                transactionId={pendingMpesaTransactionId || selectedDebt?.transactionId}
-                isDebtPayment={true}
-                successModalCustomMessage={`M-PESA debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
-              />
-            </div>
-          )}
-        </div>
-
-        <Toaster
-          open={notification.open}
-          state={notification.type}
-          title={notification.title}
-          message={notification.message}
-          action={() => setNotification((prev) => ({ ...prev, open: false }))}
-          position="right"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white p-1 sm:p-2 md:p-3 lg:p-4">
-      <div className="max-w-full mx-auto">
-        <div className="mb-1 sm:mb-2 md:mb-3">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              <CreditCard size={22} />
+            </div>
             <div>
-              <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-0.5">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
                 Debt Management
               </h1>
-              <p className="text-xs sm:text-sm text-gray-600">
-                Track and manage customer debts
-              </p>
               {businessInfo.businessName && (
-                <p className="text-gray-500 text-xs mt-0.5">
-                  Business: {businessInfo.businessName}
-                </p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{businessInfo.businessName}</p>
               )}
             </div>
-            <div className="flex flex-wrap gap-1">
-              <button
-                onClick={generatePaymentReport}
-                className="flex items-center gap-1 px-1.5 py-1 sm:px-2 sm:py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs sm:text-sm"
-              >
-                <TrendingUp className="h-3 w-3" />
-                <span className="hidden xs:inline">Report</span>
-              </button>
-              <button
-                onClick={fetchDebts}
-                disabled={loading}
-                className="flex items-center gap-1 px-1.5 py-1 sm:px-2 sm:py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-              >
-                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Refreshing' : 'Refresh'}
-              </button>
-            </div>
           </div>
-        </div>
 
-        <DebtSummaryCards
-          summary={summary}
-          formatCurrency={formatCurrency}
-          debts={debts}
-        />
-
-        <div className="mb-2 sm:mb-3">
-          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-1.5">
-            <div className="bg-blue-50 border border-blue-200 rounded p-1.5 sm:p-2">
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <div className="bg-blue-100 p-1 rounded">
-                  <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] xs:text-xs font-medium text-blue-700 truncate">Total Debt</p>
-                  <p className="text-sm sm:text-base font-bold text-blue-900">{debts.length}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded p-1.5 sm:p-2">
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <div className="bg-green-100 p-1 rounded">
-                  <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] xs:text-xs font-medium text-green-700 truncate">Recovered</p>
-                  <p className="text-sm sm:text-base font-bold text-green-900">{summary.completedCount}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-1.5 sm:p-2">
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <div className="bg-yellow-100 p-1 rounded">
-                  <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] xs:text-xs font-medium text-yellow-700 truncate">Pending</p>
-                  <p className="text-sm sm:text-base font-bold text-yellow-900">{summary.pendingCount}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded p-1.5 sm:p-2">
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <div className="bg-red-100 p-1 rounded">
-                  <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] xs:text-xs font-medium text-red-700 truncate">Overdue</p>
-                  <p className="text-sm sm:text-base font-bold text-red-900">{summary.overdueCount}</p>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={generatePaymentReport}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <TrendingUp size={16} />
+              Report
+            </button>
+            <button
+              onClick={fetchDebts}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Refreshing' : 'Refresh'}
+            </button>
           </div>
-        </div>
-
-        <DebtControls
-          searchFilter={searchFilter}
-          setSearchFilter={setSearchFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
+        </header>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded p-1.5 mb-2">
-            <div className="flex items-center gap-1 text-red-800">
-              <AlertTriangle className="h-3 w-3" />
-              <span className="text-xs">{error}</span>
-            </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-2 text-red-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span className="text-sm">{error}</span>
           </div>
         )}
 
+        <div className="mb-6 sm:mb-8">
+          <DebtSummaryCards summary={summary} formatCurrency={formatCurrency} />
+        </div>
+
+        <div className="mb-6">
+          <DebtControls
+            searchFilter={searchFilter}
+            setSearchFilter={setSearchFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+          />
+        </div>
+
         {debts.length === 0 && !loading ? (
-          <div className="text-center py-3 sm:py-4 bg-gray-50 rounded border border-gray-200 px-2 mt-2">
-            <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400 mx-auto mb-1.5" />
-            <h3 className="text-sm font-medium text-gray-700 mb-1">No Debt Transactions</h3>
-            <p className="text-gray-500 text-xs">
-              No debt transactions recorded yet.
-            </p>
+          <div className="flex flex-col items-center justify-center h-96 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+            <CreditCard size={64} className="text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">No Debt Transactions</h3>
+            <p className="text-gray-500">No debt transactions recorded yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-1 sm:mx-0">
-            <DebtDataTable
-              tableData={tableData}
-              selectedRows={selectedRows}
-              setSelectedRows={setSelectedRows}
-              handleRowSelect={handleRowSelect}
-              handleActionSelected={handleActionSelected}
-              setSelectAll={setSelectAll}
-              searchFilter={searchFilter}
-            />
-          </div>
+          <DebtDataTable
+            tableData={tableData}
+            selectedRows={selectedRows}
+            setSelectedRows={setSelectedRows}
+            handleRowSelect={handleRowSelect}
+            handleActionSelected={handleActionSelected}
+            setSelectAll={setSelectAll}
+            searchFilter={searchFilter}
+          />
         )}
       </div>
+
+      {showDetailModal && selectedDebt && (
+        <Modal isOpen={showDetailModal} onClose={closeDetailModal} title="Debt Details">
+          <DebtDetailModal
+            selectedDebt={selectedDebt}
+            setShowDetailModal={setShowDetailModal}
+            setShowPaymentOptionsModal={setShowPaymentOptionsModal}
+            actionLoading={operationLoading}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            isOverdue={isOverdue}
+          />
+        </Modal>
+      )}
+
+      {showPaymentOptionsModal && selectedDebt && (
+        <Modal isOpen={showPaymentOptionsModal} onClose={closePaymentOptionsModal} title="Complete Payment">
+          <PaymentOptionsModal
+            selectedDebt={selectedDebt}
+            setShowPaymentOptionsModal={setShowPaymentOptionsModal}
+            setShowCashPaymentModal={setShowCashPaymentModal}
+            setShowMpesaPaymentModal={setShowMpesaPaymentModal}
+            actionLoading={operationLoading}
+            formatCurrency={formatCurrency}
+          />
+        </Modal>
+      )}
+
+      {showCashPaymentModal && (
+        <CashPaymentModal
+          isOpen={showCashPaymentModal}
+          onClose={handleCashModalClose}
+          totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
+          amountPaid={amountPaid}
+          onAmountPaidChange={setAmountPaid}
+          onConfirmPayment={handleCashPayment}
+          formatCurrency={formatCurrency}
+          submitting={operationLoading}
+          shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
+          isDebtPayment={true}
+          onPaymentComplete={handleCashPaymentComplete}
+          successModalCustomMessage={`Cash debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
+          successModalConfirmButtonText="Go to Debt Management"
+          successModalCountdownMessage="Returning to Debt Management in:"
+          failureModalRetryButtonText="Retry Debt Payment"
+          failureModalBackButtonText="Back to Debt Management"
+          failureModalCountdownMessage="Returning to debt payment modal in:"
+        />
+      )}
+
+      {showMpesaPaymentModal && (
+        <MpesaPaymentModal
+          isOpen={showMpesaPaymentModal}
+          onClose={handleMpesaModalClose}
+          totalAmount={selectedDebt?.amount || selectedDebt?.totalAmount || 0}
+          mpesaPhone={mpesaPhone}
+          onMpesaPhoneChange={setMpesaPhone}
+          onConfirmPayment={handleMpesaPayment}
+          formatCurrency={formatCurrency}
+          shopkeeperName={businessInfo.shopkeeperInfo?.shopkeeperName}
+          validatePhone={validatePhoneNumber}
+          onPaymentComplete={handleMpesaPaymentComplete}
+          onTransactionCreated={handleMpesaTransactionCreated}
+          transactionId={pendingMpesaTransactionId || selectedDebt?.transactionId}
+          isDebtPayment={true}
+          successModalCustomMessage={`M-PESA debt payment of ${formatCurrency(selectedDebt?.amount || selectedDebt?.totalAmount || 0)} recovered from ${selectedDebt?.customerName || 'customer'}.`}
+        />
+      )}
 
       <Toaster
         open={notification.open}

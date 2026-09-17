@@ -1,21 +1,27 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import StockSummaryCards from "./StockSummaryCards";
 import ProductControls from "./ProductControls";
 import ProductsTable from "./ProductsTable";
-import ProductFormModal from "./ProductFormModal";
 import RestockProductModal from "./RestockProductModal";
 import DeleteConfirmationModal from "../../../../../components/modal/DeleteConfirmationModal";
 import ContentLoader from "../../../../../components/Loader/ContentLoader";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
-import { GET, POST, PUT, DELETE } from "../../../../../services/DatabaseServiceImp";
+import { GET, PUT, DELETE } from "../../../../../services/DatabaseServiceImp";
 import URLS from "../../../../../utilities/Endpoints";
 import Toaster from "../../../../../components/Toaster";
 import { Package } from "lucide-react";
 import { useSelector } from "react-redux";
 
+dayjs.extend(customParseFormat);
+
 export default function StockManagementPage() {
   const { primaryColor } = useTheme();
   const currentUser = useSelector((state) => state.auth?.value);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Business information from user data
   const [businessInfo, setBusinessInfo] = useState({
@@ -30,26 +36,19 @@ export default function StockManagementPage() {
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
   const [selectedItems, setSelectedItems] = useState([]);
+  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Modal states
-  const [showProductFormModal, setShowProductFormModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
-  const [productFormMode, setProductFormMode] = useState("add");
 
   // Loading states
   const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState("Loading products...");
   const [loadedText, setLoadedText] = useState("");
-
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalLoadingText, setModalLoadingText] = useState("");
-
-  const [operationLoading, setOperationLoading] = useState(false);
-  const [operationLoadingText, setOperationLoadingText] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -75,6 +74,15 @@ export default function StockManagementPage() {
     setToaster((prev) => ({ ...prev, open: false }));
   }, []);
 
+  useEffect(() => {
+    if (location.state?.toast) {
+      const { state, title, message } = location.state.toast;
+      showToasterMessage(state, title, message);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   // Extract business information from user
   useEffect(() => {
     if (currentUser) {
@@ -88,13 +96,6 @@ export default function StockManagementPage() {
           businessUUID: userBusinessUUID,
           businessName: userBusinessName
         });
-
-        console.log('Business info set:', {
-          businessId: Number(userBusinessId),
-          originalType: typeof userBusinessId,
-          parsedType: typeof Number(userBusinessId),
-          isNaN: isNaN(Number(userBusinessId))
-        });
       } else {
         setErrorMessage("No business assigned to your account. Please contact administrator.");
         setLoading(false);
@@ -105,7 +106,6 @@ export default function StockManagementPage() {
   // Load products
   const loadProducts = useCallback(async () => {
     if (!businessInfo.businessId) {
-      console.log('No businessId available');
       return;
     }
 
@@ -116,7 +116,6 @@ export default function StockManagementPage() {
 
     try {
       const endpoint = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS.replace(':businessId', businessInfo.businessId);
-      console.log('Fetching from endpoint:', endpoint);
 
       const result = await GET(endpoint);
 
@@ -166,11 +165,10 @@ export default function StockManagementPage() {
         };
       });
 
-      console.log(`Loaded ${fetchedProducts.length} products`);
       setProducts(fetchedProducts);
       setLoadedText(`${fetchedProducts.length} products loaded successfully`);
       showToasterMessage(true, 'Success', 'Products loaded successfully');
-      
+
       setTimeout(() => {
         setLoading(false);
       }, 1000);
@@ -182,10 +180,6 @@ export default function StockManagementPage() {
 
       if (error.message.includes('500')) {
         userFriendlyMessage = 'Server error. Please check the backend logs.';
-        console.error('Server 500 error. This might be due to:');
-        console.error('1. MongoDB connection issue');
-        console.error('2. Populate error with createdBy field');
-        console.error('3. Database query error');
       } else if (error.message.includes('Network Error')) {
         userFriendlyMessage = 'Network error. Please check your connection.';
       } else {
@@ -206,7 +200,6 @@ export default function StockManagementPage() {
   // Load products when businessId changes
   useEffect(() => {
     if (businessInfo.businessId) {
-      console.log('BusinessId available, loading products...');
       loadProducts();
     }
   }, [businessInfo.businessId, loadProducts]);
@@ -242,6 +235,15 @@ export default function StockManagementPage() {
       });
     }
 
+    if (dateRange.startDate && dateRange.endDate) {
+      const start = dayjs(dateRange.startDate, 'DD-MM-YYYY').startOf('day');
+      const end = dayjs(dateRange.endDate, 'DD-MM-YYYY').endOf('day');
+      filtered = filtered.filter((product) => {
+        const created = dayjs(product.createdAt);
+        return created.isValid() && !created.isBefore(start) && !created.isAfter(end);
+      });
+    }
+
     return filtered.sort((a, b) => {
       if (
         sortField === "stock" ||
@@ -260,90 +262,27 @@ export default function StockManagementPage() {
           : bValue.localeCompare(aValue);
       }
     });
-  }, [products, searchTerm, selectedItems, sortField, sortDirection, categories]);
+  }, [products, searchTerm, selectedItems, dateRange, sortField, sortDirection, categories]);
 
   // Modal handlers
-  const openModalWithLoader = async (modalType, product = null) => {
-    setModalLoading(true);
-
-    switch (modalType) {
-      case 'edit':
-        setModalLoadingText("Loading product details...");
-        break;
-      case 'restock':
-        setModalLoadingText("Loading restock form...");
-        break;
-      case 'add':
-        setModalLoadingText("Loading product form...");
-        break;
-      default:
-        setModalLoadingText("Loading...");
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (product) {
-      setCurrentProduct(product);
-    } else {
-      setCurrentProduct(null);
-    }
-
-    setModalLoading(false);
-
-    switch (modalType) {
-      case 'edit':
-        setProductFormMode("edit");
-        setShowProductFormModal(true);
-        break;
-      case 'restock':
-        setShowRestockModal(true);
-        break;
-      case 'add':
-        setProductFormMode("add");
-        setShowProductFormModal(true);
-        break;
-    }
-  };
-
-  const openDeleteModalWithLoader = async (product) => {
-    setModalLoading(true);
-    setModalLoadingText("Preparing to delete product...");
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    setProductToDelete(product);
-    setShowDeleteModal(true);
-    setModalLoading(false);
-  };
-
-  // Open modal functions
   const handleEdit = (product) => {
     if (!product) return;
-
-    const validProduct = {
-      _id: product._id || product.id,
-      id: product.id || product._id,
-      name: product.name || '',
-      sku: product.sku || '',
-      category: product.category || '',
-      stock: product.stock || 0,
-      unit: product.unit || '',
-      buyingPrice: product.buyingPrice || 0,
-      price: product.price || 0,
-      threshold: product.threshold || 0,
-      businessId: Number(product.businessId) || Number(businessInfo.businessId),
-      businessUUID: product.businessUUID || businessInfo.businessUUID,
-    };
-    
-    openModalWithLoader('edit', validProduct);
+    navigate(`/products/stock-management/${product._id || product.id}/edit`);
   };
 
-  const handleRestock = (product) => openModalWithLoader('restock', product);
-  const handleAddProductClick = () => openModalWithLoader('add');
-  const handleDeleteProductClick = (product) => openDeleteModalWithLoader(product);
+  const handleRestock = (product) => {
+    setCurrentProduct(product || null);
+    setShowRestockModal(true);
+  };
+
+  const handleAddProductClick = () => navigate('/products/stock-management/new');
+
+  const handleDeleteProductClick = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
 
   const closeAllModals = () => {
-    setShowProductFormModal(false);
     setShowRestockModal(false);
     setShowDeleteModal(false);
     setCurrentProduct(null);
@@ -351,103 +290,20 @@ export default function StockManagementPage() {
     setErrorMessage(null);
   };
 
-  // API Operations - FIXED: Only close on success
-  const saveEditedProduct = async (productData) => {
-    setSubmitting(true);
-    setOperationLoading(true);
-    setOperationLoadingText("Updating product...");
-    setErrorMessage(null);
-
-    try {
-      const productId = productData._id || productData.id;
-      const updateEndpoint = URLS.PRODUCTS.UPDATE_PRODUCT.replace(':id', productId);
-      
-      const updateData = {
-        ...productData,
-        businessId: Number(businessInfo.businessId),
-        businessUUID: businessInfo.businessUUID
-      };
-
-      console.log('📤 Updating product with data:', updateData);
-      
-      const response = await PUT(updateEndpoint, updateData);
-
-      if (response.success) {
-        const updatedProductFromServer = response.product;
-
-        // ✅ Update product in state
-        setProducts(prevProducts =>
-          prevProducts.map(p =>
-            p._id === productData._id ? {
-              ...updatedProductFromServer,
-              id: updatedProductFromServer._id,
-              _id: updatedProductFromServer._id
-            } : p
-          )
-        );
-
-        // ✅ Show success message
-        setOperationLoadingText("Product updated successfully!");
-        showToasterMessage(true, 'Success', response.message || "Product updated successfully");
-        
-        // ✅ Wait to show success
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
-        setOperationLoading(false);
-        setSubmitting(false);
-        closeAllModals();
-        
-      } else {
-        // ❌ ERROR: Show error but DON'T close modal
-        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
-        setErrorMessage(response.message || 'Failed to update product');
-        showToasterMessage(false, 'Update Error', response.message || 'Failed to update product');
-        
-        // Wait to show error message
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // ❌ RESET LOADING BUT STAY IN MODAL
-        setOperationLoading(false);
-        setSubmitting(false);
-        // Don't close modal - keep it open for retry
-      }
-    } catch (error) {
-      console.error('❌ Update error:', error);
-      
-      // ❌ ERROR: Show error but DON'T close modal
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to update product';
-      setOperationLoadingText(`Error: ${errorMsg}`);
-      setErrorMessage(errorMsg);
-      showToasterMessage(false, 'Update Error', errorMsg);
-      
-      // Wait to show error message
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // ❌ RESET LOADING BUT STAY IN MODAL
-      setOperationLoading(false);
-      setSubmitting(false);
-      // Don't close modal - keep it open for retry
-    }
-  };
-
   const saveRestockedProduct = async (restockData) => {
     setSubmitting(true);
-    setOperationLoading(true);
-    setOperationLoadingText("Restocking product...");
     setErrorMessage(null);
 
     try {
       const productId = restockData._id || restockData.id;
       const updateData = { stock: restockData.stock };
-      
+
       const restockEndpoint = URLS.PRODUCTS.UPDATE_STOCK.replace(':id', productId);
       const response = await PUT(restockEndpoint, updateData);
 
       if (response.success) {
         const updatedProductFromServer = response.product;
 
-        // ✅ Update product in state
         setProducts(prevProducts =>
           prevProducts.map(p =>
             p._id === restockData._id ? {
@@ -461,46 +317,20 @@ export default function StockManagementPage() {
           )
         );
 
-        // ✅ Show success message
-        setOperationLoadingText("Product restocked successfully!");
         showToasterMessage(true, 'Success', response.message || "Product restocked successfully");
-        
-        // ✅ Wait to show success
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
-        setOperationLoading(false);
-        setSubmitting(false);
         closeAllModals();
-        
       } else {
-        // ❌ ERROR: Show error but DON'T close modal
-        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        // Show error but keep the modal open for retry
         setErrorMessage(response.message || 'Failed to restock product');
         showToasterMessage(false, 'Restock Error', response.message || 'Failed to restock product');
-        
-        // Wait to show error message
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // ❌ RESET LOADING BUT STAY IN MODAL
-        setOperationLoading(false);
-        setSubmitting(false);
-        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      // ❌ ERROR: Show error but DON'T close modal
       const errorMsg = error.response?.data?.message || error.message || 'Failed to restock product';
-      setOperationLoadingText(`Error: ${errorMsg}`);
       setErrorMessage(errorMsg);
       showToasterMessage(false, 'Restock Error', errorMsg);
-      
-      // Wait to show error message
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // ❌ RESET LOADING BUT STAY IN MODAL
-      setOperationLoading(false);
+      // Keep the modal open for retry
+    } finally {
       setSubmitting(false);
-      // Don't close modal - keep it open for retry
     }
   };
 
@@ -508,8 +338,6 @@ export default function StockManagementPage() {
     if (!productToDelete) return;
 
     setSubmitting(true);
-    setOperationLoading(true);
-    setOperationLoadingText("Deleting product...");
     setErrorMessage(null);
 
     try {
@@ -518,139 +346,24 @@ export default function StockManagementPage() {
       const response = await DELETE(deleteEndpoint);
 
       if (response.success) {
-        // ✅ Remove product from state
         setProducts(prevProducts =>
           prevProducts.filter(p => p._id !== productToDelete._id)
         );
 
-        // ✅ Show success message
-        setOperationLoadingText("Product deleted successfully!");
         showToasterMessage(true, 'Success', response.message || "Product deleted successfully");
-        
-        // ✅ Wait to show success
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
-        setOperationLoading(false);
-        setSubmitting(false);
         closeAllModals();
-        
       } else {
-        // ❌ ERROR: Show error but DON'T close modal
-        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
+        // Show error but keep the modal open for retry
         setErrorMessage(response.message || 'Failed to delete product');
         showToasterMessage(false, 'Delete Error', response.message || 'Failed to delete product');
-        
-        // Wait to show error message
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // ❌ RESET LOADING BUT STAY IN MODAL
-        setOperationLoading(false);
-        setSubmitting(false);
-        // Don't close modal - keep it open for retry
       }
     } catch (error) {
-      // ❌ ERROR: Show error but DON'T close modal
+      // Show error but keep the modal open for retry
       const errorMsg = error.response?.data?.message || error.message || 'Failed to delete product';
-      setOperationLoadingText(`Error: ${errorMsg}`);
       setErrorMessage(errorMsg);
       showToasterMessage(false, 'Delete Error', errorMsg);
-      
-      // Wait to show error message
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // ❌ RESET LOADING BUT STAY IN MODAL
-      setOperationLoading(false);
+    } finally {
       setSubmitting(false);
-      // Don't close modal - keep it open for retry
-    }
-  };
-
-  const handleSaveNewProduct = async (newProductData) => {
-    setSubmitting(true);
-    setOperationLoading(true);
-    setOperationLoadingText("Adding new product...");
-    setErrorMessage(null);
-
-    try {
-      const productData = {
-        name: String(newProductData.name || '').trim(),
-        sku: String(newProductData.sku || '').trim().toUpperCase(),
-        category: String(newProductData.category || '').trim(),
-        stock: parseInt(newProductData.stock) || 0,
-        unit: String(newProductData.unit || '').trim(),
-        buyingPrice: parseFloat(newProductData.buyingPrice) || 0,
-        price: parseFloat(newProductData.price) || 0,
-        threshold: parseInt(newProductData.threshold) || 0,
-        businessId: Number(businessInfo.businessId),
-        businessUUID: businessInfo.businessUUID
-      };
-
-      console.log('📤 Sending product data:', {
-        ...productData,
-        businessIdType: typeof productData.businessId,
-        businessIdValue: productData.businessId
-      });
-
-      const createEndpoint = URLS.PRODUCTS.CREATE_PRODUCT;
-      const response = await POST(createEndpoint, productData);
-
-      if (response.success) {
-        const newProductFromServer = response.product;
-
-        // ✅ Add new product to state
-        setProducts(prevProducts => [...prevProducts, {
-          ...newProductFromServer,
-          id: newProductFromServer._id,
-          _id: newProductFromServer._id
-        }]);
-
-        // ✅ Show success message
-        setOperationLoadingText("Product added successfully!");
-        showToasterMessage(true, 'Success', response.message || "Product added successfully");
-        
-        // ✅ Wait to show success
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // ✅ CLOSE LOADER AND MODAL ON SUCCESS ONLY
-        setOperationLoading(false);
-        setSubmitting(false);
-        closeAllModals();
-        
-      } else {
-        // ❌ ERROR: Show error but DON'T close modal
-        setOperationLoadingText(`Failed: ${response.message || 'Unknown error'}`);
-        setErrorMessage(response.message || 'Failed to add product');
-        showToasterMessage(false, 'Add Error', response.message || "Failed to add product");
-        
-        // Wait to show error message
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // ❌ RESET LOADING BUT STAY IN MODAL
-        setOperationLoading(false);
-        setSubmitting(false);
-        // Don't close modal - keep it open for retry
-      }
-    } catch (error) {
-      console.error('❌ Frontend error details:', {
-        message: error.message,
-        responseData: error.response?.data,
-        status: error.response?.status
-      });
-      
-      // ❌ ERROR: Show error but DON'T close modal
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to add product';
-      setOperationLoadingText(`Error: ${errorMsg}`);
-      setErrorMessage(errorMsg);
-      showToasterMessage(false, 'Add Error', errorMsg);
-      
-      // Wait to show error message
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // ❌ RESET LOADING BUT STAY IN MODAL
-      setOperationLoading(false);
-      setSubmitting(false);
-      // Don't close modal - keep it open for retry
     }
   };
 
@@ -677,75 +390,23 @@ export default function StockManagementPage() {
   const lowStockCount = products.filter((p) => p.status === "Low Stock").length;
   const outOfStockCount = products.filter((p) => p.status === "Out of Stock").length;
 
-  // Operation Loading State
-  if (operationLoading) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={operationLoadingText}
-                loadedText={loadedText}
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-        
-        <Toaster
-          open={toaster.open}
-          state={toaster.state}
-          title={toaster.title}
-          message={toaster.message}
-          action={handleCloseToaster}
-          position="right"
-        />
-      </div>
-    );
-  }
-
-  // Modal Loading State
-  if (modalLoading) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={modalLoadingText}
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // No Business ID State
   if (!businessInfo.businessId && !loading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-red-500 text-xl mb-4">Business Not Available</div>
-            <div className="text-gray-600 mb-6">
-              Unable to load products. Your account is not associated with any business.
-              {errorMessage && <div className="mt-2 text-sm">{errorMessage}</div>}
-            </div>
-            <button
-              onClick={handleRetry}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
-            >
-              Retry
-            </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-xl mb-4">Business Not Available</div>
+          <div className="text-gray-600 mb-6">
+            Unable to load products. Your account is not associated with any business.
+            {errorMessage && <div className="mt-2 text-sm">{errorMessage}</div>}
           </div>
+          <button
+            onClick={handleRetry}
+            className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: primaryColor || '#3b82f6' }}
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -754,103 +415,57 @@ export default function StockManagementPage() {
   // Initial Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={loadingText}
-                loadedText={loadedText}
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText={loadingText}
+          loadedText={loadedText}
+          color={primaryColor}
+        />
       </div>
     );
   }
 
-  // Check if any modal is open
-  const isAnyModalOpen = showProductFormModal || showRestockModal || showDeleteModal;
-
-  if (isAnyModalOpen) {
-    return (
-      <>
-        <Toaster
-          open={toaster.open}
-          state={toaster.state}
-          title={toaster.title}
-          message={toaster.message}
-          action={handleCloseToaster}
-          position="right"
-        />
-
-        {showProductFormModal && (
-          <ProductFormModal
-            show={showProductFormModal}
-            mode={productFormMode}
-            product={currentProduct}
-            onClose={closeAllModals}
-            onSave={productFormMode === "edit" ? saveEditedProduct : handleSaveNewProduct}
-            categories={categories}
-            businessId={businessInfo.businessId}
-            businessUUID={businessInfo.businessUUID}
-            errorMessage={errorMessage} // Pass error to form
-          />
-        )}
-
-        {showRestockModal && (
-          <RestockProductModal
-            show={showRestockModal}
-            product={currentProduct}
-            onClose={closeAllModals}
-            onSave={saveRestockedProduct}
-            errorMessage={errorMessage} // Pass error to form
-          />
-        )}
-
-        {showDeleteModal && (
-          <DeleteConfirmationModal
-            open={showDeleteModal}
-            onClose={handleCancelDelete}
-            onConfirm={handleConfirmDelete}
-            title="Confirm Product Deletion"
-            message={`Are you sure you want to permanently delete "${productToDelete?.name || "this product"}"? This action cannot be undone.`}
-            confirmText="Delete Permanently"
-            cancelText="No, Keep Product"
-            isLoading={submitting}
-            itemName={productToDelete ? productToDelete.name : ""}
-            errorMessage={errorMessage} // Pass error to modal
-          />
-        )}
-      </>
-    );
-  }
-
-  // Main View - Only shown when no modals are open
   return (
-    <div className="min-h-screen bg-white p-2">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6 p-2">
-        Stock Management
-        {businessInfo.businessName && (
-          <span className="text-lg font-normal text-gray-600 ml-2">
-            - {businessInfo.businessName}
-          </span>
-        )}
-      </h1>
+    <div className="min-h-screen bg-gray-50">
+      <Toaster
+        open={toaster.open}
+        state={toaster.state}
+        title={toaster.title}
+        message={toaster.message}
+        action={handleCloseToaster}
+        position="right"
+      />
 
-      <div className="min-h-screen bg-white p-2">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+        <header className="flex items-center gap-3 mb-6 sm:mb-8">
+          <div
+            className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+            style={{ backgroundColor: primaryColor || '#3b82f6' }}
+          >
+            <Package size={22} />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+              Stock Management
+            </h1>
+            {businessInfo.businessName && (
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{businessInfo.businessName}</p>
+            )}
+          </div>
+        </header>
+
         {/* Empty state */}
         {products.length === 0 && !loading && !errorMessage ? (
-          <div className="flex flex-col items-center justify-center h-96 bg-white rounded-lg border-2 border-dashed border-gray-300">
+          <div className="flex flex-col items-center justify-center h-96 bg-white rounded-2xl border-2 border-dashed border-gray-200">
             <Package size={64} className="text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No Products Found</h3>
             <p className="text-gray-500 mb-6">Get started by adding your first product</p>
             <button
               onClick={handleAddProductClick}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              className="flex items-center gap-2 px-6 py-3 text-white rounded-lg transition-opacity hover:opacity-90 font-medium"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
             >
               Add Product
             </button>
@@ -858,16 +473,18 @@ export default function StockManagementPage() {
         ) : (
           <>
             {errorMessage && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
                 <p className="text-red-800">{errorMessage}</p>
               </div>
             )}
 
-            <StockSummaryCards
-              totalProducts={products.length}
-              lowStockCount={lowStockCount}
-              outOfStockCount={outOfStockCount}
-            />
+            <div className="mb-6 sm:mb-8">
+              <StockSummaryCards
+                totalProducts={products.length}
+                lowStockCount={lowStockCount}
+                outOfStockCount={outOfStockCount}
+              />
+            </div>
 
             <ProductControls
               searchTerm={searchTerm}
@@ -876,6 +493,8 @@ export default function StockManagementPage() {
               onAddProduct={handleAddProductClick}
               selectedItems={selectedItems}
               setSelectedItems={setSelectedItems}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
             />
 
             <ProductsTable
@@ -890,16 +509,32 @@ export default function StockManagementPage() {
             />
           </>
         )}
-
-        <Toaster
-          open={toaster.open}
-          state={toaster.state}
-          title={toaster.title}
-          message={toaster.message}
-          action={handleCloseToaster}
-          position="right"
-        />
       </div>
+
+      {showRestockModal && (
+        <RestockProductModal
+          show={showRestockModal}
+          product={currentProduct}
+          onClose={closeAllModals}
+          onSave={saveRestockedProduct}
+          errorMessage={errorMessage}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteConfirmationModal
+          open={showDeleteModal}
+          onClose={handleCancelDelete}
+          onConfirm={handleConfirmDelete}
+          title="Confirm Product Deletion"
+          message={`Are you sure you want to permanently delete "${productToDelete?.name || "this product"}"? This action cannot be undone.`}
+          confirmText="Delete Permanently"
+          cancelText="No, Keep Product"
+          isLoading={submitting}
+          itemName={productToDelete ? productToDelete.name : ""}
+          errorMessage={errorMessage}
+        />
+      )}
     </div>
   );
 }

@@ -208,7 +208,7 @@ const buildReceiptHtml = (order, opts) => {
 
     ${paymentBlock}
 
-    ${order.note ? `<div class="note">📝 ${esc(order.note)}</div>` : ""}
+    ${order.note ? `<div class="note">${esc(order.note)}</div>` : ""}
 
     <div class="footer">
       <div class="thanks">Thank you!</div>

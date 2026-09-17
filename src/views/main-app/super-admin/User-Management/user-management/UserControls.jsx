@@ -12,9 +12,8 @@ const UsersControls = ({
   setSearchTerm,
   filters,
   setFilters,
-  selectedItems,
-  setSelectedItems,
-  openModal
+  openModal,
+  businessNames = []
 }) => {
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const [dateFilterAnchorEl, setDateFilterAnchorEl] = useState(null);
@@ -27,7 +26,7 @@ const UsersControls = ({
   // Default color if theme context doesn't provide one
   const themeColor = primaryColor || '#2563eb';
 
-  console.log("🎨 UsersControls - Theme primary color:", themeColor);
+  console.log("UsersControls - Theme primary color:", themeColor);
 
   // Handle search input
   const handleSearchInput = (value) => {
@@ -108,12 +107,7 @@ const UsersControls = ({
     { label: 'Staff', value: 'Staff' }
   ];
 
-  const businessFilters = [
-    { label: 'Grand Hotel Plaza', value: 'Grand Hotel Plaza' },
-    { label: 'City Medical Center', value: 'City Medical Center' },
-    { label: 'SuperMart Retail', value: 'SuperMart Retail' },
-    { label: 'Downtown Kiosk', value: 'Downtown Kiosk' }
-  ];
+  const businessFilters = businessNames.map(name => ({ label: name, value: name }));
 
   return (
     <div className="bg-white p-4 mb-4 ml-2">
@@ -158,8 +152,12 @@ const UsersControls = ({
             filters2={roleFilters}
             filters3={businessFilters}
             options={filterOptions}
-            selected={selectedItems || []}
-            selectedAction={setSelectedItems}
+            selected={filters.status || []}
+            selectedAction={(statusArr) => setFilters(prev => ({ ...prev, status: statusArr }))}
+            selected2={filters.role || []}
+            selectedAction2={(roleArr) => setFilters(prev => ({ ...prev, role: roleArr }))}
+            selected3={filters.business || []}
+            selectedAction3={(businessArr) => setFilters(prev => ({ ...prev, business: businessArr }))}
             tableFilter={tableFilter}
             handleTableFilter={handleTableFilter}
             anchorEl={filterAnchorEl}

@@ -96,17 +96,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-white shadow-md z-30 transform transition-transform duration-300 ease-in-out
+        className={`fixed top-0 left-0 h-full w-60 bg-white border-r border-gray-100 shadow-sm z-30 flex flex-col transform transition-transform duration-300 ease-in-out
         lg:translate-x-0 lg:static ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b lg:hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 lg:hidden shrink-0">
           <img
             src={displayLogo}
             alt="Business Logo"
             className="h-8 w-auto object-contain max-w-full"
             onError={(e) => {
-              console.error("❌ Image failed to load:", displayLogo);
-              console.error("❌ User data for debugging:", {
+              console.error("Image failed to load:", displayLogo);
+              console.error("User data for debugging:", {
                 user: user,
                 logoField: user?.logo,
                 themeLogo: logoUrl,
@@ -123,13 +123,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           </button>
         </div>
 
-        <div className="hidden lg:flex items-center justify-center py-4 border-b">
+        <div className="hidden lg:flex items-center justify-center py-4 border-b border-gray-100 shrink-0">
           <img
             src={displayLogo}
             alt="Business Logo"
             className="h-8 w-auto object-contain max-w-full"
             onError={(e) => {
-              console.error("❌ Image failed to load:", displayLogo);
+              console.error("Image failed to load:", displayLogo);
               e.currentTarget.onerror = null;
               e.currentTarget.src = DEFAULT_LOGO;
             }}
@@ -137,22 +137,29 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             }}
           />
         </div>
-        <nav className="px-3 py-4">
+        <nav className="px-3 py-4 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {allowedMenuItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = location.pathname === item.path
+                || location.pathname.startsWith(`${item.path}/`);
 
               return (
                 <li key={item.key}>
                   <Link
                     to={item.path}
                     onClick={handleItemClick}
-                    className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition"
+                    className="relative flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-gray-50"
                     style={{
                       backgroundColor: isActive ? `${primaryColor}15` : undefined,
                       color: isActive ? primaryColor : "#4B5563",
                     }}
                   >
+                    {isActive && (
+                      <span
+                        className="absolute left-0 inset-y-0 w-1 rounded-r-full"
+                        style={{ backgroundColor: primaryColor }}
+                      />
+                    )}
                     <span className="mr-3">{item.icon}</span>
                     {item.title}
                   </Link>

@@ -1,74 +1,57 @@
 import React from "react";
-import { AlertTriangle, CheckCircle, DollarSign, TrendingUp, CreditCard } from "lucide-react";
+import { AlertTriangle, CheckCircle, CreditCard, TrendingUp } from "lucide-react";
 
-const DebtSummaryCards = ({ summary, formatCurrency, debts }) => {
-  const summaryCards = [
+const DebtSummaryCards = ({ summary, formatCurrency }) => {
+  const cards = [
     {
       title: "Pending Debt",
-      amount: summary.totalPending,
-      count: summary.pendingCount,
-      color: "red",
+      value: formatCurrency(summary.totalPending),
+      caption: `${summary.pendingCount} ${summary.pendingCount === 1 ? "debt" : "debts"}`,
       icon: AlertTriangle,
-      formattedAmount: formatCurrency(summary.totalPending),
-      description: "Amount still owed"
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
     },
     {
-      title: "Recovered Amount",
-      amount: summary.totalCollected,
-      count: summary.completedCount,
-      color: "green",
+      title: "Recovered",
+      value: formatCurrency(summary.totalCollected),
+      caption: `${summary.completedCount} ${summary.completedCount === 1 ? "debt" : "debts"}`,
       icon: CheckCircle,
-      formattedAmount: formatCurrency(summary.totalCollected),
-      description: "Successfully collected"
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
     },
     {
-      title: "Total Overdue",
-      amount: summary.totalOverdue,
-      count: summary.overdueCount,
-      color: "orange",
+      title: "Overdue",
+      value: formatCurrency(summary.totalOverdue),
+      caption: `${summary.overdueCount} ${summary.overdueCount === 1 ? "debt" : "debts"}`,
       icon: CreditCard,
-      formattedAmount: formatCurrency(summary.totalOverdue),
-      description: "Past due date"
+      iconBg: "bg-red-50",
+      iconColor: "text-red-600",
     },
     {
       title: "Recovery Rate",
-      amount: summary.recoveryRate,
-      count: null,
-      color: "blue",
+      value: `${summary.recoveryRate}%`,
+      caption: `${summary.totalDebts} total ${summary.totalDebts === 1 ? "debt" : "debts"}`,
       icon: TrendingUp,
-      formattedAmount: `${summary.recoveryRate}%`,
-      description: "Of total debt recovered"
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {summaryCards.map((card, index) => (
-        <div key={index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <div className={`bg-${card.color}-100 p-2 rounded-lg`}>
-              <card.icon className={`h-5 w-5 text-${card.color}-600`} />
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {cards.map((card) => (
+        <div
+          key={card.title}
+          className="rounded-2xl p-3 sm:p-4 bg-white border border-gray-100 shadow-sm"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{card.title}</p>
+            <div className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg shrink-0 ${card.iconBg}`}>
+              <card.icon size={16} className={card.iconColor} />
             </div>
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full bg-${card.color}-100 text-${card.color}-800`}>
-              {card.count !== null ? `${card.count} ${card.count === 1 ? 'item' : 'items'}` : 'Rate'}
-            </span>
           </div>
-          
-          <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
-          <p className={`text-2xl font-bold text-${card.color}-700 mb-1`}>
-            {card.formattedAmount}
-          </p>
-          <p className="text-xs text-gray-500">
-            {card.description}
-          </p>
-          
-          {card.title === "Recovered Amount" && summary.completedCount > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-100">
-              <p className="text-xs text-gray-600">
-                Avg: {formatCurrency(summary.totalCollected / summary.completedCount)} per debt
-              </p>
-            </div>
-          )}
+          <p className="text-base sm:text-xl font-bold text-gray-900 mt-2 truncate">{card.value}</p>
+          <p className="text-xs text-gray-400 mt-0.5 truncate">{card.caption}</p>
         </div>
       ))}
     </div>

@@ -13,6 +13,8 @@ const ProductControls = ({
   onAddProduct,
   selectedItems,
   setSelectedItems,
+  dateRange,
+  setDateRange,
 }) => {
   const { primaryColor } = useTheme();
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -42,9 +44,11 @@ const ProductControls = ({
     setDateFilter(isFiltered);
   };
 
-  const handleDateSelected = (dateRange) => {
-    // You can implement date filtering for products if needed
-    console.log('Date range selected:', dateRange);
+  const handleDateSelected = (range) => {
+    setDateRange({
+      startDate: range?.startDate || null,
+      endDate: range?.endDate || null,
+    });
   };
 
   // Handle advanced filter
@@ -75,7 +79,7 @@ const ProductControls = ({
   }));
 
   return (
-    <div className="bg-white p-4 mb-4 ml-2">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6 sm:mb-8">
       <div className="flex gap-4 flex-wrap items-center justify-between">
         {/* Left Side: Search and Filters */}
         <div className="flex gap-4 flex-wrap items-center flex-1">
@@ -92,11 +96,15 @@ const ProductControls = ({
             />
           </div>
 
-          {/* Date Range Filter - Optional for products */}
+          {/* Date Range Filter */}
           <DateRangeInput
             type="products"
             color={primaryColor}
-            selected={null} // You can implement date filtering if needed
+            selected={
+              dateRange?.startDate && dateRange?.endDate
+                ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+                : null
+            }
             dateFilter={dateFilter}
             anchorEl={dateFilterAnchorEl}
             selectedAction={handleDateSelected}
@@ -114,6 +122,8 @@ const ProductControls = ({
             options={filterOptions}
             selected={selectedItems || []}
             selectedAction={setSelectedItems}
+            selected2={selectedItems || []}
+            selectedAction2={setSelectedItems}
             tableFilter={tableFilter}
             handleTableFilter={handleTableFilter}
             anchorEl={filterAnchorEl}

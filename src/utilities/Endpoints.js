@@ -45,7 +45,7 @@ const URLS = {
     UPDATE_STOCK: "/api/products/update-stock/:id",
     DELETE_PRODUCT: "/api/products/delete-product/:id",
 
-    // ⚠️ The endpoints below are NOT in the backend reference.
+    // The endpoints below are NOT in the backend reference.
     // Remove them, or confirm with backend team if they exist:
     // GET_PRODUCTS_BY_KIOSK: "/api/products/:kioskId",
     // GET_PRODUCT_BY_ID: "/api/products/single/:id",
@@ -85,7 +85,7 @@ const URLS = {
     POLL_STATUS: "/api/mpesa/poll-status/:transactionId",
   },
 
-  // ⚠️ The sections below are NOT in the backend reference document.
+  // The sections below are NOT in the backend reference document.
   // Confirm with backend team whether these routes exist before using.
 
   KIOSKS: {

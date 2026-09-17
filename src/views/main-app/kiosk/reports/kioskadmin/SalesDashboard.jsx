@@ -7,13 +7,10 @@ import {
   Users,
   MoreVertical,
   PieChartIcon,
-  Calendar,
   Download,
   Package,
   RefreshCw,
-  CheckCircle,
   AlertTriangle,
-  Filter,
   TrendingUp,
   TrendingDown
 } from "lucide-react";
@@ -81,45 +78,15 @@ const SalesDashboard = ({
         transactionCount: 0,
         paymentMethods: [],
         dailyTrend: [],
-        averageSale: 0,
-        topProducts: []
+        averageSale: 0
       };
     }
 
-    // Calculate additional metrics from filteredTransactions
-    const completedTransactions = (filteredTransactions || []).filter(t =>
-      t.status?.toLowerCase() === 'completed'
-    );
-
-    // Get top selling products from filtered transactions
-    const productMap = {};
-    completedTransactions.forEach(t => {
-      if (t.items && Array.isArray(t.items)) {
-        t.items.forEach(item => {
-          const productName = item.productName || 'Unknown Product';
-          if (!productMap[productName]) {
-            productMap[productName] = {
-              name: productName,
-              quantity: 0,
-              revenue: 0
-            };
-          }
-          productMap[productName].quantity += item.quantity || 1;
-          productMap[productName].revenue += (item.price || 0) * (item.quantity || 1);
-        });
-      }
-    });
-
-    const topProducts = Object.values(productMap)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
-
     return {
       ...salesData,
-      averageSale: salesData.transactionCount > 0 ? salesData.totalRevenue / salesData.transactionCount : 0,
-      topProducts
+      averageSale: salesData.transactionCount > 0 ? salesData.totalRevenue / salesData.transactionCount : 0
     };
-  }, [salesData, filteredTransactions]);
+  }, [salesData]);
 
   // Date range handlers
   const handleDateClick = (event) => {
@@ -130,9 +97,7 @@ const SalesDashboard = ({
     setDateAnchorEl(null);
   };
 
-  const handleDateFilterChange = (hasFilter) => {
-    console.log("Date filter changed:", hasFilter);
-  };
+  const handleDateFilterChange = (hasFilter) => {};
 
   // Filter handlers
   const handleFilterClick = (event) => {
@@ -143,9 +108,7 @@ const SalesDashboard = ({
     setFilterAnchorEl(null);
   };
 
-  const handleTableFilterChange = (hasFilter) => {
-    console.log("Table filter changed:", hasFilter);
-  };
+  const handleTableFilterChange = (hasFilter) => {};
 
   // Handle local filter change
   const handleLocalFilterChange = (filters) => {
@@ -209,35 +172,45 @@ const SalesDashboard = ({
     return (selectedFilters || localSelectedFilters).length;
   };
 
-  // StatCard Component (define locally if not passed from parent)
-  const LocalStatCard = ({ title, value, growth, icon, color, suffix = "", loading: isLoading }) => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-lg bg-gradient-to-br ${color} bg-opacity-10`}>
+  // Compact tick labels for chart Y-axes (e.g. 12000 -> "12K")
+  const formatAxisValue = (value) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
+    return `${value}`;
+  };
+
+  // StatCard Component (define locally if not passed from parent) — `color` is a
+  // semantic key (blue/green/purple/orange), not a Tailwind gradient class string.
+  const STAT_ICON_BG = {
+    blue: "bg-blue-50",
+    green: "bg-green-50",
+    purple: "bg-purple-50",
+    orange: "bg-orange-50",
+  };
+
+  const LocalStatCard = ({ title, value, growth, icon, color = "blue", suffix = "", loading: isLoading }) => (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{title}</p>
+        <div className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-lg shrink-0 ${STAT_ICON_BG[color] || STAT_ICON_BG.blue}`}>
           {icon}
         </div>
-        {!isLoading && growth !== undefined && (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
-            {growth >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
-            {Math.abs(growth)}%
-          </span>
-        )}
       </div>
       {isLoading ? (
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded"></div>
+        <div className="animate-pulse mt-3">
+          <div className="h-6 bg-gray-200 rounded mb-2 w-2/3"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/3"></div>
         </div>
       ) : (
         <>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">{value}{suffix}</h3>
-          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-2 truncate">{value}{suffix}</p>
           {growth !== undefined && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center text-xs text-gray-500">
-                <span>{growth >= 0 ? 'Increase' : 'Decrease'} from previous period</span>
-              </div>
+            <div className="flex items-center gap-1 mt-1">
+              <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {growth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {Math.abs(growth)}%
+              </span>
+              <span className="text-xs text-gray-400">vs previous period</span>
             </div>
           )}
         </>
@@ -249,118 +222,61 @@ const SalesDashboard = ({
   const CardComponent = StatCard || LocalStatCard;
 
   return (
-    <div className="space-y-8">
-      {/* Header with controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sales Dashboard</h1>
-          <p className="text-gray-600 mt-1">Real-time sales analytics and transaction monitoring</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={onRefresh}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
-            disabled={loading}
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Date Range Input */}
-            <div className="relative inline-flex">
-              <DateRangeInput
-                type="sales"
-                color={theme.primaryColor}
-                selected={selectedDateRange}
-                dateFilter={!!selectedDateRange}
-                anchorEl={dateAnchorEl}
-                selectedAction={onDateRangeChange}
-                handleDateFilter={handleDateFilterChange}
-                handleClose={handleDateClose}
-                handleClick={handleDateClick}
-              />
-              {selectedDateRange && (
-                <span className="ml-2 text-sm text-gray-700 whitespace-nowrap hidden sm:inline">
-                  {getDateRangeLabel()}
-                </span>
-              )}
-            </div>
+            <DateRangeInput
+              type="sales"
+              color={theme.primaryColor}
+              selected={selectedDateRange}
+              dateFilter={!!selectedDateRange}
+              anchorEl={dateAnchorEl}
+              selectedAction={onDateRangeChange}
+              handleDateFilter={handleDateFilterChange}
+              handleClose={handleDateClose}
+              handleClick={handleDateClick}
+            />
 
-            {/* Filter Input */}
-            <div className="relative inline-flex">
-              <FilterInput
-                color={theme.primaryColor}
-                label="Sales Filters"
-                filters={filterOptions}
-                selected={selectedFilters || localSelectedFilters}
-                selectedAction={handleLocalFilterChange}
-                tableFilter={getActiveFilterCount() > 0}
-                handleTableFilter={handleTableFilterChange}
-                anchorEl={filterAnchorEl}
-                handleClose={handleFilterClose}
-                handleClick={handleFilterClick}
-                options={["Filters"]}
-              />
-              {getActiveFilterCount() > 0 && (
-                <span className="ml-2 text-sm text-gray-700 whitespace-nowrap hidden sm:inline">
-                  {getActiveFilterCount()} filter(s)
-                </span>
-              )}
-            </div>
+            <FilterInput
+              color={theme.primaryColor}
+              label="Sales Filters"
+              filters={filterOptions}
+              selected={selectedFilters || localSelectedFilters}
+              selectedAction={handleLocalFilterChange}
+              tableFilter={getActiveFilterCount() > 0}
+              handleTableFilter={handleTableFilterChange}
+              anchorEl={filterAnchorEl}
+              handleClose={handleFilterClose}
+              handleClick={handleFilterClick}
+              options={["Filters"]}
+            />
+
+            <span className="text-sm text-gray-500 whitespace-nowrap">
+              {getDateRangeLabel()}
+              {getActiveFilterCount() > 0 && ` · ${getActiveFilterCount()} filter(s)`}
+            </span>
           </div>
 
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            disabled={loading}
-          >
-            <Download size={18} />
-            Export
-          </button>
-        </div>
-      </div>
-
-      {/* Date Range and Filter Indicators */}
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Calendar className="text-blue-600" size={20} />
-            <div>
-              <p className="text-sm font-medium text-blue-900">Viewing data for</p>
-              <p className="text-lg font-bold text-blue-700">{getDateRangeLabel()}</p>
-            </div>
-          </div>
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              {loading ? "Loading..." : "Refresh"}
+            </button>
 
-          {getActiveFilterCount() > 0 && (
-            <div className="flex items-center gap-2">
-              <Filter className="text-blue-600" size={20} />
-              <div>
-                <p className="text-sm font-medium text-blue-900">Active Filters</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {(selectedFilters || localSelectedFilters).map(filter => {
-                    const filterOption = filterOptions.find(opt => opt.value === filter);
-                    return (
-                      <span
-                        key={filter}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
-                      >
-                        {filterOption?.label || filter}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="text-right">
-            <p className="text-sm text-blue-600">
-              {filteredTransactions?.length || 0} filtered transactions
-            </p>
-            <p className="text-lg font-bold text-blue-900">
-              {formatCurrency(filteredData.totalRevenue)} total revenue
-            </p>
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              <Download size={16} />
+              Export
+            </button>
           </div>
         </div>
       </div>
@@ -371,8 +287,8 @@ const SalesDashboard = ({
           title="Total Revenue"
           value={formatCurrency(filteredData.totalRevenue)}
           growth={revenueGrowth}
-          icon={<DollarSign className="text-blue-600" size={24} />}
-          color="from-blue-500 to-blue-600"
+          icon={<DollarSign className="text-blue-600" size={20} />}
+          color="blue"
           loading={loading}
         />
 
@@ -380,8 +296,8 @@ const SalesDashboard = ({
           title="Transactions"
           value={filteredTransactions?.length || 0}
           growth={transactionGrowth}
-          icon={<ShoppingCart className="text-green-600" size={24} />}
-          color="from-green-500 to-green-600"
+          icon={<ShoppingCart className="text-green-600" size={20} />}
+          color="green"
           loading={loading}
         />
 
@@ -389,17 +305,16 @@ const SalesDashboard = ({
           title="Average Sale"
           value={formatCurrency(filteredData.averageSale)}
           growth={revenueGrowth > transactionGrowth ? revenueGrowth : transactionGrowth}
-          icon={<CreditCard className="text-purple-600" size={24} />}
-          color="from-purple-500 to-purple-600"
+          icon={<CreditCard className="text-purple-600" size={20} />}
+          color="purple"
           loading={loading}
         />
 
         <CardComponent
           title="Payment Methods"
           value={filteredData.paymentMethods.length}
-          growth={0}
-          icon={<Users className="text-orange-600" size={24} />}
-          color="from-orange-500 to-orange-600"
+          icon={<Users className="text-orange-600" size={20} />}
+          color="orange"
           loading={loading}
         />
       </div>
@@ -409,7 +324,7 @@ const SalesDashboard = ({
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Revenue Trend Chart */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative">
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm relative">
               {loading && <LoadingOverlay />}
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -417,7 +332,7 @@ const SalesDashboard = ({
                   <p className="text-sm text-gray-600">Daily performance overview</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>Showing {filteredData.dailyTrend.length} days</span>
+                  <span>This week (Mon–Sun)</span>
                   <button className="text-gray-400 hover:text-gray-600">
                     <MoreVertical size={20} />
                   </button>
@@ -428,7 +343,7 @@ const SalesDashboard = ({
                   <AreaChart data={filteredData.dailyTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} />
+                    <YAxis axisLine={false} tickLine={false} width={56} tickFormatter={formatAxisValue} />
                     <RechartsTooltip
                       formatter={(value) => [formatCurrency(value), 'Revenue']}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -452,7 +367,7 @@ const SalesDashboard = ({
             </div>
 
             {/* Payment Methods Pie Chart */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm relative">
               {loading && <LoadingOverlay />}
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -514,7 +429,7 @@ const SalesDashboard = ({
           </div>
 
           {/* Daily Performance Chart */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm relative">
             {loading && <LoadingOverlay />}
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -537,8 +452,8 @@ const SalesDashboard = ({
                 <BarChart data={filteredData.dailyTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="left" axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" axisLine={false} tickLine={false} width={56} tickFormatter={formatAxisValue} />
+                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} width={40} allowDecimals={false} />
                   <RechartsTooltip
                     formatter={(value, name) => [
                       name === 'revenue' ? formatCurrency(value) : value,
@@ -554,7 +469,7 @@ const SalesDashboard = ({
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <Package size={64} className="mx-auto mb-4 text-gray-300" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No Sales Data Available</h3>
           <p className="text-gray-500 mb-6">No transactions found for the selected date range and filters.</p>
@@ -568,68 +483,12 @@ const SalesDashboard = ({
         </div>
       )}
 
-
       <KioskTransactionsTable
         todayTransactions={filteredTransactions || []}
         onViewTransaction={onViewTransaction}
         loading={loading}
         showFilters={false}
       />
-
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-blue-600 mb-1">Success Rate</p>
-              <h4 className="text-2xl font-bold text-blue-900">
-                {filteredTransactions?.length > 0
-                  ? `${Math.round((filteredTransactions.filter(t => t.status?.toLowerCase() === 'completed').length / filteredTransactions.length) * 100)}%`
-                  : '0%'}
-              </h4>
-              <p className="text-sm text-blue-700">Completed transactions</p>
-            </div>
-            <div className="p-3 bg-blue-200 rounded-lg">
-              <CheckCircle className="text-blue-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-green-600 mb-1">Average Items</p>
-              <h4 className="text-2xl font-bold text-green-900">
-                {filteredTransactions?.length > 0
-                  ? (filteredTransactions.reduce((sum, t) => sum + (t.items?.length || 0), 0) / filteredTransactions.length).toFixed(1)
-                  : '0.0'}
-              </h4>
-              <p className="text-sm text-green-700">Items per transaction</p>
-            </div>
-            <div className="p-3 bg-green-200 rounded-lg">
-              <ShoppingCart className="text-green-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-purple-600 mb-1">Top Product</p>
-              <h4 className="text-xl font-bold text-purple-900 truncate">
-                {filteredData.topProducts?.[0]?.name || 'N/A'}
-              </h4>
-              <p className="text-sm text-purple-700">
-                {filteredData.topProducts?.[0]?.quantity || 0} units sold
-              </p>
-            </div>
-            <div className="p-3 bg-purple-200 rounded-lg">
-              <Package className="text-purple-600" size={24} />
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

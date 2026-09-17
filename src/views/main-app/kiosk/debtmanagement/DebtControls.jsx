@@ -5,10 +5,12 @@ import FilterInput from '../../../../components/Input/FilterInput';
 import { useTheme } from '../../../../components/theme/ThemeContext';
 
 const DebtControls = ({
-  searchTerm,
-  setSearchTerm,
-  selectedItems,
-  setSelectedItems,
+  searchFilter,
+  setSearchFilter,
+  statusFilter,
+  setStatusFilter,
+  dateRange,
+  setDateRange,
 }) => {
   const { primaryColor } = useTheme();
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -16,79 +18,75 @@ const DebtControls = ({
   const [tableFilter, setTableFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState(false);
 
-  // Handle search input
-  const handleSearchInput = (value) => {
-    setSearchTerm(value);
+  // Local checkbox selection — collapsed into the parent's single statusFilter on Apply
+  const [selectedStatuses, setSelectedStatuses] = useState(
+    statusFilter && statusFilter !== 'All' ? [statusFilter] : []
+  );
+
+  const handleSearchInput = (value) => setSearchFilter(value);
+  const handleSearchClear = () => setSearchFilter('');
+
+  const handleDateFilterClick = (event) => setDateFilterAnchorEl(event.currentTarget);
+  const handleDateFilterClose = () => setDateFilterAnchorEl(null);
+  const handleDateFilter = (isFiltered) => setDateFilter(isFiltered);
+
+  const handleDateSelected = (range) => {
+    setDateRange({
+      startDate: range?.startDate || null,
+      endDate: range?.endDate || null,
+    });
   };
 
-  const handleSearchClear = () => {
-    setSearchTerm('');
-  };
+  const handleFilterClick = (event) => setFilterAnchorEl(event.currentTarget);
+  const handleFilterClose = () => setFilterAnchorEl(null);
 
-  // Handle date filter
-  const handleDateFilterClick = (event) => {
-    setDateFilterAnchorEl(event.currentTarget);
-  };
-
-  const handleDateFilterClose = () => {
-    setDateFilterAnchorEl(null);
-  };
-
-  const handleDateFilter = (isFiltered) => {
-    setDateFilter(isFiltered);
-  };
-
-  const handleDateSelected = (dateRange) => {
-    // You can implement date filtering for debts if needed
-    console.log('Date range selected:', dateRange);
-  };
-
-  // Handle advanced filter
-  const handleFilterClick = (event) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
-
-  const handleFilterClose = () => {
-    setFilterAnchorEl(null);
-  };
-
+  // Called by FilterInput: true = Apply clicked, false = checkbox interaction or Reset
   const handleTableFilter = (isFiltered) => {
     setTableFilter(isFiltered);
+    if (isFiltered) {
+      setStatusFilter(selectedStatuses.length > 0 ? selectedStatuses[0] : 'All');
+    }
   };
 
-  // Filter options for the FilterInput component
+  const handleStatusAction = (newStatuses) => {
+    setSelectedStatuses(newStatuses);
+    if (newStatuses.length === 0) {
+      setStatusFilter('All');
+    }
+  };
+
   const filterOptions = ['Status'];
 
-  // Default debt status filters
   const statusFilters = [
     { label: 'Pending', value: 'Pending' },
     { label: 'Paid', value: 'Completed' },
-    { label: 'Overdue', value: 'Overdue' }
+    { label: 'Overdue', value: 'Overdue' },
   ];
 
   return (
-    <div className="bg-white p-4 mb-4 ml-2">
-      <div className="flex gap-4 flex-wrap items-center justify-between">
-        {/* Left Side: Search and Filters */}
-        <div className="flex gap-4 flex-wrap items-center flex-1">
-          {/* Search Input */}
-          <div className="min-w-64">
-            <SearchInput
-              id="debt-search"
-              placeholder="Search by customer name, transaction ID, or phone..."
-              input={searchTerm}
-              handleInput={handleSearchInput}
-              handleClear={handleSearchClear}
-              error={false}
-              disabled={false}
-            />
-          </div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 items-stretch sm:items-center">
+        <div className="w-full sm:w-auto">
+          <SearchInput
+            id="debt-search"
+            placeholder="Search by customer name, transaction ID, or phone..."
+            input={searchFilter}
+            handleInput={handleSearchInput}
+            handleClear={handleSearchClear}
+            error={false}
+            disabled={false}
+          />
+        </div>
 
-          {/* Date Range Filter - Optional for debts */}
+        <div className="flex flex-wrap items-center">
           <DateRangeInput
             type="debts"
             color={primaryColor}
-            selected={null}
+            selected={
+              dateRange?.startDate && dateRange?.endDate
+                ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+                : null
+            }
             dateFilter={dateFilter}
             anchorEl={dateFilterAnchorEl}
             selectedAction={handleDateSelected}
@@ -97,15 +95,13 @@ const DebtControls = ({
             handleClick={handleDateFilterClick}
           />
 
-          {/* Advanced Filter Button */}
           <FilterInput
             color={primaryColor}
             label="advanced-filter"
             filters={statusFilters}
-            filters2={[]} // Empty array for second filter (no categories for debts)
             options={filterOptions}
-            selected={selectedItems || []}
-            selectedAction={setSelectedItems}
+            selected={selectedStatuses}
+            selectedAction={handleStatusAction}
             tableFilter={tableFilter}
             handleTableFilter={handleTableFilter}
             anchorEl={filterAnchorEl}
@@ -113,7 +109,6 @@ const DebtControls = ({
             handleClick={handleFilterClick}
           />
         </div>
-      
       </div>
     </div>
   );

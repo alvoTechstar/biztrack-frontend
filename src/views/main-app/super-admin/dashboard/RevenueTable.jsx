@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Box, Typography } from "@mui/material";
+import { BarChart3 } from "lucide-react";
 import DataTable from "../../../../components/datatable";
 import { useTheme } from "../../../../components/theme/ThemeContext";
 
@@ -77,7 +78,9 @@ const RevenueTable = ({ revenueData = [] }) => {
   if (!revenueData || revenueData.length === 0) {
     return (
       <Box className="text-center py-12 bg-white rounded-lg border border-gray-200">
-        <div className="text-gray-400 text-4xl mb-3">📊</div>
+        <div className="flex justify-center text-gray-400 mb-3">
+          <BarChart3 size={40} />
+        </div>
         <Typography variant="h6" className="font-semibold text-gray-700 mb-1">
           No Revenue Data Available
         </Typography>

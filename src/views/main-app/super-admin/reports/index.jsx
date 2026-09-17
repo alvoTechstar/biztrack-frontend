@@ -2,16 +2,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Typography,
-  Paper,
   Tabs,
   Tab,
   useTheme,
   useMediaQuery,
-  Container,
 } from '@mui/material';
+import { BarChart3 } from 'lucide-react';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 // Import components
@@ -26,19 +26,25 @@ import { GET } from '../../../../services/DatabaseServiceImp';
 import URLS from '../../../../utilities/Endpoints';
 import ContentLoader from '../../../../components/Loader/ContentLoader';
 import Toaster from '../../../../components/Toaster';
+import { useTheme as useAppTheme } from '../../../../components/theme/ThemeContext';
 
 // Extend dayjs with necessary plugins
 dayjs.extend(isBetween);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 dayjs.extend(customParseFormat);
 
 const SuperAdminReports = () => {
   const theme = useTheme();
+  const appTheme = useAppTheme();
+  const accentColor = appTheme.primaryColor || '#2563eb';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const [dateRange, setDateRange] = useState([null, null]);
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({ status: [], paymentMethod: [] });
 
   // State for data from API
   const [apiData, setApiData] = useState({
@@ -47,6 +53,7 @@ const SuperAdminReports = () => {
     salesData: [],
     paymentBreakdown: [],
     businessPerformance: [],
+    businessTypePerformance: [],
     kpiData: {}
   });
 
@@ -91,9 +98,6 @@ const SuperAdminReports = () => {
       // Fetch transactions data
       const transactionsResult = await GET(URLS.TRANSACTIONS.GET_ALL_TRANSACTIONS, params);
 
-      // Debug the response structure
-      console.log('🔍 Transactions API Response:', transactionsResult);
-
       // Extract transactions based on your API structure
       let transactions = [];
 
@@ -120,9 +124,6 @@ const SuperAdminReports = () => {
           }
         }
       }
-
-      console.log('✅ Extracted Transactions:', transactions);
-      console.log('✅ Transactions count:', transactions.length);
 
       // Filter transactions by date range if needed
       let filteredTransactions = transactions;
@@ -161,15 +162,18 @@ const SuperAdminReports = () => {
         businesses = businessesResult.data || businessesResult.businesses || [];
       }
 
-      console.log('✅ Businesses:', businesses);
-
       // Calculate KPI data
       const kpiData = calculateKPIData(filteredTransactions);
 
+      // Revenue Trend always shows Jan-Dec of one year: the year of the selected
+      // date filter's start date if one is set, otherwise the current year.
+      const referenceYear = dateRange[0] ? dateRange[0].year() : dayjs().year();
+
       // Process data for charts
-      const salesData = processSalesData(filteredTransactions);
+      const salesData = processSalesData(filteredTransactions, referenceYear);
       const paymentBreakdown = processPaymentBreakdownData(filteredTransactions);
       const businessPerformance = processBusinessPerformanceData(filteredTransactions, businesses);
+      const businessTypePerformance = processBusinessTypePerformance(filteredTransactions, businesses);
 
       setApiData({
         transactions: filteredTransactions,
@@ -177,6 +181,7 @@ const SuperAdminReports = () => {
         salesData,
         paymentBreakdown,
         businessPerformance,
+        businessTypePerformance,
         kpiData
       });
 
@@ -192,6 +197,7 @@ const SuperAdminReports = () => {
         salesData: [],
         paymentBreakdown: [],
         businessPerformance: [],
+        businessTypePerformance: [],
         kpiData: {}
       });
     } finally {
@@ -321,29 +327,37 @@ const SuperAdminReports = () => {
     return result.sort((a, b) => b.value - a.value);
   };
 
-  const processSalesData = (transactions) => {
-    if (!transactions || !Array.isArray(transactions)) return [];
+  // Aggregates commission into a fixed Jan-Dec set of 12 buckets for referenceYear
+  // (missing months filled with 0), instead of a daily series - a "Revenue Trend"
+  // for a super-admin looking across the whole business is naturally a year-over-
+  // months view, not a jagged day-by-day one.
+  const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    const salesByDate = transactions.reduce((acc, transaction) => {
+  const processSalesData = (transactions, referenceYear) => {
+    const commissionByMonth = Array(12).fill(0);
+
+    (transactions || []).forEach(transaction => {
       const date = transaction?.date || transaction?.createdAt || transaction?.timestamp;
-      if (!date) return acc;
+      if (!date) return;
 
-      const dateKey = dayjs(date).format('MMM D');
+      const parsed = dayjs(date);
+      if (!parsed.isValid() || parsed.year() !== referenceYear) return;
+
       const totalAmount = parseFloat(transaction?.totalAmount || transaction?.amount || 0);
       const commission = totalAmount * 0.05;
 
-      if (!acc[dateKey]) {
-        acc[dateKey] = 0;
-      }
-      acc[dateKey] += commission;
-      return acc;
-    }, {});
+      commissionByMonth[parsed.month()] += commission;
+    });
 
-    return Object.entries(salesByDate)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a, b) => dayjs(a.date, 'MMM D').diff(dayjs(b.date, 'MMM D')));
+    return MONTH_LABELS.map((label, index) => ({
+      date: label,
+      dateKey: `${referenceYear}-${String(index + 1).padStart(2, '0')}`,
+      amount: parseFloat(commissionByMonth[index].toFixed(2))
+    }));
   };
 
+  // Per-business detail (used by the "Business Rankings" table, which can list
+  // any number of businesses fine since it scrolls rather than plotting on an axis).
   const processBusinessPerformanceData = (transactions, businesses) => {
     if (!transactions || !Array.isArray(transactions)) return [];
 
@@ -384,37 +398,71 @@ const SuperAdminReports = () => {
       .sort((a, b) => b.commission - a.commission);
   };
 
-  const handleExport = async (format) => {
-    try {
-      setLoading(true);
+  // Chart-friendly view: grouped by business TYPE (Kiosk/Hotel/Hospital/...) instead
+  // of one bar per individual business. A per-business bar chart breaks down at both
+  // ends of the scale - one business stretches to fill the whole chart, a thousand
+  // businesses can't fit on an axis at all - while the number of business types stays
+  // small and fixed regardless of how many businesses exist. Individual businesses are
+  // still fully listed in the ranking table below the chart, just not plotted as bars.
+  const processBusinessTypePerformance = (transactions, businesses) => {
+    if (!transactions || !Array.isArray(transactions)) return [];
 
-      const params = {};
-      if (dateRange[0]) {
-        params.startDate = dateRange[0].format('YYYY-MM-DD');
+    const businessMap = businesses.reduce((acc, business) => {
+      acc[business._id || business.id] = business;
+      return acc;
+    }, {});
+
+    const performance = transactions.reduce((acc, transaction) => {
+      const businessId = transaction?.businessId;
+      const rawType = transaction?.businessType || businessMap[businessId]?.type || 'Unknown';
+      const type = typeof rawType === 'string' && rawType.length > 0
+        ? rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase()
+        : 'Unknown';
+
+      const totalAmount = parseFloat(transaction?.totalAmount || transaction?.amount || 0);
+      const commission = totalAmount * 0.05;
+
+      if (!acc[type]) {
+        acc[type] = { name: type, commission: 0, transactions: 0 };
       }
-      if (dateRange[1]) {
-        params.endDate = dateRange[1].format('YYYY-MM-DD');
-      }
-      params.format = format;
+      acc[type].commission += commission;
+      acc[type].transactions += 1;
+      return acc;
+    }, {});
 
-      // Determine report type
-      const reportTypes = ['sales', 'transactions', 'payment', 'business'];
-      params.reportType = reportTypes[selectedTab] || 'sales';
+    const totalCommission = Object.values(performance).reduce((sum, b) => sum + b.commission, 0);
 
-      const result = await GET(URLS.REPORTS.EXPORT_REPORT, params);
-
-      if (result && result.downloadUrl) {
-        window.open(result.downloadUrl, '_blank');
-      } else {
-        showToaster(true, 'Success', `Report exported as ${format.toUpperCase()}`);
-      }
-    } catch (error) {
-      console.error("Error exporting report:", error);
-      showToaster(false, 'Error', 'Failed to export report');
-    } finally {
-      setLoading(false);
-    }
+    return Object.values(performance)
+      .map(entry => ({
+        ...entry,
+        commission: parseFloat(entry.commission.toFixed(2)),
+        percentage: totalCommission > 0 ? parseFloat(((entry.commission / totalCommission) * 100).toFixed(1)) : 0
+      }))
+      .sort((a, b) => b.commission - a.commission);
   };
+
+  // Search + advanced (status / payment method) filters applied on top of the
+  // date-filtered transactions already returned by fetchReportsData.
+  const visibleTransactions = useMemo(() => {
+    return apiData.transactions.filter(transaction => {
+      const search = searchTerm.trim().toLowerCase();
+      const matchesSearch = !search || [
+        transaction?.id,
+        transaction?.transactionId,
+        transaction?.businessName,
+        transaction?.business?.name,
+      ].some(field => (field || '').toString().toLowerCase().includes(search));
+
+      const matchesStatus = !filters.status?.length ||
+        filters.status.some(s => (s || '').toLowerCase() === (transaction?.status || '').toLowerCase());
+
+      const paymentMethod = (transaction?.paymentMethod || transaction?.type || transaction?.payment_method || '').toLowerCase();
+      const matchesPaymentMethod = !filters.paymentMethod?.length ||
+        filters.paymentMethod.some(m => paymentMethod.includes((m || '').toLowerCase()));
+
+      return matchesSearch && matchesStatus && matchesPaymentMethod;
+    });
+  }, [apiData.transactions, searchTerm, filters]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -447,13 +495,14 @@ const SuperAdminReports = () => {
         return (
           <RevenueTrendChart
             data={apiData.salesData}
+            year={dateRange[0] ? dateRange[0].year() : dayjs().year()}
             loading={loading}
           />
         );
       case 1: // Transactions
         return (
           <TransactionsTable
-            transactions={apiData.transactions}
+            transactions={visibleTransactions}
             loading={loading}
           />
         );
@@ -468,6 +517,7 @@ const SuperAdminReports = () => {
         return (
           <BusinessPerformanceChart
             data={apiData.businessPerformance}
+            typeData={apiData.businessTypePerformance}
             loading={loading}
           />
         );
@@ -477,158 +527,115 @@ const SuperAdminReports = () => {
   };
 
   return (
-    <Box 
-      sx={{ 
-        width: '100%',
-        minHeight: '100vh',
-        bgcolor: 'background.default'
-      }}
-    >
-      <Container 
-        maxWidth="xl" 
-        sx={{ 
-          px: { xs: 2, sm: 3, md: 4 },
-          py: { xs: 3, sm: 4, md: 6 }
-        }}
-      >
-        <Toaster
-          open={toaster.open}
-          state={toaster.state}
-          title={toaster.title}
-          message={toaster.message}
-          action={(open) => setToaster({ ...toaster, open })}
-          position={toaster.position}
-        />
+    <div className="min-h-screen bg-gray-50">
+      <Toaster
+        open={toaster.open}
+        state={toaster.state}
+        title={toaster.title}
+        message={toaster.message}
+        action={(open) => setToaster({ ...toaster, open })}
+        position={toaster.position}
+      />
 
-        {/* Header */}
-        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-          <Typography 
-            variant={isMobile ? "h5" : "h4"} 
-            component="h1" 
-            sx={{ 
-              color: 'text.primary',
-              fontWeight: 700,
-              mb: { xs: 1, sm: 1.5 },
-              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
-            }}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+        <header className="flex items-center gap-3 mb-6 sm:mb-8">
+          <div
+            className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+            style={{ backgroundColor: accentColor }}
           >
-            Super Admin Reports
-          </Typography>
-          <Typography 
-            variant="body1"
-            sx={{ 
-              color: 'text.secondary',
-              fontSize: { xs: '0.875rem', sm: '1rem' }
-            }}
-          >
-            Comprehensive financial and performance insights.
-          </Typography>
-        </Box>
+            <BarChart3 size={22} />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+              Super Admin Reports
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+              Comprehensive financial and performance insights
+            </p>
+          </div>
+        </header>
 
         {/* KPI Cards Section */}
-        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+        <div className="mb-6 sm:mb-8">
           <KPICardsSection
             kpiData={apiData.kpiData}
             transactions={apiData.transactions}
             loading={loading}
           />
-        </Box>
+        </div>
 
         {/* Date Range Filter & Export Buttons */}
-        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+        <div className="mb-6 sm:mb-8">
           <ReportsControls
             dateRange={dateRange}
             setDateRange={setDateRange}
-            onExport={handleExport}
             selectedTab={selectedTab}
             loading={loading}
+            filteredTransactions={visibleTransactions}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filters={filters}
+            setFilters={setFilters}
           />
+        </div>
+
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: { xs: 3, sm: 4 } }}>
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            aria-label="super admin reports tabs"
+            variant={isMobile ? "scrollable" : "standard"}
+            scrollButtons={isMobile ? "auto" : false}
+            allowScrollButtonsMobile
+            sx={{
+              minHeight: { xs: 44, sm: 48 },
+              '& .MuiTab-root': {
+                minHeight: { xs: 44, sm: 48 },
+                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                fontWeight: 500,
+                textTransform: 'none',
+                px: { xs: 2, sm: 3 },
+                minWidth: { xs: 100, sm: 120 },
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                backgroundColor: accentColor,
+              },
+              '& .Mui-selected': {
+                color: `${accentColor} !important`,
+              },
+            }}
+          >
+            <Tab
+              label={isMobile ? "Revenue" : "Revenue Trend"}
+              id="tab-0"
+              aria-controls="tabpanel-0"
+            />
+            <Tab
+              label="Transactions"
+              id="tab-1"
+              aria-controls="tabpanel-1"
+            />
+            <Tab
+              label={isMobile ? "Payments" : "Payment Breakdown"}
+              id="tab-2"
+              aria-controls="tabpanel-2"
+            />
+            <Tab
+              label={isMobile ? "Business" : "Business Performance"}
+              id="tab-3"
+              aria-controls="tabpanel-3"
+            />
+          </Tabs>
         </Box>
 
-        {/* Tabs Layout */}
-        <Paper 
-          elevation={isMobile ? 1 : 2} 
-          sx={{ 
-            borderRadius: { xs: 2, sm: 3 },
-            overflow: 'hidden',
-            bgcolor: 'background.paper'
-          }}
-        >
-          {/* Tabs with scrollable behavior for mobile */}
-          <Box 
-            sx={{ 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              bgcolor: 'background.paper'
-            }}
-          >
-            <Tabs
-              value={selectedTab}
-              onChange={handleTabChange}
-              aria-label="super admin reports tabs"
-              variant={isMobile ? "scrollable" : "fullWidth"}
-              scrollButtons={isMobile ? "auto" : false}
-              allowScrollButtonsMobile
-              sx={{
-                minHeight: { xs: 48, sm: 56 },
-                '& .MuiTab-root': {
-                  minHeight: { xs: 48, sm: 56 },
-                  fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  px: { xs: 2, sm: 3 },
-                  py: { xs: 1.5, sm: 2 },
-                  minWidth: { xs: 100, sm: 120 },
-                },
-                '& .MuiTabs-indicator': {
-                  height: 3,
-                },
-                '& .MuiTabs-scrollButtons': {
-                  width: { xs: 32, sm: 40 },
-                  '&.Mui-disabled': {
-                    opacity: 0.3,
-                  },
-                },
-              }}
-            >
-              <Tab 
-                label={isMobile ? "Revenue" : "Revenue Trend"} 
-                id="tab-0"
-                aria-controls="tabpanel-0"
-              />
-              <Tab 
-                label="Transactions" 
-                id="tab-1"
-                aria-controls="tabpanel-1"
-              />
-              <Tab 
-                label={isMobile ? "Payments" : "Payment Breakdown"} 
-                id="tab-2"
-                aria-controls="tabpanel-2"
-              />
-              <Tab 
-                label={isMobile ? "Business" : "Business Performance"} 
-                id="tab-3"
-                aria-controls="tabpanel-3"
-              />
-            </Tabs>
-          </Box>
-
-          {/* Tab Content */}
-          <Box 
-            sx={{ 
-              p: { xs: 2, sm: 3, md: 4 },
-              bgcolor: 'background.paper'
-            }}
-            role="tabpanel"
-            id={`tabpanel-${selectedTab}`}
-            aria-labelledby={`tab-${selectedTab}`}
-          >
-            {renderTabContent()}
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+        {/* Tab Content */}
+        <div role="tabpanel" id={`tabpanel-${selectedTab}`} aria-labelledby={`tab-${selectedTab}`}>
+          {renderTabContent()}
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -6,10 +6,10 @@ import {
   AttachMoney as RevenueIcon,
 } from "@mui/icons-material";
 
-const KPICards = ({ data = {}, onCardClick }) => {
+const KPICards = ({ data = {}, onCardClick, activeView }) => {
   const safeData = {
     totalBusinesses: data.totalBusinesses || 0,
-    totalUsers: data.totalUsers || 0, 
+    totalUsers: data.totalUsers || 0,
     totalTransactions: data.totalTransactions || 0,
     totalRevenue: data.totalRevenue || 0,
   };
@@ -18,58 +18,60 @@ const KPICards = ({ data = {}, onCardClick }) => {
     {
       id: "businesses",
       title: "Total Businesses",
-      value: safeData.totalBusinesses.toLocaleString(), 
-      icon: <BusinessIcon fontSize="large" className="text-blue-600" />,
-      bgColor: "bg-blue-50",
-      iconBg: "bg-blue-100",
-      hover: "hover:scale-105 hover:shadow-blue-300",
+      value: safeData.totalBusinesses.toLocaleString(),
+      icon: <BusinessIcon fontSize="medium" className="text-blue-600" />,
+      iconBg: "bg-blue-50",
+      ring: "hover:ring-blue-200",
     },
     {
       id: "admins",
       title: "Total Users",
       value: safeData.totalUsers.toLocaleString(),
-      icon: <UsersIcon fontSize="large" className="text-indigo-600" />, 
-      bgColor: "bg-indigo-50",
-      iconBg: "bg-indigo-100",
-      hover: "hover:scale-105 hover:shadow-indigo-300",
+      icon: <UsersIcon fontSize="medium" className="text-indigo-600" />,
+      iconBg: "bg-indigo-50",
+      ring: "hover:ring-indigo-200",
     },
     {
       id: "transactions",
       title: "Total Transactions",
       value: safeData.totalTransactions.toLocaleString(),
-      icon: <TransactionIcon fontSize="large" className="text-green-600" />,
-      bgColor: "bg-green-50",
-      iconBg: "bg-green-100",
-      hover: "hover:-translate-y-1 hover:shadow-green-300",
+      icon: <TransactionIcon fontSize="medium" className="text-emerald-600" />,
+      iconBg: "bg-emerald-50",
+      ring: "hover:ring-emerald-200",
     },
     {
       id: "revenue",
       title: "Total Revenue",
       value: `KSh ${safeData.totalRevenue.toLocaleString()}`,
-      icon: <RevenueIcon fontSize="large" className="text-purple-600" />,
-      bgColor: "bg-purple-50",
-      iconBg: "bg-purple-100",
-      hover: "hover:rotate-1 hover:shadow-purple-300",
+      icon: <RevenueIcon fontSize="medium" className="text-purple-600" />,
+      iconBg: "bg-purple-50",
+      ring: "hover:ring-purple-200",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      {cards.map((card) => (
-        <div
-          key={card.id}
-          onClick={() => onCardClick(card.id)}
-          className={`rounded-lg p-4 shadow-sm transition-all transform cursor-pointer ${card.bgColor} ${card.hover}`}
-        >
-          <div
-            className={`flex items-center justify-center w-12 h-12 rounded-full mb-3 ${card.iconBg}`}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      {cards.map((card) => {
+        const isActive = activeView === card.id;
+        return (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => onCardClick(card.id)}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-white border shadow-sm transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-md ring-2 ring-transparent ${card.ring} ${
+              isActive ? "border-gray-200 shadow-md" : "border-gray-100"
+            }`}
           >
-            {card.icon}
-          </div>
-          <p className="text-sm text-gray-600 font-medium">{card.title}</p>
-          <p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p>
-        </div>
-      ))}
+            <div
+              className={`flex items-center justify-center w-11 h-11 rounded-xl mb-3 sm:mb-4 ${card.iconBg}`}
+            >
+              {card.icon}
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{card.title}</p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 truncate">{card.value}</p>
+          </button>
+        );
+      })}
     </div>
   );
 };

@@ -80,8 +80,8 @@ const MenuTable = ({ items = [], onEditItem, onToggleItem, onDeleteItem, onAddIt
               className="w-9 h-9 rounded-lg object-cover border border-gray-200 shrink-0"
             />
           ) : (
-            <div className="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0 text-base">
-              🍽️
+            <div className="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+              <UtensilsCrossed size={16} className="text-orange-400" />
             </div>
           )}
           <span className="font-semibold">{item.name}</span>

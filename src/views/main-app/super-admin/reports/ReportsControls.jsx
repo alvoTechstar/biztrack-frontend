@@ -30,8 +30,6 @@ const ReportsControls = ({
   onSearchChange,
   filters = {},
   setFilters,
-  selectedItems = [],
-  setSelectedItems,
 }) => {
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const [dateFilterAnchorEl, setDateFilterAnchorEl] = useState(null);
@@ -363,7 +361,7 @@ const ReportsControls = ({
   };
 
   return (
-    <div className="bg-white p-4 mb-4 ml-2">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
       <div className="flex gap-4 flex-wrap items-center justify-between">
         {/* Left Side: Search and Filters */}
         <div className="flex gap-4 flex-wrap items-center flex-1">
@@ -404,8 +402,10 @@ const ReportsControls = ({
             filters={statusFilters}
             filters2={paymentMethodFilters}
             options={filterOptions}
-            selected={selectedItems}
-            selectedAction={setSelectedItems}
+            selected={filters.status || []}
+            selectedAction={(statusArr) => setFilters(prev => ({ ...prev, status: statusArr }))}
+            selected2={filters.paymentMethod || []}
+            selectedAction2={(methodArr) => setFilters(prev => ({ ...prev, paymentMethod: methodArr }))}
             tableFilter={tableFilter}
             handleTableFilter={handleTableFilter}
             anchorEl={filterAnchorEl}

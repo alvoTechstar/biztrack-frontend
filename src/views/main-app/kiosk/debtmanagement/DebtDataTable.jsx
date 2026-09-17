@@ -29,7 +29,7 @@ const DebtDataTable = ({
     
 
     return (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
             <DataTable
                 type="debts"
                 clickable={true}

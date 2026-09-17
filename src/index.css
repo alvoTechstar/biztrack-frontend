@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Averta", "Averta-Bold", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  font-family: "Averta", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
 
 div[style*="pointer-events: none"][style*="z-index: 100000"][style*="bottom: 50%"][style*="letter-spacing: 5px"] {
   display: none !important;

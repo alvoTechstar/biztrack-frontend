@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { ShoppingCart, DollarSign, Smartphone, FileText, RefreshCw } from "lucide-react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { ShoppingCart, DollarSign, Smartphone, FileText, RefreshCw, Package, ChevronUp } from "lucide-react";
 import { useSelector } from "react-redux";
 import SearchInput from "../../../../components/Input/SearchInput";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +73,13 @@ const SalesPage = () => {
   // Track current transaction for M-PESA
   const [currentTransaction, setCurrentTransaction] = useState(null);
 
+  // Lets the mobile "View Cart" bar jump straight to the cart panel, which sits
+  // below the product grid in document order on small screens
+  const cartSectionRef = useRef(null);
+  const scrollToCart = useCallback(() => {
+    cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Utility functions
   const formatCurrency = useCallback((amount) => {
     return `KSh ${amount.toLocaleString()}`;
@@ -138,17 +145,13 @@ const SalesPage = () => {
 
   // Check authentication and extract user data
   useEffect(() => {
-    console.log("🔍 Checking authentication status...");
-
     const authTimeout = setTimeout(() => {
       if (loadingUser) {
-        console.log("⚠️ Authentication check taking too long, proceeding...");
         setLoadingUser(false);
       }
     }, 2000);
 
     if (!currentUser || !token) {
-      console.log("❌ User not authenticated, redirecting to login");
       showNotification("Please log in to access the sales system", "error");
       setTimeout(() => {
         navigate('/login');
@@ -157,33 +160,17 @@ const SalesPage = () => {
       return;
     }
 
-    console.log("✅ User authenticated:", {
-      id: currentUser.id,
-      name: `${currentUser.firstName} ${currentUser.lastName}`,
-      email: currentUser.email,
-      role: currentUser.role,
-      paymentConfig: currentUser.paymentConfig // Log payment config
-    });
-
     const businessId = currentUser.businessId;
     const businessUUID = currentUser.businessUUID;
 
     if (!businessId || !businessUUID) {
-      console.error("❌ No business information found in user data");
+      console.error("No business information found in user data");
       showNotification("No business assigned to your account. Please contact administrator.", "error");
       setErrorMessage("No business assigned to your account.");
       setLoadingUser(false);
       clearTimeout(authTimeout);
       return;
     }
-
-    console.log("🏢 Business information:", {
-      businessId,
-      businessUUID,
-      businessName: currentUser.businessName,
-      businessType: currentUser.businessType,
-      paymentType: currentUser.paymentConfig?.paymentType
-    });
 
     const shopkeeperInfo = {
       shopkeeperId: currentUser.id,
@@ -196,10 +183,8 @@ const SalesPage = () => {
       businessType: currentUser.businessType
     };
 
-    console.log("👤 Derived user data:", shopkeeperInfo);
-
     if (currentUser.role !== "Kiosk_Shopkeeper") {
-      console.warn(`⚠️ User role is ${currentUser.role}, expected Kiosk_Shopkeeper`);
+      console.warn(`User role is ${currentUser.role}, expected Kiosk_Shopkeeper`);
       showNotification(`You don't have permission to access sales. Your role: ${currentUser.role}`, "error");
     }
 
@@ -226,27 +211,21 @@ const SalesPage = () => {
   // Load products function (unchanged)
   const loadProducts = useCallback(async () => {
     if (!userData.businessId || !userData.initialized) {
-      console.log('⏳ Waiting for user data initialization...');
       return;
     }
 
     setLoadingProducts(true);
-    console.log('📋 Fetching products for sales for business:', userData.businessId);
 
     try {
       const endpoint = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS.replace(':businessId', userData.businessId);
-      console.log('🌐 API Endpoint:', endpoint);
 
       const result = await GET(endpoint);
-      console.log('✅ Product API response:', result);
 
       if (!result || result.success === false) {
         throw new Error(result?.message || 'Failed to load products');
       }
 
       const productData = result.products || result.data || [];
-
-      console.log('📦 Products data received:', productData.length, 'products');
 
       const fetchedProducts = productData.map(product => {
         const availableStock = product.stock || 0;
@@ -268,15 +247,12 @@ const SalesPage = () => {
         };
       });
 
-      console.log('✅ Transformed products for sales:', fetchedProducts.length, 'products');
-
       const availableProducts = fetchedProducts.filter(p => p.availableStock > 0);
-      console.log('🛒 Available products for sale:', availableProducts.length);
 
       setProductsInStock(availableProducts);
 
     } catch (error) {
-      console.error('❌ Error fetching products for sales:', error);
+      console.error('Error fetching products for sales:', error);
       setErrorMessage(error.message || 'Failed to load products');
       setProductsInStock([]);
       showNotification("Failed to load products. Please try again.", "error");
@@ -287,24 +263,13 @@ const SalesPage = () => {
 
   // Load products when user data is available
   useEffect(() => {
-    console.log('🔄 useEffect for loading products triggered');
-    console.log('User data state:', {
-      businessId: userData.businessId,
-      initialized: userData.initialized,
-      loadingProducts
-    });
-
     if (userData.businessId && userData.initialized) {
-      console.log('✅ User data ready, loading products...');
       loadProducts();
-    } else {
-      console.log('⏳ Waiting for user data to be ready...');
     }
   }, [userData.businessId, userData.initialized, loadProducts]);
 
   // Refresh products function
   const refreshProducts = useCallback(async () => {
-    console.log('🔄 Refreshing products...');
     await loadProducts();
     showNotification("Products refreshed successfully", "success");
   }, [loadProducts, showNotification]);
@@ -313,19 +278,17 @@ const SalesPage = () => {
   const renderRefreshButton = useCallback(() => (
     <button
       onClick={refreshProducts}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
       title="Refresh products"
     >
       <RefreshCw className="h-4 w-4" />
-      <span className="text-sm font-medium">Refresh</span>
+      Refresh
     </button>
   ), [refreshProducts]);
 
   // Save transaction to backend (unchanged)
   const saveTransaction = useCallback(async (transactionData) => {
     try {
-      console.log('💾 Saving transaction:', transactionData);
-
       if (!userData.shopkeeperInfo) {
         throw new Error('No shopkeeper information available. Please ensure you are logged in.');
       }
@@ -347,10 +310,8 @@ const SalesPage = () => {
         shopkeeperRole: userData.shopkeeperInfo.shopkeeperRole,
       };
 
-      console.log('👤 Transaction with shopkeeper:', transactionWithShopkeeper);
-
       if (!URLS.TRANSACTIONS?.CREATE_TRANSACTION) {
-        console.warn('⚠️ Transactions endpoint not configured. Saving to local state only.');
+        console.warn('Transactions endpoint not configured. Saving to local state only.');
 
         const mockTransaction = {
           ...transactionWithShopkeeper,
@@ -364,21 +325,18 @@ const SalesPage = () => {
 
       const response = await POST(URLS.TRANSACTIONS.CREATE_TRANSACTION, transactionWithShopkeeper);
 
-      console.log('✅ Transaction save response:', response);
-
       if (response.success) {
-        console.log('✅ Transaction saved successfully:', response.transaction);
         return response.transaction;
       } else {
         const errorMsg = typeof response === 'string' ? response : (response?.message || 'Transaction save failed');
-        console.warn('⚠️ Transaction save failed:', errorMsg);
+        console.warn('Transaction save failed:', errorMsg);
         return {
           saveError: true,
           errorMessage: errorMsg,
         };
       }
     } catch (error) {
-      console.error('❌ Error saving transaction:', error);
+      console.error('Error saving transaction:', error);
 
       return {
         ...transactionData,
@@ -399,10 +357,8 @@ const SalesPage = () => {
   // Update product stock (unchanged)
   const updateProductStock = useCallback(async (cartItems, isMpesa = false) => {
     try {
-      console.log(`📦 Updating stock for ${cartItems.length} products, M-PESA: ${isMpesa}`);
-
       if (!URLS.PRODUCTS?.UPDATE_STOCK) {
-        console.warn('⚠️ Stock update endpoint not configured');
+        console.warn('Stock update endpoint not configured');
         return { success: true, message: 'Local update only' };
       }
 
@@ -432,12 +388,10 @@ const SalesPage = () => {
             stock: newStock
           };
 
-          console.log(`📊 Updating ${item.name}: stock ${currentStock} -> ${newStock} (sold ${item.quantity} ${item.unit || 'units'})`);
-
           const result = await PUT(updateEndpoint, updateData);
 
           if (!result.success) {
-            console.error(`❌ Stock update failed for ${item.name}:`, result.message);
+            console.error(`Stock update failed for ${item.name}:`, result.message);
             return {
               success: false,
               product: item.name,
@@ -469,7 +423,7 @@ const SalesPage = () => {
           };
 
         } catch (itemError) {
-          console.error(`❌ Error updating stock for ${item.name}:`, itemError);
+          console.error(`Error updating stock for ${item.name}:`, itemError);
           return {
             success: false,
             product: item.name,
@@ -483,10 +437,8 @@ const SalesPage = () => {
       const successfulUpdates = results.filter(r => r.success);
       const failedUpdates = results.filter(r => !r.success);
 
-      console.log(`✅ ${successfulUpdates.length}/${results.length} stock updates successful`);
-
       if (failedUpdates.length > 0) {
-        console.warn('⚠️ Some stock updates failed:', failedUpdates);
+        console.warn('Some stock updates failed:', failedUpdates);
         return {
           success: false,
           message: `${failedUpdates.length} products failed to update`,
@@ -500,7 +452,7 @@ const SalesPage = () => {
       };
 
     } catch (error) {
-      console.error('❌ Error in updateProductStock:', error);
+      console.error('Error in updateProductStock:', error);
       return {
         success: false,
         message: error.message
@@ -593,8 +545,6 @@ const SalesPage = () => {
       try {
         const quantityToAdd = quantities[product.id] || 1;
 
-        console.log(`🛒 Adding to cart: ${quantityToAdd} ${product.unit || 'units'} of ${product.name}, Current stock: ${product.availableStock}`);
-
         if (quantityToAdd <= 0) {
           showNotification("Please enter a valid quantity", "error");
           return;
@@ -662,7 +612,7 @@ const SalesPage = () => {
         );
 
       } catch (error) {
-        console.error('❌ Error adding to cart:', error);
+        console.error('Error adding to cart:', error);
         showNotification("Failed to add item to cart", "error");
       }
     },
@@ -779,8 +729,6 @@ const SalesPage = () => {
         notes: `Cash payment. Paid: ${formatCurrency(paidAmount)}, Change: ${formatCurrency(change)}`
       };
 
-      console.log("💵 Processing cash payment:", transactionData);
-
       const savedTransaction = await saveTransaction(transactionData);
 
       if (savedTransaction.saveError) {
@@ -803,7 +751,7 @@ const SalesPage = () => {
       };
 
     } catch (error) {
-      console.error("❌ Cash payment error:", error);
+      console.error("Cash payment error:", error);
       // Return a failure object that CashPaymentModal can use
       return { success: false, message: error.message || "Failed to process cash payment" };
     } finally {
@@ -868,8 +816,6 @@ const SalesPage = () => {
         throw new Error("Invalid final phone number format");
       }
 
-      console.log("📱 Original phone:", phone, "Formatted:", formattedPhone);
-
       // Generate transaction ID
       const transactionId = generateTransactionId();
 
@@ -902,8 +848,6 @@ const SalesPage = () => {
         }
       };
 
-      console.log("📱 Saving MPESA transaction:", transactionData);
-
       const savedTransaction = await saveTransaction(transactionData);
 
       if (savedTransaction.saveError) {
@@ -922,11 +866,7 @@ const SalesPage = () => {
           businessId: userData.businessId // Send businessId for dynamic shortcode
         };
 
-        console.log('📱 Sending MPESA STK Push request with payload:', mpesaData);
-
         const mpesaResponse = await POST(URLS.MPESA.STK_PUSH, mpesaData);
-
-        console.log('📱 MPESA STK Push response:', mpesaResponse);
 
         if (mpesaResponse.success) {
           // Store transaction info for polling
@@ -948,7 +888,7 @@ const SalesPage = () => {
             data: mpesaResponse.data
           };
         } else {
-          console.error('❌ MPESA STK Push failed with response:', mpesaResponse);
+          console.error('MPESA STK Push failed with response:', mpesaResponse);
           throw new Error(mpesaResponse.message || mpesaResponse.error || "MPESA request failed");
         }
       } else {
@@ -956,7 +896,7 @@ const SalesPage = () => {
       }
 
     } catch (error) {
-      console.error("❌ MPESA payment error:", error);
+      console.error("MPESA payment error:", error);
       showNotification(error.message || "Failed to process M-PESA payment", "error");
       throw error;
     } finally {
@@ -967,8 +907,6 @@ const SalesPage = () => {
 
   // M-PESA Payment Complete Handler
   const handleMpesaPaymentComplete = useCallback(async (paymentResult) => {
-    console.log('✅ M-PESA payment completed callback received:', paymentResult);
-
     try {
       // Update stock AFTER payment is confirmed
       const stockUpdateResult = await updateProductStock(cart, true);
@@ -982,14 +920,13 @@ const SalesPage = () => {
       showNotification(`M-PESA (${userData.paymentConfig?.paymentType}) payment completed!`, "success");
 
     } catch (error) {
-      console.error('❌ Error after M-PESA payment:', error);
+      console.error('Error after M-PESA payment:', error);
       showNotification('Payment recorded but stock update failed', 'error');
     }
   }, [cart, updateProductStock, showNotification, userData.paymentConfig, getPaymentDisplayInfo]);
 
   // M-PESA Transaction Created Callback
   const handleMpesaTransactionCreated = useCallback((transactionInfo) => {
-    console.log('📝 M-PESA transaction created:', transactionInfo);
     // Store current transaction for reference
     setCurrentTransaction({
       transactionId: transactionInfo.transactionId,
@@ -1001,38 +938,28 @@ const SalesPage = () => {
 
   // M-PESA Modal Close Handler
   const handleMpesaModalClose = useCallback((completed) => {
-    console.log('🔄 M-PESA modal closed, completed:', completed);
-    console.log('📊 Current state - Cart:', cart.length, 'items, Quantities:', Object.keys(quantities).length);
-
     // Always close the M-PESA modal
     setMpesaModal(false);
 
     if (completed === true) {
-      console.log('✅ Payment successful - CLEARING cart and resetting everything');
-
-      // 1. CRITICAL: Clear the cart and all related state
+      // Clear the cart and all related state
       setCart([]);
       setQuantities({});
       setMpesaPhone("");
       setCurrentTransaction(null);
 
-      console.log('✅ Cart cleared - Ready for new sale');
-
-      // 2. Refresh products to show updated stock
+      // Refresh products to show updated stock
       setTimeout(() => {
         refreshProducts();
       }, 500);
 
-      // 3. Show success notification with payment type
-      const paymentInfo = getPaymentDisplayInfo();
       showNotification(`${userData.paymentConfig?.paymentType} M-PESA payment completed! Cart cleared.`, "success");
 
     } else {
-      console.log('❌ Payment not completed - keeping cart for retry');
       // Keep items in cart so user can retry with different payment method
       showNotification("M-PESA payment was not completed. Items remain in cart.", "info");
     }
-  }, [cart, quantities, refreshProducts, showNotification, userData.paymentConfig, getPaymentDisplayInfo]);
+  }, [refreshProducts, showNotification, userData.paymentConfig]);
 
   const handleDebtPayment = useCallback(async () => {
     if (submitting || cart.length === 0) return;
@@ -1070,8 +997,6 @@ const SalesPage = () => {
         originalPaymentMethod: "debt"
       };
 
-      console.log("📝 Processing debt payment:", transactionData);
-
       const savedTransaction = await saveTransaction(transactionData);
 
       if (savedTransaction.saveError) {
@@ -1098,7 +1023,7 @@ const SalesPage = () => {
       }, 500);
 
     } catch (error) {
-      console.error("❌ Debt payment error:", error);
+      console.error("Debt payment error:", error);
       showNotification(error.message || "Failed to process credit sale", "error");
     } finally {
       setSubmitting(false);
@@ -1109,19 +1034,16 @@ const SalesPage = () => {
     setCashModal(false);
 
     if (completed === true) {
-      console.log('✅ Cash payment completed - CLEARING cart and resetting everything');
       setCart([]);
       setQuantities({});
       setAmountPaid("");
 
-      console.log('✅ Cart cleared - Ready for new sale');
       setLoadingProducts(true);
       await refreshProducts();
       setLoadingProducts(false);
 
       showNotification("Cash payment completed! Cart cleared. Ready for new sale.", "success");
     } else {
-      console.log('❌ Cash payment was not completed. Items remain in cart.');
       showNotification("Cash payment was not completed. Items remain in cart.", "info");
     }
   }, [refreshProducts, showNotification]);
@@ -1131,46 +1053,39 @@ const SalesPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={loadingProducts ? "Loading products..." : "Loading sales system..."}
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText={loadingProducts ? "Loading products..." : "Loading sales system..."}
+          loadedText=""
+          color={primaryColor}
+        />
       </div>
     );
   }
 
   if (!userData.user || !userData.businessId) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-red-500 text-xl mb-4">
-              {!userData.user ? "User Not Logged In" : "No Business Assigned"}
-            </div>
-            <div className="text-gray-600 mb-6">
-              {!userData.user
-                ? "Please log in to access the sales system."
-                : "Your account is not assigned to any business. Please contact your administrator."}
-            </div>
-            {!userData.user && (
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
-              >
-                Go to Login
-              </button>
-            )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-xl mb-4">
+            {!userData.user ? "User Not Logged In" : "No Business Assigned"}
           </div>
+          <div className="text-gray-600 mb-6">
+            {!userData.user
+              ? "Please log in to access the sales system."
+              : "Your account is not assigned to any business. Please contact your administrator."}
+          </div>
+          {!userData.user && (
+            <button
+              onClick={() => navigate('/login')}
+              className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              Go to Login
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1178,22 +1093,19 @@ const SalesPage = () => {
 
   if (errorMessage && productsInStock.length === 0) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-red-500 text-xl mb-4">Unable to Load Products</div>
-            <div className="text-gray-600 mb-6">
-              {errorMessage}
-              <div className="mt-4">
-                <button
-                  onClick={loadProducts}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg mr-2"
-                >
-                  Retry Loading
-                </button>
-                {renderRefreshButton()}
-              </div>
-            </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-xl mb-4">Unable to Load Products</div>
+          <div className="text-gray-600 mb-6">{errorMessage}</div>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={loadProducts}
+              className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              Retry Loading
+            </button>
+            {renderRefreshButton()}
           </div>
         </div>
       </div>
@@ -1202,28 +1114,22 @@ const SalesPage = () => {
 
   if (productsInStock.length === 0 && !isLoading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-gray-600 text-xl mb-4">No Products Available for Sale</div>
-            <div className="text-gray-500 mb-6">
-              All products are currently out of stock.
-              <div className="mt-2">
-                1. Add products in the Stock Management section
-              </div>
-              <div className="mt-1">
-                2. Make sure products have stock greater than 0
-              </div>
-            </div>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => navigate('/stock-management')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
-              >
-                Go to Stock Management
-              </button>
-              {renderRefreshButton()}
-            </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <Package size={48} className="text-gray-400 mx-auto mb-4" />
+          <div className="text-gray-700 text-xl font-semibold mb-2">No Products Available for Sale</div>
+          <div className="text-gray-500 mb-6">
+            All products are currently out of stock. Add products in Stock Management and make sure they have stock greater than 0.
+          </div>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => navigate('/stock-management')}
+              className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              Go to Stock Management
+            </button>
+            {renderRefreshButton()}
           </div>
         </div>
       </div>
@@ -1235,139 +1141,180 @@ const SalesPage = () => {
 
   // Main sales page
   return (
-    <div className="min-h-screen bg-white p-2 mb-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {userData.shopkeeperInfo?.businessName || "Kiosk"} Sales System
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
-              Available products: {productsInStock.length} | Cart: {cartSummary}
-            </p>
-            {/* Display payment type badge */}
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-              {userData.paymentConfig?.paymentType || 'TILL'}
-            </span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 md:pt-8 pb-24 md:pb-8">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              <ShoppingCart size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight truncate max-w-[60vw] sm:max-w-none">
+                  {userData.shopkeeperInfo?.businessName || "Kiosk"} Sales
+                </h1>
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full shrink-0">
+                  {userData.paymentConfig?.paymentType || 'TILL'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                {productsInStock.length} products available · Cart: {cartSummary}
+                {paymentInfo.description && ` · ${paymentInfo.description}`}
+              </p>
+            </div>
           </div>
-          {/* Display payment info for reference */}
-          {paymentInfo.description && (
-            <p className="text-xs text-gray-400 mt-1">
-              {paymentInfo.description}
-            </p>
-          )}
-        </div>
 
-        <div className="flex items-center gap-3">
           {renderRefreshButton()}
-        </div>
-      </div>
+        </header>
 
-      {errorMessage && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
-          <p className="text-yellow-800">{errorMessage}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Product Selection Area */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <SearchInput
-              input={searchTerm}
-              handleInput={handleSearch}
-              placeholder="Search products by name, SKU or category..."
-              handleClear={() => setSearchTerm("")}
-            />
+        {errorMessage && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+            <p className="text-yellow-800">{errorMessage}</p>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                quantity={quantities[product.id]}
-                onQuantityChange={handleQuantityChange}
-                onAddToCart={addToCart}
-                formatCurrency={formatCurrency}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          {/* Product Selection Area */}
+          <div className="md:col-span-2">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+              <SearchInput
+                input={searchTerm}
+                handleInput={handleSearch}
+                placeholder="Search products by name, SKU or category..."
+                handleClear={() => setSearchTerm("")}
               />
-            ))}
-          </div>
-        </div>
-
-        {/* Cart Area */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-4 sticky top-4">
-            <div className="flex items-center gap-2 mb-4">
-              <ShoppingCart className="h-6 w-6 text-gray-600" />
-              <h2 className="text-xl font-bold text-gray-800">
-                Shopping Cart ({cart.length} items)
-              </h2>
             </div>
 
-            {cart.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Your cart is empty
-              </p>
+            {filteredProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                <Package size={48} className="text-gray-400 mb-3" />
+                <h3 className="text-base font-semibold text-gray-700 mb-1">No products match your search</h3>
+                <p className="text-sm text-gray-500">Try a different name, SKU or category</p>
+              </div>
             ) : (
-              <>
-                <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                  {cart.map((item) => (
-                    <CartItem
-                      key={item.id}
-                      item={item}
-                      onUpdateQuantity={updateCartQuantity}
-                      onRemoveFromCart={removeFromCart}
-                      formatCurrency={formatCurrency}
-                    />
-                  ))}
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="text-right mb-4">
-                    <p className="text-2xl font-bold text-green-600">
-                      Total: {formatCurrency(totalAmount)}
-                    </p>
-                    {userData.shopkeeperInfo && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Selling as: <span className="font-medium">{userData.shopkeeperInfo.shopkeeperName}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Payment Options */}
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setCashModal(true)}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={cart.length === 0}
-                    >
-                      <DollarSign className="h-5 w-5" />
-                      Pay with Cash
-                    </button>
-                    <button
-                      onClick={() => setMpesaModal(true)}
-                      className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={cart.length === 0}
-                    >
-                      <Smartphone className="h-5 w-5" />
-                      Pay with M-PESA ({userData.paymentConfig?.paymentType || 'TILL'})
-                    </button>
-                    <button
-                      onClick={() => setDebtModal(true)}
-                      className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={cart.length === 0}
-                    >
-                      <FileText className="h-5 w-5" />
-                      Buy on Debt
-                    </button>
-                  </div>
-                </div>
-              </>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    quantity={quantities[product.id]}
+                    onQuantityChange={handleQuantityChange}
+                    onAddToCart={addToCart}
+                    formatCurrency={formatCurrency}
+                  />
+                ))}
+              </div>
             )}
+          </div>
+
+          {/* Cart Area */}
+          <div className="md:col-span-1" ref={cartSectionRef}>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 md:sticky md:top-4">
+              <div className="flex items-center gap-2 mb-4">
+                <ShoppingCart className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-bold text-gray-900">
+                  Cart ({cart.length})
+                </h2>
+              </div>
+
+              {cart.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <ShoppingCart size={36} className="text-gray-300 mb-2" />
+                  <p className="text-sm font-medium text-gray-600">Your cart is empty</p>
+                  <p className="text-xs text-gray-400 mt-1">Add products to get started</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                    {cart.map((item) => (
+                      <CartItem
+                        key={item.id}
+                        item={item}
+                        onUpdateQuantity={updateCartQuantity}
+                        onRemoveFromCart={removeFromCart}
+                        formatCurrency={formatCurrency}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-4">
+                    <div className="text-right mb-4">
+                      <p className="text-2xl font-bold text-green-600">
+                        {formatCurrency(totalAmount)}
+                      </p>
+                      {userData.shopkeeperInfo && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Selling as <span className="font-medium">{userData.shopkeeperInfo.shopkeeperName}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Payment Options */}
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => setCashModal(true)}
+                        className="w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={cart.length === 0}
+                      >
+                        <DollarSign className="h-5 w-5" />
+                        Pay with Cash
+                      </button>
+                      <button
+                        onClick={() => setMpesaModal(true)}
+                        className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={cart.length === 0}
+                      >
+                        <Smartphone className="h-5 w-5" />
+                        Pay with M-PESA
+                      </button>
+                      <button
+                        onClick={() => setDebtModal(true)}
+                        className="w-full bg-orange-600 text-white py-2.5 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={cart.length === 0}
+                      >
+                        <FileText className="h-5 w-5" />
+                        Buy on Debt
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile/tablet-only floating cart bar - keeps checkout one tap away without
+          having to scroll past the whole product catalog to reach the cart panel */}
+      {cart.length > 0 && (
+        <button
+          onClick={scrollToCart}
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="flex items-center justify-center w-9 h-9 rounded-lg text-white shrink-0"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              <ShoppingCart size={18} />
+            </div>
+            <div className="text-left min-w-0">
+              <p className="text-xs text-gray-500 truncate">{cart.length} item{cart.length > 1 ? 's' : ''} in cart</p>
+              <p className="text-base font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
+            </div>
+          </div>
+          <span
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-white text-sm font-medium shrink-0"
+            style={{ backgroundColor: primaryColor || '#3b82f6' }}
+          >
+            View Cart
+            <ChevronUp size={16} />
+          </span>
+        </button>
+      )}
 
       {/* Modals */}
       <CashPaymentModal

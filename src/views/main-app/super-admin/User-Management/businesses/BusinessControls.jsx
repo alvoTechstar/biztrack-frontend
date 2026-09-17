@@ -13,8 +13,6 @@ const BusinessControls = ({
   filters,
   setFilters,
   businessTypes,
-  selectedItems,
-  setSelectedItems,
   openModal
 }) => {
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -122,8 +120,10 @@ const BusinessControls = ({
             filters={statusFilters}
             filters2={typeFilters}
             options={filterOptions}
-            selected={selectedItems || []}
-            selectedAction={setSelectedItems}
+            selected={filters.status || []}
+            selectedAction={(statusArr) => setFilters(prev => ({ ...prev, status: statusArr }))}
+            selected2={filters.type || []}
+            selectedAction2={(typeArr) => setFilters(prev => ({ ...prev, type: typeArr }))}
             tableFilter={tableFilter}
             handleTableFilter={handleTableFilter}
             anchorEl={filterAnchorEl}

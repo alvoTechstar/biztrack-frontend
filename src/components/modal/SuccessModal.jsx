@@ -26,7 +26,7 @@ const SuccessModal = ({
   }, [secondsLeft]);
 
   const handleNavigation = () => {
-    console.log('📍 Success modal navigating');
+    console.log('Success modal navigating');
     
     if (onNavigateToSales) {
       onNavigateToSales();

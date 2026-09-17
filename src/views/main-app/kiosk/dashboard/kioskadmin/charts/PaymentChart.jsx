@@ -29,72 +29,44 @@ const PaymentChart = ({ paymentCounts }) => {
         </div>
       </div>
       
-      <div className="px-4 py-3">
+      <div className="px-4 py-4">
         {totalPayments > 0 ? (
-          <div className="flex items-center">
-            {/* Chart on the left */}
-            <div className="w-2/5 pr-3">
-              <div className="h-28">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={filteredData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={28}
-                      outerRadius={42}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {filteredData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      formatter={(value, name) => [`${value}`, name]}
-                      contentStyle={{ 
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        padding: '6px 8px',
-                        fontSize: '12px'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
-            {/* Stats on the right - Compact styling */}
-            <div className="w-3/5">
-              <div className="space-y-2">
-                {filteredData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div 
-                        className="w-2 h-2 rounded-full mr-2" 
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-xs text-gray-600">{item.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-semibold text-gray-800">{item.value}</span>
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({((item.value / totalPayments) * 100).toFixed(0)}%)
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Total - Compact */}
-                <div className="pt-1 border-t border-gray-100 mt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-700">Total</span>
-                    <span className="text-xs font-bold text-gray-800">{totalPayments}</span>
-                  </div>
-                </div>
+          <div className="flex justify-center">
+            {/* Donut chart with a centered total — hover a segment for its breakdown */}
+            <div className="relative h-40 w-40 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={filteredData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={68}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {filteredData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value, name) => [
+                      `${value} (${((value / totalPayments) * 100).toFixed(0)}%)`,
+                      name
+                    ]}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      fontSize: '12px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-bold text-gray-800">{totalPayments}</span>
+                <span className="text-[10px] text-gray-500">payments</span>
               </div>
             </div>
           </div>

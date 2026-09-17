@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { Building2, Plus } from 'lucide-react';
 import { useTheme } from '../../../../../components/theme/ThemeContext';
 import BusinessControls from "./BusinessControls";
@@ -12,6 +15,8 @@ import "../../../../../App.css";
 import ActionModal from '../../../../../components/modal/ActionModal';
 import Toaster from '../../../../../components/Toaster';
 import { isFailureResponse, getResponseErrorMessage } from '../../../../../utilities/apiResponse';
+
+dayjs.extend(customParseFormat);
 
 const businessTypes = ['Hotel', 'Kiosk', 'Hospital'];
 
@@ -62,6 +67,8 @@ const safeDateToString = (dateValue) => {
 
 const BusinessesPage = () => {
     const theme = useTheme();
+    const navigate = useNavigate();
+    const location = useLocation();
     const [businesses, setBusinesses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -69,8 +76,8 @@ const BusinessesPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [errorMessage, setErrorMessage] = useState(null);
     const [filters, setFilters] = useState({
-        status: '',
-        type: '',
+        status: [],
+        type: [],
         startDate: null,
         endDate: null
     });
@@ -99,6 +106,15 @@ const BusinessesPage = () => {
             message,
         });
     };
+
+    useEffect(() => {
+        if (location.state?.toast) {
+            const { state, title, message } = location.state.toast;
+            showToaster(state, title, message);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state]);
 
     const extractDataFromResponse = (response) => {
         if (!response) return [];
@@ -165,7 +181,7 @@ const BusinessesPage = () => {
             }, 1000);
 
         } catch (error) {
-            console.error('❌ Error fetching businesses:', error);
+            console.error('Error fetching businesses:', error);
             const errorMsg = 'Failed to load businesses. Please try again.';
             setErrorMessage(errorMsg);
             setBusinesses([]);
@@ -182,52 +198,35 @@ const BusinessesPage = () => {
         fetchBusinesses();
     }, [fetchBusinesses]);
 
-    const openModalWithLoader = async (modalType, business = null) => {
+    const openViewModal = async (business) => {
         setModalLoading(true);
-        switch (modalType) {
-            case 'create':
-                setModalLoadingText("Loading create form...");
-                break;
-            case 'edit':
-                setModalLoadingText("Loading edit form...");
-                break;
-            case 'view':
-                setModalLoadingText("Loading business details...");
-                break;
-            default:
-                setModalLoadingText("Loading...");
-        }
+        setModalLoadingText("Loading business details...");
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        if (business) {
-            const businessData = {
-                id: business.id || null,
-                businessName: business.name || '',
-                registrationNumber: business.registrationNumber || '',
-                address: business.address || '',
-                businessType: business.type || '',
-                email: business.email || '',
-                phone: business.phone || '',
-                website: business.website || '',
-                description: business.description || '',
-                primaryColor: business.primaryColor || '#1976d2',
-                status: business.status || 'NEW',
-                logoFile: null,
-                logoUrl: business.logoUrl || null,
-                owner: business.owner || '',
-                // Include payment fields when editing
-                paymentType: business.paymentType || 'TILL',
-                tillNumber: business.tillNumber || '',
-                paybillNumber: business.paybillNumber || '',
-                accountNumber: business.accountNumber || '',
-                pochiNumber: business.pochiNumber || '',
-            };
-            setSelectedBusiness(businessData);
-        } else {
-            setSelectedBusiness(null);
-        }
+        const businessData = {
+            id: business.id || null,
+            businessName: business.name || '',
+            registrationNumber: business.registrationNumber || '',
+            address: business.address || '',
+            businessType: business.type || '',
+            email: business.email || '',
+            phone: business.phone || '',
+            website: business.website || '',
+            description: business.description || '',
+            primaryColor: business.primaryColor || '#1976d2',
+            status: business.status || 'NEW',
+            logoFile: null,
+            logoUrl: business.logoUrl || null,
+            owner: business.owner || '',
+            paymentType: business.paymentType || 'TILL',
+            tillNumber: business.tillNumber || '',
+            paybillNumber: business.paybillNumber || '',
+            accountNumber: business.accountNumber || '',
+            pochiNumber: business.pochiNumber || '',
+        };
+        setSelectedBusiness(businessData);
         setModalLoading(false);
-        setFormMode(modalType);
+        setFormMode('view');
         setShowCreateForm(true);
     };
 
@@ -287,9 +286,9 @@ const BusinessesPage = () => {
         setModalLoading(false);
     };
 
-    const openCreateModal = () => openModalWithLoader('create');
-    const openEditModal = (business) => openModalWithLoader('edit', business);
-    const openEnableView = (business) => openModalWithLoader('view', business);
+    const openCreateModal = () => navigate('/businesses/new');
+    const openEditModal = (business) => navigate(`/businesses/${business.id}/edit`);
+    const openEnableView = (business) => openViewModal(business);
     const openEnableModal = (business) => openActionModalWithLoader('enable', business);
     const openDisableModal = (business) => openActionModalWithLoader('disable', business);
     const openDeleteModal = (business) => openActionModalWithLoader('delete', business);
@@ -322,7 +321,7 @@ const BusinessesPage = () => {
                     formattedPochiNumber = '254' + formattedPochiNumber;
                 }
 
-                console.log('📱 Formatted POCHI number:', {
+                console.log('Formatted POCHI number:', {
                     original: values.pochiNumber,
                     cleaned: values.pochiNumber.toString().replace(/\D/g, ''),
                     formatted: formattedPochiNumber
@@ -351,7 +350,7 @@ const BusinessesPage = () => {
             };
 
             // Log payment fields for debugging
-            console.log('💰 Payment fields being sent:', {
+            console.log('Payment fields being sent:', {
                 paymentType: textFields.paymentType,
                 pochiNumber: textFields.pochiNumber,
                 tillNumber: textFields.tillNumber,
@@ -380,7 +379,7 @@ const BusinessesPage = () => {
             }
 
             // Log the FormData contents for debugging
-            console.log('📤 Submitting business with payment config:');
+            console.log('Submitting business with payment config:');
             for (let [key, value] of formData.entries()) {
                 console.log(`   ${key}: ${value}`);
             }
@@ -409,7 +408,7 @@ const BusinessesPage = () => {
                 throw new Error(getResponseErrorMessage(response, `Failed to ${formMode === 'edit' ? 'update' : 'create'} business.`));
             }
 
-            console.log('✅ Business saved successfully:', response);
+            console.log('Business saved successfully:', response);
 
             const successMessage = formMode === 'edit'
                 ? `Business "${values.businessName}" updated successfully!`
@@ -422,7 +421,7 @@ const BusinessesPage = () => {
             closeAllModals();
 
         } catch (error) {
-            console.error('❌ Error saving business:', error);
+            console.error('Error saving business:', error);
 
             let serverError = 'A server error occurred. Please try again.';
             let validationErrors = [];
@@ -508,9 +507,17 @@ const BusinessesPage = () => {
         const matchesSearch = b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.registrationNumber.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = !filters.status || b.status === filters.status;
-        const matchesType = !filters.type || b.type === filters.type;
-        return matchesSearch && matchesStatus && matchesType;
+        const matchesStatus = !filters.status?.length || filters.status.includes(b.status);
+        const matchesType = !filters.type?.length || filters.type.includes(b.type);
+        const matchesDate = (() => {
+            if (!filters.startDate || !filters.endDate) return true;
+            const created = dayjs(b.createdAt);
+            if (!created.isValid()) return false;
+            const start = dayjs(filters.startDate, 'DD-MM-YYYY').startOf('day');
+            const end = dayjs(filters.endDate, 'DD-MM-YYYY').endOf('day');
+            return !created.isBefore(start) && !created.isAfter(end);
+        })();
+        return matchesSearch && matchesStatus && matchesType && matchesDate;
     });
 
     if (loading) {
@@ -626,8 +633,6 @@ const BusinessesPage = () => {
                                         filters={filters}
                                         setFilters={setFilters}
                                         businessTypes={businessTypes}
-                                        selectedItems={selectedItems}
-                                        setSelectedItems={setSelectedItems}
                                         openModal={openCreateModal}
                                     />
 

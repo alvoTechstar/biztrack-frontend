@@ -42,7 +42,7 @@ class DatabaseService extends Component {
     return <div />;
   }
 
-  // ✅ FIXED: Now accepts skipContentType parameter
+  // FIXED: Now accepts skipContentType parameter
   static generateHeaders(skipContentType = false) {
     const token = Cookies.get("token");
     const headers = {
@@ -57,29 +57,29 @@ class DatabaseService extends Component {
     return headers;
   }
 
-  // ✅ FIXED: Detect FormData and adjust headers accordingly
+  // FIXED: Detect FormData and adjust headers accordingly
   static async POST(end_point, post_data) {
     try {
       const isFormData = post_data instanceof FormData;
-      
-      console.log('🔍 DatabaseService POST:', {
+
+      console.log('DatabaseService POST:', {
         endpoint: end_point,
         isFormData,
         dataType: post_data?.constructor?.name
       });
 
       if (isFormData) {
-        console.log('📤 Sending FormData (multipart/form-data)');
+        console.log('Sending FormData (multipart/form-data)');
         // Log FormData contents for debugging
         for (let [key, value] of post_data.entries()) {
           if (value instanceof File) {
-            console.log(`  📎 ${key}: [File: ${value.name}, ${value.size} bytes]`);
+            console.log(`  ${key}: [File: ${value.name}, ${value.size} bytes]`);
           } else {
-            console.log(`  📄 ${key}: ${value}`);
+            console.log(`  ${key}: ${value}`);
           }
         }
       } else {
-        console.log('📤 Sending JSON (application/json)');
+        console.log('Sending JSON (application/json)');
       }
 
       const response = await axios.post(
@@ -139,29 +139,29 @@ class DatabaseService extends Component {
     }
   }
 
-  // ✅ FIXED: Detect FormData and adjust headers accordingly
+  // FIXED: Detect FormData and adjust headers accordingly
   static async PUT(end_point, post_data) {
     try {
       const isFormData = post_data instanceof FormData;
-      
-      console.log('🔍 DatabaseService PUT:', {
+
+      console.log('DatabaseService PUT:', {
         endpoint: end_point,
         isFormData,
         dataType: post_data?.constructor?.name
       });
 
       if (isFormData) {
-        console.log('📤 Sending FormData (multipart/form-data)');
+        console.log('Sending FormData (multipart/form-data)');
         // Log FormData contents for debugging
         for (let [key, value] of post_data.entries()) {
           if (value instanceof File) {
-            console.log(`  📎 ${key}: [File: ${value.name}, ${value.size} bytes]`);
+            console.log(`  ${key}: [File: ${value.name}, ${value.size} bytes]`);
           } else {
-            console.log(`  📄 ${key}: ${value}`);
+            console.log(`  ${key}: ${value}`);
           }
         }
       } else {
-        console.log('📤 Sending JSON (application/json)');
+        console.log('Sending JSON (application/json)');
       }
 
       const response = await axios.put(

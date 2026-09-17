@@ -32,13 +32,13 @@ const ProductCard = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-2">
-      <div className="flex justify-between items-baseline mb-2">
-        <h3 className="text-xl font-semibold text-gray-800 flex-grow">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-3 sm:p-4">
+      <div className="flex justify-between items-start gap-2 mb-2">
+        <h3 className="text-base font-semibold text-gray-900 leading-tight">
           {product.name}
         </h3>
-        <p
-          className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold
+        <span
+          className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap
             ${
               isOutOfStock
                 ? "bg-red-100 text-red-700"
@@ -51,22 +51,22 @@ const ProductCard = ({
           {isOutOfStock
             ? "Out of Stock"
             : isLowStock
-            ? `Low Stock (${product.availableStock})`
+            ? `Low (${product.availableStock})`
             : `In Stock (${product.availableStock})`}
-        </p>
+        </span>
       </div>
 
       <p className="text-sm font-bold text-green-600 mb-3">
         {formatCurrency(product.price)}
       </p>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2">
         <input
           type="number"
           min="0.01"
           step="0.01"
           placeholder="1"
-          className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-16 px-2 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           value={quantity || ""}
           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
           onBlur={(e) => {
@@ -79,10 +79,10 @@ const ProductCard = ({
         />
         <button
           onClick={handleAddToCart}
-          className="flex-1 bg-blue-500 text-white w-20 px-2 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="flex-1 bg-blue-600 text-white px-2 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
           disabled={isOutOfStock}
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-4 w-4" />
           Sell
         </button>
       </div>

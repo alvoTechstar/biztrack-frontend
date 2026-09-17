@@ -1,24 +1,36 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Box } from "@mui/material";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Users, Plus } from 'lucide-react';
 import { useTheme } from "../../../../components/theme/ThemeContext";
 import { useSelector } from "react-redux";
-import { GET, POST, PUT, DELETE } from "../../../../services/DatabaseServiceImp";
+import { GET, PUT, DELETE } from "../../../../services/DatabaseServiceImp";
 import URLS from "../../../../utilities/Endpoints";
 
 // Import the components
 import StaffControls from "./StaffControls";
 import StaffTable from "./StaffTable";
-import CreateStaffForm from "./CreateStaffForm";
 import StaffViewDialog from "./StaffViewDialog";
 import Toaster from "../../../../components/Toaster";
 import ContentLoader from "../../../../components/Loader/ContentLoader";
 import { useActionModal } from "../../../../hooks/useActionModal";
 import ActionModal from "../../../../components/modal/ActionModal";
 
-const KioskStaffManagement = () => {
+// Role lists per business type — must match the space-separated role strings
+// the super admin uses when creating users (see CreateUserPage's rolesByType).
+const ROLES_BY_BUSINESS_TYPE = {
+  Kiosk: ['Kiosk Admin', 'Kiosk Shopkeeper'],
+  Hotel: ['Hotel Admin', 'Hotel Cashier', 'Hotel Waiter'],
+};
+
+// Treats "Kiosk_Admin", "Kiosk-Admin" and "Kiosk Admin" as equivalent, so
+// matching stays correct regardless of which separator the backend stored.
+const normalizeRole = (role) => (role || '').replace(/[_-]/g, ' ').toLowerCase().trim();
+
+const StaffManagementPage = ({ basePath = '/kiosk/user-management' }) => {
   const theme = useTheme();
   const primaryColor = theme?.primaryColor || '#2563eb';
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Get current user from Redux store
   const currentUser = useSelector((state) => state.auth?.value);
@@ -49,8 +61,6 @@ const KioskStaffManagement = () => {
   const currentBusiness = useMemo(() => {
     if (!currentUser) return null;
 
-    console.log('🔍 Current User for business info:', currentUser);
-
     const businessId = String(
       currentUser.businessId ||
       currentUser.businessUUID ||
@@ -60,25 +70,23 @@ const KioskStaffManagement = () => {
     ).trim();
 
     if (!businessId) {
-      console.warn('⚠️ No business ID found in currentUser. Will determine from database.');
       return {
         id: 'unknown',
         name: currentUser.businessName || "Your Business",
-        type: currentUser.businessType || "Kiosk"
+        type: currentUser.businessType || ""
       };
     }
 
     return {
       id: businessId,
       name: currentUser.businessName || "Current Business",
-      type: currentUser.businessType || "Kiosk"
+      type: currentUser.businessType || ""
     };
   }, [currentUser]);
 
   // View state
   const [currentView, setCurrentView] = useState('table');
   const [currentStaff, setCurrentStaff] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
 
   // Modal loading states
   const [actionModalLoading, setActionModalLoading] = useState(false);
@@ -88,9 +96,6 @@ const KioskStaffManagement = () => {
   const [loadingState, setLoadingState] = useState(true);
   const [loadingText, setLoadingText] = useState("");
   const [loadedText, setLoadedText] = useState("");
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createLoadingText, setCreateLoadingText] = useState("");
-  const [createSuccess, setCreateSuccess] = useState(false);
 
   // Reusable action modal hook
   const { modalState, openModal, closeModal, setReason, handleSubmit } = useActionModal();
@@ -116,6 +121,15 @@ const KioskStaffManagement = () => {
     setToaster((prev) => ({ ...prev, open: false }));
   }, []);
 
+  useEffect(() => {
+    if (location.state?.toast) {
+      const { state, title, message } = location.state.toast;
+      showToaster(title, message, state ? 'success' : 'error');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   // Helper Functions
   const getInitials = useCallback((name) => {
     if (!name) return "";
@@ -132,15 +146,10 @@ const KioskStaffManagement = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   }, []);
 
-  // Role-based access control mapping for Kiosk
-  const rolesByType = useMemo(() => ({
-    'Kiosk': ['Kiosk_Admin', 'Kiosk_Shopkeeper']
-  }), []);
-
-  // Available roles for current business type
+  // Available roles for the current business type — empty until we know the type
   const availableRoles = useMemo(() => {
-    return rolesByType[currentBusiness?.type] || rolesByType['Kiosk'] || ['Kiosk_Admin', 'Kiosk_Shopkeeper'];
-  }, [currentBusiness, rolesByType]);
+    return ROLES_BY_BUSINESS_TYPE[currentBusiness?.type] || [];
+  }, [currentBusiness]);
 
   const fetchStaffData = useCallback(async () => {
     setLoading(true);
@@ -148,10 +157,6 @@ const KioskStaffManagement = () => {
     setErrorMessage(null);
 
     try {
-      console.log('🔍 Starting staff fetch for business admin');
-      console.log('📊 Current User:', currentUser);
-      console.log('📊 Current Business:', currentBusiness);
-
       if (!currentUser?.id) {
         throw new Error("User information not available. Please log in again.");
       }
@@ -164,53 +169,29 @@ const KioskStaffManagement = () => {
         ""
       ).trim();
 
-      console.log('🔑 User Business ID:', userBusinessId);
-
       if (!userBusinessId) {
         throw new Error("No business assigned to your account. Please contact your administrator.");
       }
 
       let staffData = [];
-      let businessInfo = null;
 
       try {
-        console.log(`🔍 Fetching users for business: ${userBusinessId}`);
         const businessEndpoint = `/api/users/business/${userBusinessId}`;
         const result = await GET(businessEndpoint);
 
-        console.log('📥 Business users endpoint response:', result);
-
         if (result?.success && Array.isArray(result.data)) {
           staffData = result.data;
-
-          if (result.businessName) {
-            businessInfo = {
-              id: result.businessId || result.businessUUID || userBusinessId,
-              name: result.businessName,
-              type: result.businessType
-            };
-          }
-
-          console.log('✅ Got users from business endpoint:', staffData.length);
-        } else {
-          console.log('⚠️ Business endpoint returned no data, trying fallback...');
         }
       } catch (businessError) {
-        console.log('ℹ️ Business endpoint failed:', businessError.message);
+        // Fall through to the all-users endpoint below
       }
 
       if (staffData.length === 0) {
-        console.log('🔄 Falling back to ALL users endpoint with filtering...');
-
         try {
           const allUsersEndpoint = URLS.USERS.GET_ALL_USERS || '/api/users';
           const allUsersResult = await GET(allUsersEndpoint);
 
-          console.log('📥 All users endpoint response:', allUsersResult);
-
           if (allUsersResult?.success && Array.isArray(allUsersResult.data)) {
-            console.log('📊 Total users in system:', allUsersResult.data.length);
-
             staffData = allUsersResult.data.filter(user => {
               if (!user) return false;
 
@@ -225,36 +206,19 @@ const KioskStaffManagement = () => {
                 userAssociatedBusinessId === userBusinessId ||
                 userInstitutionId === userBusinessId;
 
-              const hasValidRole = user.role && (
-                user.role.startsWith(currentBusiness?.type + '_') ||
-                availableRoles.includes(user.role)
-              );
+              const hasValidRole = user.role &&
+                availableRoles.some(role => normalizeRole(role) === normalizeRole(user.role));
 
-              const matches = belongsToCurrentBusiness && hasValidRole;
-
-              if (matches) {
-                console.log(`✅ User ${user.id} matches business ${userBusinessId}:`, {
-                  userBusinessNumericId,
-                  userBusinessUUID,
-                  userAssociatedBusinessId,
-                  userInstitutionId,
-                  role: user.role
-                });
-              }
-
-              return matches;
+              return belongsToCurrentBusiness && hasValidRole;
             });
-
-            console.log('✅ Filtered users for current business:', staffData.length);
           }
         } catch (allUsersError) {
-          console.error('❌ Failed to fetch all users:', allUsersError);
+          console.error('Failed to fetch all users:', allUsersError);
           throw new Error("Cannot connect to server. Please check your connection.");
         }
       }
 
       if (staffData.length === 0) {
-        console.warn('⚠️ No users found for business:', userBusinessId);
         setStaff([]);
         setLoadedText("No staff members found for your business");
         showToaster("No Staff Found", "You can add new staff using the 'Add Staff' button.", "info");
@@ -264,7 +228,7 @@ const KioskStaffManagement = () => {
       const transformedStaff = staffData.map(member => {
         const memberBusinessId = member.businessId || member.associatedBusinessId || userBusinessId;
         const memberBusinessName = member.businessName || currentBusiness?.name || "Current Business";
-        const memberBusinessType = member.businessType || currentBusiness?.type || "Kiosk";
+        const memberBusinessType = member.businessType || currentBusiness?.type || "";
 
         return {
           id: member._id || member.id,
@@ -287,15 +251,12 @@ const KioskStaffManagement = () => {
         };
       });
 
-      console.log('✅ Successfully transformed staff:', transformedStaff.length);
-      console.log('📊 Sample staff member:', transformedStaff[0]);
-
       setStaff(transformedStaff);
       setLoadedText(`Loaded ${transformedStaff.length} staff member(s)`);
       showToaster("Success", `Successfully loaded ${transformedStaff.length} staff member(s)`, "success");
 
     } catch (error) {
-      console.error('❌ Error fetching staff data:', error);
+      console.error('Error fetching staff data:', error);
       const errorMsg = error.message || "Failed to load staff data. Please try again.";
       setErrorMessage(errorMsg);
       showToaster("Error Loading Staff", errorMsg, "error");
@@ -310,14 +271,6 @@ const KioskStaffManagement = () => {
     fetchStaffData();
   }, [fetchStaffData]);
 
-  const filterRoles = useMemo(() => [
-    { value: "", label: "All Roles" },
-    ...availableRoles.map(role => ({
-      value: role,
-      label: role.replace('_', ' ')
-    }))
-  ], [availableRoles]);
-
   const filteredStaff = useMemo(() => {
     if (!Array.isArray(staff)) return [];
 
@@ -331,7 +284,7 @@ const KioskStaffManagement = () => {
         return false;
       }
 
-      if (!availableRoles.includes(member.role)) {
+      if (!availableRoles.some(role => normalizeRole(role) === normalizeRole(member.role))) {
         return false;
       }
 
@@ -345,9 +298,7 @@ const KioskStaffManagement = () => {
         (member.role?.toLowerCase() || '').includes(searchLower);
 
       const matchesStatus = !filters.status || member.status === filters.status;
-
-      const norm = (r) => (r || '').replace(/_/g, ' ').toLowerCase();
-      const matchesRole = !filters.role || norm(member.role) === norm(filters.role);
+      const matchesRole = !filters.role || normalizeRole(member.role) === normalizeRole(filters.role);
 
       // Add date filtering logic
       let matchesDate = true;
@@ -441,57 +392,14 @@ const KioskStaffManagement = () => {
     setActionModalLoading(false);
   };
 
-  const openFormModalWithLoader = async (modalType, staffMember = null) => {
+  const openFormModalWithLoader = async (staffMember = null) => {
     setFormModalLoading(true);
-
-    switch (modalType) {
-      case 'create':
-        setFormLoadingText('Loading create form...');
-        break;
-      case 'edit':
-        setFormLoadingText('Loading edit form...');
-        // Log the complete staff member data for debugging
-        console.log('📝 Editing staff member with data:', staffMember);
-        break;
-      case 'view':
-        setFormLoadingText('Loading staff details...');
-        break;
-      default:
-        setFormLoadingText('Loading...');
-    }
+    setFormLoadingText('Loading staff details...');
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // If editing, ensure we have all fields populated
-    if (modalType === 'edit' && staffMember) {
-      // Transform the data to match form expectations
-      const transformedStaff = {
-        ...staffMember,
-        // Ensure all required fields are present
-        phone: staffMember.phone || staffMember.phoneNumber || "",
-        phoneNumber: staffMember.phoneNumber || staffMember.phone || "",
-        firstName: staffMember.firstName || "",
-        lastName: staffMember.lastName || "",
-        email: staffMember.email || "",
-        username: staffMember.username || "",
-        role: staffMember.role || availableRoles[0],
-        status: staffMember.status || "ACTIVE",
-        businessId: staffMember.businessId || staffMember.associatedBusinessId || currentBusiness?.id,
-        businessName: staffMember.businessName || currentBusiness?.name,
-        businessType: staffMember.businessType || currentBusiness?.type,
-        // Include any additional fields from the API
-        institutionId: staffMember.institutionId,
-        lastLogin: staffMember.lastLogin,
-        createdAt: staffMember.createdAt,
-      };
-
-      setCurrentStaff(transformedStaff);
-    } else {
-      setCurrentStaff(staffMember);
-    }
-
-    setIsEditing(modalType === 'edit');
-    setCurrentView(modalType);
+    setCurrentStaff(staffMember);
+    setCurrentView('view');
     setFormModalLoading(false);
   };
 
@@ -499,226 +407,21 @@ const KioskStaffManagement = () => {
     setCurrentView('table');
     setCurrentStaff(null);
     setErrorMessage(null);
-    setCreateLoading(false);
-    setCreateSuccess(false);
     setSubmitting(false);
     closeModal();
   };
 
-  const openCreateModal = () => openFormModalWithLoader('create');
+  const openCreateModal = () => navigate(`${basePath}/new`);
 
   const openEditModal = (staffMember) => {
-    // Ensure we're passing all fields from the staffMember
-    const completeStaffData = {
-      ...staffMember,
-      // Map phone to phoneNumber if needed by the form
-      phoneNumber: staffMember.phone || staffMember.phoneNumber,
-      // Ensure status is properly formatted
-      status: staffMember.status || "ACTIVE",
-      // Include all other fields from the user object
-      email: staffMember.email || "",
-      firstName: staffMember.firstName || "",
-      lastName: staffMember.lastName || "",
-      username: staffMember.username || "",
-      role: staffMember.role || "",
-      businessId: staffMember.businessId || staffMember.associatedBusinessId || currentBusiness?.id,
-      businessName: staffMember.businessName || currentBusiness?.name,
-      businessType: staffMember.businessType || currentBusiness?.type,
-    };
-
-    openFormModalWithLoader('edit', completeStaffData);
+    if (!staffMember) return;
+    navigate(`${basePath}/${staffMember.id}/edit`);
   };
 
-  const openViewModal = (staffMember) => openFormModalWithLoader('view', staffMember);
+  const openViewModal = (staffMember) => openFormModalWithLoader(staffMember);
   const openEnableModal = (staffMember) => openActionModalWithLoader('enable', staffMember);
   const openDisableModal = (staffMember) => openActionModalWithLoader('disable', staffMember);
   const openDeleteModal = (staffMember) => openActionModalWithLoader('delete', staffMember);
-
-  const businessForForm = useMemo(() => {
-    if (!currentBusiness) return [];
-
-    return [{
-      id: currentBusiness.id,
-      businessId: currentBusiness.id,
-      _id: currentBusiness.id,
-      businessName: currentBusiness.name,
-      businessType: currentBusiness.type
-    }];
-  }, [currentBusiness]);
-
-  // FIXED FORM SUBMISSION WITH SAFE PROPERTY ACCESS
-  const handleFormSubmit = async (values) => {
-    setSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      // Validate that required fields exist before processing
-      if (!values) {
-        throw new Error('Form values are missing');
-      }
-
-      console.log('📝 Form submission values:', values);
-      console.log('📝 Current staff (for edit):', currentStaff);
-
-      // Safe trim function that handles undefined/null values
-      const safeTrim = (value) => {
-        if (value === null || value === undefined) {
-          return '';
-        }
-        return String(value).trim();
-      };
-
-      // Extract and validate all form fields with safe defaults
-      const firstName = safeTrim(values.firstName);
-      const lastName = safeTrim(values.lastName);
-      const email = safeTrim(values.email);
-      const username = safeTrim(values.username);
-      const phone = safeTrim(values.phone || values.phoneNumber);
-      const role = values.role || '';
-      const status = values.status || 'ACTIVE';
-      const businessId = values.businessId || values.institutionId || '';
-
-      // Validate required fields
-      if (!firstName) throw new Error('First name is required');
-      if (!lastName) throw new Error('Last name is required');
-      if (!email) throw new Error('Email is required');
-      if (!username) throw new Error('Username is required');
-      if (!phone) throw new Error('Phone number is required');
-      if (!role) throw new Error('Role is required');
-      if (!businessId) throw new Error('Business is required');
-
-      // CRITICAL VALIDATION: Ensure role is valid for Kiosk
-      if (!availableRoles.includes(role)) {
-        throw new Error(`Invalid role selected. Please choose from: ${availableRoles.join(', ')}`);
-      }
-
-      // CRITICAL VALIDATION: Ensure businessId matches current business
-      const submittedBusinessId = String(businessId).trim();
-      const currentBusinessId = String(currentBusiness.id || "").trim();
-
-      if (submittedBusinessId !== currentBusinessId) {
-        throw new Error("Invalid business selection. You can only create users for your current business.");
-      }
-
-      // Prepare API data with ALL fields
-      const staffData = {
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        username: username,
-        phone: phone,
-        phoneNumber: phone,
-        role: role,
-        status: status === "ACTIVE" ? "active" : "inactive",
-        businessId: currentBusiness.id,
-        associatedBusinessId: currentBusiness.id,
-        institutionId: currentStaff?.institutionId || currentBusiness.id,
-        businessName: currentBusiness.name,
-        businessType: currentBusiness.type,
-        updatedBy: currentUser?.id || "system",
-        updatedAt: new Date().toISOString()
-      };
-
-      // Only include password for new users
-      if (!isEditing) {
-        staffData.password = 'Temporary123!';
-      }
-
-      console.log('📤 Sending staff data to API:', staffData);
-
-      let result;
-      const staffName = `${firstName} ${lastName}`;
-
-      if (isEditing && currentStaff) {
-        // Update existing staff - include ALL fields from currentStaff
-        const endpoint = URLS.USERS.UPDATE_USER.replace(':id', currentStaff.id);
-        console.log('🔄 Updating user at:', endpoint);
-        result = await PUT(endpoint, staffData);
-
-        console.log('📥 Update result:', result);
-
-        if (result && result.success) {
-          // Update local state with ALL fields
-          setStaff((prevStaff) =>
-            prevStaff.map((member) =>
-              member.id === currentStaff.id
-                ? {
-                  ...member,
-                  firstName: firstName,
-                  lastName: lastName,
-                  email: email,
-                  username: username,
-                  phone: phone,
-                  phoneNumber: phone,
-                  role: role,
-                  status: status,
-                  businessId: currentBusiness.id,
-                  associatedBusinessId: currentBusiness.id,
-                  institutionId: currentStaff.institutionId || currentBusiness.id,
-                  businessName: currentBusiness.name,
-                  businessType: currentBusiness.type,
-                  // Preserve other fields
-                  lastLogin: member.lastLogin,
-                  createdAt: member.createdAt,
-                }
-                : member
-            )
-          );
-
-          setCreateLoading(true);
-          setCreateSuccess(true);
-          setCreateLoadingText(`✓ Success! ${staffName} has been updated successfully.`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          showToaster("Staff Updated", `${staffName} has been updated successfully`, "success");
-          closeAllModals();
-        } else {
-          throw new Error(result?.message || "Failed to update staff member");
-        }
-      } else {
-        result = await POST(URLS.USERS.CREATE_USER, staffData);
-
-        console.log('📥 Create result:', result);
-
-        if (result && result.success && result.user) {
-          const newStaff = {
-            id: result.user.id || result.user._id,
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            username: username,
-            phone: phone,
-            phoneNumber: phone,
-            role: role,
-            status: status,
-            businessId: currentBusiness.id,
-            associatedBusinessId: currentBusiness.id,
-            institutionId: currentBusiness.id,
-            businessName: currentBusiness.name,
-            businessType: currentBusiness.type,
-            dateJoined: result.user.createdAt || new Date().toISOString(),
-          };
-
-          setStaff((prevStaff) => [newStaff, ...prevStaff]);
-
-          setCreateLoading(true);
-          setCreateSuccess(true);
-          setCreateLoadingText(`✓ Success! ${staffName} has been added to your team.`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          showToaster("Staff Created", `${staffName} has been added to your team`, "success");
-          closeAllModals();
-        } else {
-          throw new Error(result?.message || "Failed to create staff member");
-        }
-      }
-
-    } catch (error) {
-      const errorMsg = error.message || 'Failed to save staff member. Please try again.';
-      setErrorMessage(errorMsg);
-      showToaster("Error", errorMsg, "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Action Handlers
   const handleDeleteStaff = async (staffId, reason) => {
@@ -735,7 +438,7 @@ const KioskStaffManagement = () => {
         throw new Error(result?.message || "Failed to delete staff member");
       }
     } catch (error) {
-      console.error('❌ Error deleting staff:', error);
+      console.error('Error deleting staff:', error);
       setErrorMessage(error.message || 'Failed to delete staff member. Please try again.');
       showToaster("Error", error.message || 'Failed to delete staff member', "error");
     } finally {
@@ -769,7 +472,7 @@ const KioskStaffManagement = () => {
         throw new Error(result?.message || "Failed to update staff status");
       }
     } catch (error) {
-      console.error('❌ Error toggling staff status:', error);
+      console.error('Error toggling staff status:', error);
       setErrorMessage(error.message || 'Failed to update staff status. Please try again.');
       showToaster("Error", error.message || 'Failed to update staff status', "error");
     } finally {
@@ -790,27 +493,6 @@ const KioskStaffManagement = () => {
   const handleRejectStaff = () => {
     closeAllModals();
   };
-
-  // Show content loader during create/update operations
-  if (createLoading) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={!createSuccess}
-                loading={!createSuccess}
-                loadingText={createLoadingText}
-                loadedText={createSuccess ? createLoadingText : ""}
-                color={createSuccess ? '#10b981' : primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Show content loader during initial loading
   if (loading) {
@@ -890,7 +572,7 @@ const KioskStaffManagement = () => {
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 max-w-lg mx-auto">
               <p className="text-yellow-800 font-semibold mb-2">Possible Solutions:</p>
               <ul className="text-left text-gray-700 text-sm space-y-1">
-                <li>• Ensure you're logged in as a Kiosk_Admin for {currentBusiness.name}</li>
+                <li>• Ensure you're logged in as an admin for {currentBusiness.name}</li>
                 <li>• Contact support to verify your business assignment</li>
                 <li>• Try refreshing the page</li>
                 <li>• Clear browser cache and login again</li>
@@ -910,23 +592,6 @@ const KioskStaffManagement = () => {
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'create':
-      case 'edit':
-        return (
-          <CreateStaffForm
-            showModal={true}
-            setShowModal={closeAllModals}
-            initialFormData={currentStaff || { status: "ACTIVE" }}
-            handleSubmit={handleFormSubmit}
-            businesses={businessForForm}
-            rolesByType={rolesByType}
-            isEditing={isEditing}
-            submitting={submitting}
-            forceBusinessId={currentBusiness.id}
-            lockedBusiness={true}
-            availableRoles={availableRoles}
-          />
-        );
       case 'view':
         return (
           <StaffViewDialog
@@ -1042,4 +707,4 @@ const KioskStaffManagement = () => {
   );
 };
 
-export default KioskStaffManagement;
+export default StaffManagementPage;

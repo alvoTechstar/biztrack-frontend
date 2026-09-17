@@ -294,7 +294,7 @@ const MpesaPaymentModal = ({
       setPaymentStatus('sending');
       setErrorMessage('');
 
-      console.log('📱 Initiating M-PESA payment with:', {
+      console.log('Initiating M-PESA payment with:', {
         paymentType,
         paymentInfo,
         phone: mpesaPhone,
@@ -338,7 +338,7 @@ const MpesaPaymentModal = ({
         setErrorMessage(result?.message || 'Failed to initiate M-PESA payment');
       }
     } catch (error) {
-      console.error('❌ M-PESA payment error:', error);
+      console.error('M-PESA payment error:', error);
       setPaymentStatus('failed');
       setErrorMessage(error.message || 'An unexpected error occurred');
     }
@@ -357,7 +357,7 @@ const MpesaPaymentModal = ({
   };
 
   const handleSuccessComplete = () => {
-    console.log(`✅ Success modal completed - isDebtPayment: ${isDebtPayment}`);
+    console.log(`Success modal completed - isDebtPayment: ${isDebtPayment}`);
     setShowSuccessModal(false);
     handleClose(true);
   };
@@ -377,7 +377,7 @@ const MpesaPaymentModal = ({
   };
 
   const handleClose = (isCompleted = false) => {
-    console.log(`🔄 Closing M-PESA modal - isCompleted: ${isCompleted}, isDebtPayment: ${isDebtPayment}`);
+    console.log(`Closing M-PESA modal - isCompleted: ${isCompleted}, isDebtPayment: ${isDebtPayment}`);
     cleanup();
     resetState();
     onClose(isCompleted);

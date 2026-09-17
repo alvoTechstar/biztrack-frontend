@@ -321,6 +321,8 @@
 
 .filter-input button {
   display: inline-flex;
+  box-sizing: border-box;
+  height: 42px;
   min-width: 130px;
   padding: 10px 14px;
   justify-content: space-between;
@@ -331,6 +333,7 @@
   font-family: "Averta-Bolder", sans-serif;
   color: #353f50;
   font-size: 13px;
+  line-height: normal;
 }
 
 .filter-input button > svg {
@@ -345,6 +348,8 @@
 
 .filter-date-input button {
   display: inline-flex;
+  box-sizing: border-box;
+  height: 42px;
   padding: 10px 14px;
   justify-content: space-between;
   align-items: center;
@@ -354,6 +359,7 @@
   font-family: "Averta-Bolder", sans-serif;
   color: #353f50;
   font-size: 13px;
+  line-height: normal;
 }
 
 .filter-date-input button > svg {

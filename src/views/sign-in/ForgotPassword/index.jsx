@@ -77,7 +77,7 @@ export default function ForgotPassword() {
         }, 2000);
       }
     } catch (error) {
-      console.error("❌ Forgot password error:", error.response?.data);
+      console.error("Forgot password error:", error.response?.data);
       const errorMsg = error.response?.data?.message || "Failed to send OTP";
       handleToaster("false", "Error", errorMsg);
       setLoading(false);
@@ -106,7 +106,7 @@ export default function ForgotPassword() {
         }, 2000);
       }
     } catch (error) {
-      console.error("❌ OTP verification error:", error.response?.data);
+      console.error("OTP verification error:", error.response?.data);
       const errorMsg = error.response?.data?.message || "OTP verification failed";
       handleToaster("false", "Verification Failed", errorMsg);
       setLoading(false);
@@ -149,7 +149,7 @@ export default function ForgotPassword() {
         }, 3000);
       }
     } catch (error) {
-      console.error("❌ Password reset error:", {
+      console.error("Password reset error:", {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message

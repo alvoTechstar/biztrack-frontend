@@ -15,7 +15,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DataTable from "../../../../../components/datatable/index";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
 
-// 🔹 Centralized status mapping
+// Centralized status mapping
 const statusColorMap = {
   waiting: { label: "Waiting", color: "warning" },
   in_progress: { label: "In Consultation", color: "info" },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { hotelOrderActions } from "../../../../store";
-import { RefreshCw, Printer, ShoppingCart, CheckCircle, Clock, DollarSign, Smartphone } from "lucide-react";
+import { RefreshCw, Printer, ShoppingCart, CheckCircle, Clock, DollarSign, Smartphone, StickyNote } from "lucide-react";
 import { GET, PUT, POST } from "../../../../services/DatabaseServiceImp";
 import URLS from "../../../../utilities/Endpoints";
 import DataTable from "../../../../components/datatable";
@@ -498,6 +498,8 @@ export default function CompleteOrder() {
             options={["Status", "Payment"]}
             selected={selectedItems}
             selectedAction={setSelectedItems}
+            selected2={selectedItems}
+            selectedAction2={setSelectedItems}
             tableFilter={tableFilter}
             handleTableFilter={setTableFilter}
             anchorEl={filterAnchorEl}
@@ -572,8 +574,9 @@ export default function CompleteOrder() {
             </div>
 
             {viewOrder.note && (
-              <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1.5">
-                📝 {viewOrder.note}
+              <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1.5 flex items-start gap-1.5">
+                <StickyNote size={13} className="shrink-0 mt-0.5" />
+                {viewOrder.note}
               </p>
             )}
           </div>

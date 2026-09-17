@@ -27,14 +27,14 @@ const FailureModal = ({
   }, [secondsLeft]);
 
   const handleRetry = () => {
-    console.log('🔄 User requested to retry payment');
+    console.log('User requested to retry payment');
     if (onRetry) {
       onRetry();
     }
   };
 
   const handleNavigation = () => {
-    console.log('📍 Failure modal navigating');
+    console.log('Failure modal navigating');
     
     // Priority: Use the new navigation prop
     if (onNavigateToSales) {

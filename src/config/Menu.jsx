@@ -7,9 +7,6 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
-import InventoryIcon from "@mui/icons-material/Inventory";
-import MedicationIcon from "@mui/icons-material/Medication";
-import ScienceIcon from "@mui/icons-material/Science";
 import LocalPharmacyIcon from "@mui/icons-material/LocalPharmacy";
 
 export const MENU = [
@@ -64,13 +61,6 @@ export const MENU = [
     icon: <StoreIcon />,
     permissions: ["Hotel Admin"],
     path: "/products/ingredient-management",
-  },
-  {
-    key: "inventory",
-    title: "Inventory",
-    icon: <StoreIcon />,
-    permissions: ["Hotel Admin"],
-    path: "/inventory",
   },
   {
     key: "hotel-users",
@@ -275,15 +265,11 @@ export const MENU = [
     permissions: ["Doctor"],
     path: "/doctor/patients",
   },
-  {
-    key: "doctor-appointments",
-    title: "Appointments",
-    icon: <ListIcon />,
-    permissions: ["Doctor"],
-    path: "/doctor/appointments",
-  },
 
   // Nurse
+  // Only a placeholder dashboard route exists for this role so far - no
+  // /nurse/patients or /nurse/vitals page has been built yet. Add those menu
+  // entries back once real routes exist for them.
   {
     key: "nurse-dashboard",
     title: "Dashboard",
@@ -291,22 +277,9 @@ export const MENU = [
     permissions: ["Nurse"],
     path: "/dashboard/nurse",
   },
-  {
-    key: "nurse-patients",
-    title: "Patient Care",
-    icon: <LocalHospitalIcon />,
-    permissions: ["Nurse"],
-    path: "/nurse/patients",
-  },
-  {
-    key: "nurse-vitals",
-    title: "Vitals",
-    icon: <InventoryIcon />,
-    permissions: ["Nurse"],
-    path: "/nurse/vitals",
-  },
 
   // Pharmacist
+  // Same as Nurse above - only the placeholder dashboard route exists.
   {
     key: "pharmacist-dashboard",
     title: "Dashboard",
@@ -314,41 +287,14 @@ export const MENU = [
     permissions: ["Pharmacist"],
     path: "/dashboard/pharmacist",
   },
-  {
-    key: "pharmacist-inventory",
-    title: "Inventory",
-    icon: <MedicationIcon />,
-    permissions: ["Pharmacist"],
-    path: "/pharmacist/inventory",
-  },
-  {
-    key: "pharmacist-dispense",
-    title: "Dispense Drugs",
-    icon: <StoreIcon />,
-    permissions: ["Pharmacist"],
-    path: "/pharmacist/dispense",
-  },
 
   // Lab Technician
+  // Same as Nurse/Pharmacist above - only the placeholder dashboard route exists.
   {
     key: "labtech-dashboard",
     title: "Dashboard",
     icon: <DashboardIcon />,
     permissions: ["Lab Technician"],
-    path: "/dashboard/labtech",
-  },
-  {
-    key: "labtech-tests",
-    title: "Tests",
-    icon: <ScienceIcon />,
-    permissions: ["Lab Technician"],
-    path: "/labtech/tests",
-  },
-  {
-    key: "labtech-results",
-    title: "Results",
-    icon: <BarChartIcon />,
-    permissions: ["Lab Technician"],
-    path: "/labtech/results",
+    path: "/dashboard/labtechnician",
   },
 ];

@@ -14,11 +14,14 @@ export default function FilterInput({
   label,
   filters,
   filters2,
+  filters3,
   options,
-  selected = [], 
+  selected = [],
   selectedAction,
-  selected2, 
-  selectedAction2, 
+  selected2,
+  selectedAction2,
+  selected3,
+  selectedAction3,
   tableFilter,
   handleTableFilter,
   anchorEl,
@@ -26,6 +29,16 @@ export default function FilterInput({
   handleClick,
 }) {
   const [value, setValue] = useState(options[0]);
+
+  // Category N lines up with options[N] / filters(N+1) / selected(N+1)
+  const categories = [
+    { filters, selected, selectedAction },
+    { filters: filters2, selected: selected2, selectedAction: selectedAction2 },
+    { filters: filters3, selected: selected3, selectedAction: selectedAction3 },
+  ];
+
+  const activeCategoryIndex = Math.max(options.indexOf(value), 0);
+  const activeCategory = categories[activeCategoryIndex] || categories[0];
 
   const handleChange = (event) => {
     setValue(event.target.value);
@@ -38,47 +51,39 @@ export default function FilterInput({
 
   const handleReset = () => {
     setValue(options[0]);
-    selectedAction([]);
-    if (selected2 && selectedAction2) {
-      selectedAction2([]);
-    }
+    categories.forEach((category) => {
+      if (category.selected && category.selectedAction) {
+        category.selectedAction([]);
+      }
+    });
     handleTableFilter(false);
   };
 
   const handleCheck = (event) => {
-    const selectArray = value === options[0] ? selected : selected2;
+    const { selected: activeSelected = [], selectedAction: activeSelectedAction } = activeCategory;
+    if (!activeSelectedAction) return;
+
     const id = JSON.parse(event.target.id);
-    
-    // FIX: Check if selectArray exists before using indexOf
-    const index = selectArray ? selectArray.indexOf(id) : -1;
+    const index = activeSelected.indexOf(id);
     handleTableFilter(false);
 
-    if (value === options[0]) {
-      if (index !== -1) {
-        selected.splice(index, 1);
-        selectedAction([...selected]);
-      } else {
-        selectedAction([...selected, id]);
-      }
-    } else if (selected2 && selectedAction2) {
-      if (index !== -1) {
-        selected2.splice(index, 1);
-        selectedAction2([...selected2]);
-      } else {
-        selectedAction2([...selected2, id]);
-      }
+    if (index !== -1) {
+      activeSelectedAction(activeSelected.filter((_, i) => i !== index));
+    } else {
+      activeSelectedAction([...activeSelected, id]);
     }
   };
 
   const open = Boolean(anchorEl);
-  
-  // FIX: Safe array access with defaults
-  const selectArray = value === options[0] ? (selected || []) : (selected2 || []);
-  const filterArray = value === options[0] ? (filters || []) : (filters2 || []);
-  
-  // FIX: Safe length checks
-  const selectedFilters =
-    (selected && selected.length > 0) || (selected2 && selected2.length > 0);
+
+  const selectArray = activeCategory.selected || [];
+  const filterArray = activeCategory.filters || [];
+
+  const activeLabels = options.filter((option, index) => {
+    const category = categories[index];
+    return category?.selected && category.selected.length > 0;
+  });
+  const selectedFilters = activeLabels.length > 0;
 
   return (
     <div className="filter-input">
@@ -92,11 +97,7 @@ export default function FilterInput({
       >
         {tableFilter && selectedFilters ? (
           <>
-            {selected && selected.length > 0
-              ? selected2 && selected2.length > 0
-                ? `${options[0]}, ${options[1]}`
-                : options[0]
-              : options[1]}{" "}
+            {activeLabels.join(", ")}{" "}
             {open ? (
               <KeyboardArrowUpIcon color={"#353F50"} />
             ) : (
@@ -138,19 +139,9 @@ export default function FilterInput({
             {filterArray && filterArray.length > 0 && filterArray.map((filter, index) => (
               <CheckboxInput
                 key={index}
-                checked={
-                  selectArray.indexOf(
-                    value === options[0] && options.length > 1
-                      ? filter.label
-                      : filter.value
-                  ) !== -1
-                }
+                checked={selectArray.indexOf(filter.value) !== -1}
                 handleCheck={handleCheck}
-                label={
-                  value === options[0] && options.length > 1
-                    ? filter.label
-                    : filter.value
-                }
+                label={filter.value}
                 text={filter.label}
                 color={color}
               />

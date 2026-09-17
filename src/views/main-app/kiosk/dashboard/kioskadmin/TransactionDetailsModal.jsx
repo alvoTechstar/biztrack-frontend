@@ -161,7 +161,7 @@ const TransactionDetailsModal = ({ open, onClose, transaction }) => {
               <div className="flex items-center gap-2 mb-2">
                 <CreditCard className={`h-5 w-5 ${wasDebtPaid ? 'text-green-600' : 'text-red-600'}`} />
                 <Typography variant="subtitle1" className={`font-semibold ${wasDebtPaid ? 'text-green-800' : 'text-red-800'}`}>
-                  {wasDebtPaid ? '✓ Debt Recovered' : '⚠ Outstanding Debt'}
+                  {wasDebtPaid ? 'Debt Recovered' : 'Outstanding Debt'}
                 </Typography>
               </div>
               

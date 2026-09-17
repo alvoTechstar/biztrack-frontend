@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Plus, Clock, CheckCircle, ChefHat, Bell,
   ShoppingBag, AlertCircle, UtensilsCrossed, Printer,
+  MapPin, StickyNote,
 } from "lucide-react";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
 import { GET, PUT } from "../../../../../services/DatabaseServiceImp";
@@ -103,7 +104,10 @@ const OrderCard = ({ order, onMarkServed, onPrintBill }) => {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-bold text-gray-800">{order.id}</p>
-          <p className="text-sm font-semibold text-gray-600">📍 {order.tableNumber}</p>
+          <p className="text-sm font-semibold text-gray-600 flex items-center gap-1">
+            <MapPin size={12} />
+            {order.tableNumber}
+          </p>
         </div>
         <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${cfg.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${isReady ? "animate-pulse" : ""}`} />
@@ -144,8 +148,9 @@ const OrderCard = ({ order, onMarkServed, onPrintBill }) => {
 
       {/* Note */}
       {order.note && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-800">
-          📝 {order.note}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-800 flex items-start gap-1.5">
+          <StickyNote size={12} className="shrink-0 mt-0.5" />
+          {order.note}
         </div>
       )}
 

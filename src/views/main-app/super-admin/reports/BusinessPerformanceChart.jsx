@@ -8,11 +8,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { TrendingUp, Building, Award, Trophy, Users } from "lucide-react";
+import { Building, Award, Trophy, Users, Tag } from "lucide-react";
 import BusinessCommissionTable from "./BusinessCommissionTable";
 
 const formatKSh = (amount) => {
@@ -30,90 +29,41 @@ const BAR_COLORS = [
   '#FF6347', '#9370DB', '#20B2AA', '#FF4500', '#DA70D6'
 ];
 
-const BusinessPerformanceChart = ({ data = [], loading = false, title = "Business Performance" }) => {
+const BusinessPerformanceChart = ({ data = [], typeData = [], loading = false, title = "Business Performance" }) => {
   // State for table selection
   const [selectedItems, setSelectedItems] = useState([]);
 
-  // Process data from API
+  // Full per-business detail, for the ranking table - fine to list any number of
+  // businesses here since it's a scrolling table, not a chart axis.
   const businessPerformanceData = useMemo(() => {
-    if (!data || !Array.isArray(data)) {
-      return {
-        all: [],
-        top5: [],
-        totalCommission: 0,
-        isSampleData: false,
-        isEmpty: true
-      };
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return { all: [], totalCommission: 0, isEmpty: true };
     }
 
-    // If data is already processed (from API response)
-    if (data.length > 0 && data[0].name && data[0].commission !== undefined) {
-      const sortedBusinesses = [...data].sort((a, b) => b.commission - a.commission);
-      const totalCommission = sortedBusinesses.reduce((sum, business) => sum + business.commission, 0);
-
-      // Calculate percentages if not present
-      sortedBusinesses.forEach(business => {
-        if (!business.percentage) {
-          business.percentage = totalCommission > 0
-            ? parseFloat(((business.commission / totalCommission) * 100).toFixed(1))
-            : 0;
-        }
-        if (!business.id) {
-          business.id = business.name.replace(/\s+/g, '-').toLowerCase();
-        }
-      });
-
-      return {
-        all: sortedBusinesses,
-        top5: sortedBusinesses.slice(0, 5),
-        totalCommission,
-        isSampleData: false,
-        isEmpty: false
-      };
-    }
-
-    // If data is raw transactions from API
-    const businessCommissions = data.reduce((acc, curr) => {
-      const businessName = curr?.businessName || curr?.business?.name || "Unknown Business";
-      const commission = parseFloat(curr?.commission) || 
-                        (parseFloat(curr?.totalAmount) || 0) * 0.05; // 5% commission if not specified
-      
-      if (businessName && commission > 0) {
-        if (!acc[businessName]) {
-          acc[businessName] = {
-            name: businessName,
-            commission: 0,
-            transactions: 0,
-            type: curr?.businessType || curr?.business?.type || 'Unknown'
-          };
-        }
-        acc[businessName].commission += commission;
-        acc[businessName].transactions += 1;
-      }
-      return acc;
-    }, {});
-
-    const sortedBusinesses = Object.values(businessCommissions)
-      .sort((a, b) => b.commission - a.commission);
-
+    const sortedBusinesses = [...data].sort((a, b) => b.commission - a.commission);
     const totalCommission = sortedBusinesses.reduce((sum, business) => sum + business.commission, 0);
 
-    // Add percentages and IDs
-    sortedBusinesses.forEach((business, index) => {
-      business.percentage = totalCommission > 0
-        ? parseFloat(((business.commission / totalCommission) * 100).toFixed(1))
-        : 0;
-      business.id = `${business.name.replace(/\s+/g, '-').toLowerCase()}-${index}`;
+    sortedBusinesses.forEach(business => {
+      if (!business.percentage) {
+        business.percentage = totalCommission > 0
+          ? parseFloat(((business.commission / totalCommission) * 100).toFixed(1))
+          : 0;
+      }
+      if (!business.id) {
+        business.id = business.name.replace(/\s+/g, '-').toLowerCase();
+      }
     });
 
-    return {
-      all: sortedBusinesses,
-      top5: sortedBusinesses.slice(0, 5),
-      totalCommission,
-      isSampleData: false,
-      isEmpty: sortedBusinesses.length === 0
-    };
+    return { all: sortedBusinesses, totalCommission, isEmpty: false };
   }, [data]);
+
+  // Chart data: grouped by business type (a small, fixed set - Kiosk/Hotel/Hospital/...)
+  // rather than one bar per individual business, so the chart stays legible whether
+  // there's 1 business or 1000 of them. Already pre-aggregated by the parent page.
+  const typePerformance = useMemo(() => {
+    if (!typeData || !Array.isArray(typeData)) return [];
+    return [...typeData].sort((a, b) => b.commission - a.commission);
+  }, [typeData]);
 
   // Loading state
   if (loading) {
@@ -166,32 +116,32 @@ const BusinessPerformanceChart = ({ data = [], loading = false, title = "Busines
   // Custom tooltip for bar chart
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const entry = payload[0].payload;
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <Building size={16} className="text-blue-600" />
+              <Tag size={16} className="text-blue-600" />
             </div>
             <p className="font-semibold text-gray-900 truncate">{label}</p>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-gray-600 text-sm">Commission:</span>
-              <span className="font-bold text-blue-700">{formatKSh(data.commission)}</span>
+              <span className="font-bold text-blue-700">{formatKSh(entry.commission)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-sm">Market Share:</span>
-              <span className="font-medium text-green-600">{data.percentage?.toFixed(1) || 0}%</span>
+              <span className="text-gray-600 text-sm">Share:</span>
+              <span className="font-medium text-green-600">{entry.percentage?.toFixed(1) || 0}%</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600 text-sm">Transactions:</span>
-              <span className="font-medium text-purple-600">{data.transactions || 0}</span>
+              <span className="font-medium text-purple-600">{entry.transactions || 0}</span>
             </div>
             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full bg-blue-500"
-                style={{ width: `${Math.min(data.percentage || 0, 100)}%` }}
+                style={{ width: `${Math.min(entry.percentage || 0, 100)}%` }}
               />
             </div>
           </div>
@@ -227,7 +177,7 @@ const BusinessPerformanceChart = ({ data = [], loading = false, title = "Busines
             {title}
           </Typography>
           <Typography variant="body2" className="text-gray-500">
-            Top performing businesses by commission earnings
+            Commission earnings by business
           </Typography>
         </div>
 
@@ -246,9 +196,9 @@ const BusinessPerformanceChart = ({ data = [], loading = false, title = "Busines
             </p>
           </div>
           <div className="bg-purple-50 px-3 py-2 rounded-lg">
-            <p className="text-xs text-gray-600">Top 5 Share</p>
+            <p className="text-xs text-gray-600">Business Types</p>
             <p className="text-lg font-bold text-purple-700">
-              {businessPerformanceData.top5.reduce((sum, b) => sum + b.percentage, 0).toFixed(1)}%
+              {typePerformance.length}
             </p>
           </div>
         </div>
@@ -256,74 +206,68 @@ const BusinessPerformanceChart = ({ data = [], loading = false, title = "Busines
 
       {/* Chart and Table Section */}
       <div className="space-y-6">
-        {/* Bar Chart */}
-        <div className="h-[350px]">
+        {/* Bar Chart - grouped by business type, not by individual business */}
+        <div>
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <Trophy size={20} className="text-amber-500" />
               <Typography variant="subtitle1" className="font-semibold text-gray-800">
-                Top Businesses Performance
+                Commission by Business Type
               </Typography>
             </div>
             <Typography variant="body2" className="text-gray-500">
-              Commission distribution among leading businesses
+              How commission breaks down across business categories
             </Typography>
           </div>
 
-          <ResponsiveContainer width="100%" height="85%">
-            <BarChart
-              data={businessPerformanceData.top5}
-              margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#f0f0f0"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-                angle={-30}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis
-                tickFormatter={(value) => {
-                  if (value >= 1000) return `KSh ${(value / 1000).toFixed(0)}K`;
-                  return `KSh ${value}`;
-                }}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                verticalAlign="top"
-                height={36}
-                formatter={(value) => (
-                  <span className="text-sm font-medium text-gray-700">{value}</span>
-                )}
-              />
-              <Bar
-                dataKey="commission"
-                name="Commission Earnings"
-                radius={[4, 4, 0, 0]}
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={typePerformance}
+                margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
               >
-                {businessPerformanceData.top5.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={BAR_COLORS[index % BAR_COLORS.length]}
-                    className="hover:opacity-90 transition-opacity"
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f0f0f0"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <YAxis
+                  tickFormatter={(value) => {
+                    if (value >= 1000) return `KSh ${(value / 1000).toFixed(0)}K`;
+                    return `KSh ${value}`;
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  width={64}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="commission"
+                  name="Commission Earnings"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={72}
+                >
+                  {typePerformance.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={BAR_COLORS[index % BAR_COLORS.length]}
+                      className="hover:opacity-90 transition-opacity"
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Business Rankings Table */}
+        {/* Business Rankings Table - every individual business, scrollable rather than plotted */}
         <div className="mt-6">
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">

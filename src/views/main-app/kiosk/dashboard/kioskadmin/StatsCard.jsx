@@ -4,7 +4,8 @@ export default function StatsCard({ title, value, change, icon, color }) {
       blue: 'from-blue-50 to-blue-100 text-blue-600',
       green: 'from-green-50 to-green-100 text-green-600',
     };
-  
+    const isNegative = typeof change === 'string' && change.trim().startsWith('-');
+
     return (
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className={`bg-gradient-to-r ${colors[color]} px-5 py-4`}>
@@ -16,7 +17,11 @@ export default function StatsCard({ title, value, change, icon, color }) {
         <div className="px-5 py-4">
           <div className="flex items-baseline">
             <p className="text-2xl font-bold text-gray-800">{value}</p>
-            <span className="ml-2 text-sm font-medium text-green-600">{change}</span>
+            {change && (
+              <span className={`ml-2 text-sm font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
+                {change}
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-500 mt-2">Compared to yesterday</p>
         </div>

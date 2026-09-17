@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
+import { createTheme, ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import Cookies from "js-cookie";
 import { store, authActions } from "./store";
 
@@ -18,6 +19,51 @@ import NotFound from "./components/notfound";
 import Unauthorized from "./components/notfound/Unauthorized";
 
 import { routes } from "./config/routes";
+
+// Mirrors the MUI theme overrides used in ika-transfer so shared MUI
+// internals (Pickers, Popover, form controls, etc.) render consistently.
+const muiTheme = createTheme({
+  typography: {
+    fontFamily: '"Averta", "Averta-Bold", sans-serif',
+  },
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+    MuiFormControl: {
+      styleOverrides: {
+        root: {
+          width: "100%",
+        },
+      },
+    },
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          fontSize: "14px",
+        },
+      },
+    },
+    MuiInputAdornment: {
+      styleOverrides: {
+        root: {
+          marginLeft: "0px",
+        },
+      },
+    },
+    MuiFormControlLabel: {
+      styleOverrides: {
+        root: {
+          margin: 0,
+          alignItems: "flex-end",
+        },
+      },
+    },
+  },
+});
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -133,51 +179,53 @@ const App = () => {
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <ThemeProvider>
-          <Router>
-            <Suspense fallback={
-              <div className="min-h-screen flex items-center justify-center">
-                <ContentLoader
-                  state={true}
-                  loading={true}
-                  loadingText="Loading..."
-                  loadedText=""
-                  color="primary"
-                />
-              </div>
-            }>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/reset-password" element={<ForgotPassword />} />
-                <Route path="/otp" element={<OTPInput />} />
-                <Route path="/unauthorized" element={<Unauthorized />} />
-                <Route path="/not-found" element={<NotFound />} />
+        <MuiThemeProvider theme={muiTheme}>
+          <ThemeProvider>
+            <Router>
+              <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  <ContentLoader
+                    state={true}
+                    loading={true}
+                    loadingText="Loading..."
+                    loadedText=""
+                    color="primary"
+                  />
+                </div>
+              }>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/reset-password" element={<ForgotPassword />} />
+                  <Route path="/otp" element={<OTPInput />} />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
+                  <Route path="/not-found" element={<NotFound />} />
 
-                {/* Protected Routes */}
-                <Route element={<ThemedMainLayout />}>
-                  {routes
-                    .filter((route) => route.isPrivate)
-                    .map((route) => (
-                      <Route
-                        key={route.path}
-                        path={route.path}
-                        element={
-                          <AppRoutes allowedRoles={route.allowedRoles}>
-                            {route.element}
-                          </AppRoutes>
-                        }
-                      />
-                    ))}
-                </Route>
+                  {/* Protected Routes */}
+                  <Route element={<ThemedMainLayout />}>
+                    {routes
+                      .filter((route) => route.isPrivate)
+                      .map((route) => (
+                        <Route
+                          key={route.path}
+                          path={route.path}
+                          element={
+                            <AppRoutes allowedRoles={route.allowedRoles}>
+                              {route.element}
+                            </AppRoutes>
+                          }
+                        />
+                      ))}
+                  </Route>
 
-                {/* Catch-all route - IMPORTANT for Netlify */}
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </Routes>
-            </Suspense>
-          </Router>
-        </ThemeProvider>
+                  {/* Catch-all route - IMPORTANT for Netlify */}
+                  <Route path="*" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </Suspense>
+            </Router>
+          </ThemeProvider>
+        </MuiThemeProvider>
       </Provider>
     </ErrorBoundary>
   );

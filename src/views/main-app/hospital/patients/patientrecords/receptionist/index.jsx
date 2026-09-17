@@ -5,6 +5,7 @@ import AppFormButton from "../../../../../../components/buttons/AppFormButton";
 import SearchInput from "../../../../../../components/Input/SearchInput";
 import DataTable from "../../../../../../components/datatable";
 import AddIcon from "@mui/icons-material/Add";
+import { Eye, Pencil } from "lucide-react";
 import { useTheme } from "../../../../../../components/theme/ThemeContext";
 import SelectInput from "../../../../../../components/Input/SelectInput";
 import PatientRegistration from "../../receptionist/PatientRegistration";
@@ -217,14 +218,14 @@ const ReceptionistPatientRecordsPage = ({ user }) => {
             className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
             title="View"
           >
-            👁️
+            <Eye size={16} />
           </button>
           <button
             onClick={() => handleEdit(patient)}
             className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
             title="Edit"
           >
-            ✏️
+            <Pencil size={16} />
           </button>
         </div>
       ),

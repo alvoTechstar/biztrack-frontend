@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Clock, Calendar } from "lucide-react";
+import { Clock, Calendar, RefreshCw, FileBarChart } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ContentLoader from "../../../../../components/Loader/ContentLoader";
@@ -12,7 +12,6 @@ import SalesReport from "./Salesreport";
 import DebtReport from "./DebtReport";
 import ProductSummary from "./ProductSummary";
 import ReportCards from "./ReportsCard";
-import TransactionDetailsModal from "./TransactionDetails";
 
 export default function ShopkeeperReportsPage() {
   const { primaryColor } = useTheme();
@@ -27,13 +26,7 @@ export default function ShopkeeperReportsPage() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [contentLoaded, setContentLoaded] = useState(false);
-  
-  // Add modal loading states like DebtManagement
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalLoadingText, setModalLoadingText] = useState("");
 
   // User data state
   const [userData, setUserData] = useState({
@@ -48,17 +41,13 @@ export default function ShopkeeperReportsPage() {
 
   // Check authentication and extract user data
   useEffect(() => {
-    console.log("🔍 Checking authentication status...");
-
     const authTimeout = setTimeout(() => {
       if (loading) {
-        console.log("⚠️ Authentication check taking too long, proceeding...");
         setLoading(false);
       }
     }, 2000);
 
     if (!currentUser || !token) {
-      console.log("❌ User not authenticated, redirecting to login");
       setTimeout(() => {
         navigate('/login');
       }, 1500);
@@ -66,30 +55,16 @@ export default function ShopkeeperReportsPage() {
       return;
     }
 
-    console.log("✅ User authenticated:", {
-      id: currentUser.id,
-      name: `${currentUser.firstName} ${currentUser.lastName}`,
-      email: currentUser.email,
-      role: currentUser.role
-    });
-
     const businessId = currentUser.businessId;
     const businessUUID = currentUser.businessUUID;
 
     if (!businessId || !businessUUID) {
-      console.error("❌ No business information found in user data");
+      console.error("No business information found in user data");
       setError("No business assigned to your account. Please contact administrator.");
       setLoading(false);
       clearTimeout(authTimeout);
       return;
     }
-
-    console.log("🏢 Business information:", {
-      businessId,
-      businessUUID,
-      businessName: currentUser.businessName,
-      businessType: currentUser.businessType
-    });
 
     const shopkeeperInfo = {
       shopkeeperId: currentUser.id,
@@ -101,8 +76,6 @@ export default function ShopkeeperReportsPage() {
       businessName: currentUser.businessName,
       businessType: currentUser.businessType
     };
-
-    console.log("👤 Derived user data:", shopkeeperInfo);
 
     setUserData({
       user: currentUser,
@@ -123,15 +96,10 @@ export default function ShopkeeperReportsPage() {
       setContentLoaded(false);
 
       if (!userData.businessId) {
-        console.log("⏳ Waiting for business data initialization...");
-        setTimeout(() => {
-          setContentLoaded(true);
-          setLoading(false);
-        }, 500);
+        setContentLoaded(true);
+        setLoading(false);
         return;
       }
-
-      console.log('🔍 Fetching transactions for business:', userData.businessId);
 
       let endpoint;
       if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_BUSINESS) {
@@ -139,14 +107,12 @@ export default function ShopkeeperReportsPage() {
           ':businessId',
           userData.businessId
         );
-        console.log('🌐 Using business endpoint:', endpoint);
-      } 
+      }
       else if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_KIOSK) {
         endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_KIOSK.replace(
           ':kioskId',
           userData.businessId
         );
-        console.log('🌐 Using kiosk endpoint with businessId:', endpoint);
       } else {
         throw new Error('No transaction endpoints configured');
       }
@@ -154,19 +120,13 @@ export default function ShopkeeperReportsPage() {
       const result = await GET(endpoint);
 
       if (!result || result.success === false) {
-        console.log('⚠️ Business endpoint failed, trying alternative...');
         await fetchAllTransactionsAndFilter();
         return;
       }
 
       const transactionData = result.transactions || result.data || [];
-      console.log('✅ Transactions data received:', transactionData.length, 'transactions');
-
       setTransactions(transactionData);
-
-      setTimeout(() => {
-        setContentLoaded(true);
-      }, 500);
+      setContentLoaded(true);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       await fetchAllTransactionsAndFilter();
@@ -177,35 +137,26 @@ export default function ShopkeeperReportsPage() {
 
   const fetchAllTransactionsAndFilter = async () => {
     try {
-      console.log('🔄 Trying to fetch all transactions and filter...');
-      
       if (URLS.TRANSACTIONS?.GET_ALL_TRANSACTIONS) {
         const result = await GET(URLS.TRANSACTIONS.GET_ALL_TRANSACTIONS);
-        
+
         if (result && result.success) {
           const allTransactions = result.transactions || result.data || [];
-          console.log('📋 All transactions loaded:', allTransactions.length);
-          
-          const filteredTransactions = allTransactions.filter(t => 
-            t.businessId === userData.businessId || 
+
+          const filteredTransactions = allTransactions.filter(t =>
+            t.businessId === userData.businessId ||
             t.businessId?.toString() === userData.businessId?.toString()
           );
-          
-          console.log('✅ Filtered by businessId:', filteredTransactions.length);
+
           setTransactions(filteredTransactions);
-          setTimeout(() => {
-            setContentLoaded(true);
-          }, 500);
+          setContentLoaded(true);
           return;
         }
       }
-      
-      console.log('⚠️ No transactions available or endpoints not working');
+
       setTransactions([]);
-      setTimeout(() => {
-        setContentLoaded(true);
-      }, 500);
-      
+      setContentLoaded(true);
+
     } catch (fetchError) {
       console.error('Error in alternative fetch method:', fetchError);
       setError('Unable to load transactions. Please check backend configuration.');
@@ -243,7 +194,6 @@ export default function ShopkeeperReportsPage() {
           ? new Date(transaction.timestamp).toISOString().split('T')[0]
           : new Date(transaction.date).toISOString().split('T')[0];
       } catch (e) {
-        console.log('Error parsing transaction date:', e);
         return false;
       }
 
@@ -435,26 +385,14 @@ export default function ShopkeeperReportsPage() {
     return map;
   }, [transactions]);
 
-  // Same pattern as DebtManagement - open modal with loader
-  const openModalWithLoader = async (transaction) => {
-    setModalLoading(true);
-    setModalLoadingText("Loading transaction details...");
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setSelectedTransaction(transaction);
-    setModalLoading(false);
-    setModalOpen(true);
-  };
-
   const handleViewTransaction = (transactionId) => {
     const transaction = transactionsMap[transactionId];
-    if (transaction) {
-      openModalWithLoader(transaction);
-    }
-  };
+    if (!transaction) return;
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setSelectedTransaction(null);
+    const routeId = transaction.transactionId || transaction._id || transaction.id;
+    navigate(`/shopkeeper/reports/transactions/${encodeURIComponent(routeId)}`, {
+      state: { transaction },
+    });
   };
 
   const handleRefresh = () => {
@@ -465,44 +403,17 @@ export default function ShopkeeperReportsPage() {
   // Combined loading state
   const isLoading = loading || !contentLoaded || (!userData.initialized && loading);
 
-  // MODAL LOADING STATE - like DebtManagement
-  if (modalLoading) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText={modalLoadingText}
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // INITIAL LOADING STATE
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText="Loading daily reports..."
-                loadedText=""
-                color={primaryColor}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText="Loading daily reports..."
+          loadedText=""
+          color={primaryColor}
+        />
       </div>
     );
   }
@@ -510,129 +421,127 @@ export default function ShopkeeperReportsPage() {
   // ERROR STATE
   if (!userData.user || !userData.businessId) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-red-500 text-xl mb-4">
-              {!userData.user ? "User Not Logged In" : "No Business Assigned"}
-            </div>
-            <div className="text-gray-600 mb-6">
-              {!userData.user
-                ? "Please log in to access the reports system."
-                : "Your account is not assigned to any business. Please contact your administrator."}
-            </div>
-            {!userData.user && (
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
-              >
-                Go to Login
-              </button>
-            )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-xl mb-4">
+            {!userData.user ? "User Not Logged In" : "No Business Assigned"}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // MODAL VIEW - Same pattern as DebtManagement: when modal is open, show ONLY the modal
-  if (modalOpen && selectedTransaction) {
-    return (
-      <div className="min-h-screen bg-white p-1 sm:p-2 md:p-3 flex items-center justify-center">
-        <div className="w-full max-w-full mx-auto flex flex-col items-center justify-center">
-          <div className="w-full max-w-full md:max-w-4xl">
-            <TransactionDetailsModal
-              open={modalOpen}
-              onClose={handleCloseModal}
-              transaction={selectedTransaction}
-            />
+          <div className="text-gray-600 mb-6">
+            {!userData.user
+              ? "Please log in to access the reports system."
+              : "Your account is not assigned to any business. Please contact your administrator."}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // REPORTS VIEW - Normal reports page
-  return (
-    <div className="min-h-screen bg-white p-2">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Daily Reports - {userData.shopkeeperInfo?.businessName || "Kiosk"}
-          </h1>
-          <div className="flex items-center gap-4 text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              <span className="font-medium">{dateString}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              <span>
-                {startTime} - {endTime}
-              </span>
-            </div>
-          </div>
-          {userData.shopkeeperInfo && (
-            <div className="text-sm text-gray-500 mt-1">
-              Shopkeeper: <span className="font-medium">{userData.shopkeeperInfo.shopkeeperName}</span>
-              {todayData.length > 0 && (
-                <span className="ml-4">
-                  Today's Transactions: <span className="font-medium">{todayData.length}</span>
-                </span>
-              )}
-            </div>
+          {!userData.user && (
+            <button
+              onClick={() => navigate('/login')}
+              className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              Go to Login
+            </button>
           )}
         </div>
-
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
       </div>
+    );
+  }
 
-      {/* Summary Cards */}
-      <ReportCards salesData={salesData} debtData={debtData} />
+  // REPORTS VIEW
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+              style={{ backgroundColor: primaryColor || '#3b82f6' }}
+            >
+              <FileBarChart size={22} />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+                Daily Reports - {userData.shopkeeperInfo?.businessName || "Kiosk"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 mt-0.5">
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{dateString}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{startTime} - {endTime}</span>
+                </div>
+              </div>
+              {userData.shopkeeperInfo && (
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Shopkeeper: <span className="font-medium">{userData.shopkeeperInfo.shopkeeperName}</span>
+                  {todayData.length > 0 && (
+                    <span className="ml-3">
+                      Today's Transactions: <span className="font-medium">{todayData.length}</span>
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
 
-      {/* Tabs Navigation */}
-      <TabsNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Refreshing' : 'Refresh'}
+          </button>
+        </header>
 
-      {/* Tab Content */}
-      {activeTab === 0 && (
-        <SalesReport
-          salesData={salesData}
-          color={primaryColor}
-          onViewTransaction={handleViewTransaction}
-        />
-      )}
-      {activeTab === 1 && (
-        <DebtReport
-          debtData={debtData}
-          color={primaryColor}
-          onViewTransaction={handleViewTransaction}
-        />
-      )}
-      {activeTab === 2 && (
-        <ProductSummary
-          productSummary={productSummary}
-          color={primaryColor}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={(field) => {
-            if (sortBy === field) {
-              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-            } else {
-              setSortBy(field);
-              setSortOrder("desc");
-            }
-          }}
-        />
-      )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-800 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Summary Cards */}
+        <div className="mb-6 sm:mb-8">
+          <ReportCards salesData={salesData} debtData={debtData} />
+        </div>
+
+        {/* Tabs Navigation */}
+        <div className="mb-6">
+          <TabsNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 0 && (
+          <SalesReport
+            salesData={salesData}
+            color={primaryColor}
+            onViewTransaction={handleViewTransaction}
+          />
+        )}
+        {activeTab === 1 && (
+          <DebtReport
+            debtData={debtData}
+            color={primaryColor}
+            onViewTransaction={handleViewTransaction}
+          />
+        )}
+        {activeTab === 2 && (
+          <ProductSummary
+            productSummary={productSummary}
+            color={primaryColor}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={(field) => {
+              if (sortBy === field) {
+                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+              } else {
+                setSortBy(field);
+                setSortOrder("desc");
+              }
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -87,8 +87,8 @@ const TransactionsTable = ({
         return (
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200 mt-4">
                 <Package size={48} className="text-gray-400 mx-auto mb-3" />
-                <h3 className="text-lg font-semibold text-gray-700 mb-1">No transactions today</h3>
-                <p className="text-gray-500">No sales transactions have been recorded for today yet.</p>
+                <h3 className="text-lg font-semibold text-gray-700 mb-1">No transactions yet</h3>
+                <p className="text-gray-500">No sales transactions have been recorded for this business.</p>
             </div>
         );
     }

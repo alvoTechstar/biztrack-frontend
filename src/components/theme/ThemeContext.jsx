@@ -31,18 +31,18 @@ const DEFAULT_THEME = {
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(DEFAULT_THEME);
 
-  // 🔑 Redux auth state (contains { user, token })
+  // Redux auth state (contains { user, token })
   const authValue = useSelector((state) => state.auth?.value);
 
   useEffect(() => {
 
     const loadBusinessTheme = () => {
-      // 1️⃣ No auth → default theme
+      // No auth → default theme
       if (!authValue) {
         return DEFAULT_THEME;
       }
 
-      // 2️⃣ Normalize auth shape
+      // Normalize auth shape
       let parsedAuth = authValue;
 
       if (typeof authValue === "string") {
@@ -53,7 +53,7 @@ export const ThemeProvider = ({ children }) => {
         }
       }
 
-      // 🔥 CRITICAL FIX: normalize user object
+      // CRITICAL FIX: normalize user object
       const user =
         parsedAuth?.user && typeof parsedAuth.user === "object"
           ? parsedAuth.user
@@ -64,17 +64,17 @@ export const ThemeProvider = ({ children }) => {
         return DEFAULT_THEME;
       }
 
-      // 3️⃣ Extract primary color
+      // Extract primary color
       const primaryColor =
         user.primaryColor ||
         user.businessPrimaryColor ||
         DEFAULT_THEME.primaryColor;
 
-      // 4️⃣ Extract business info
+      // Extract business info
       const businessType = (user.businessType || "general").toLowerCase();
       const businessName = user.businessName || "Business";
 
-      // 5️⃣ Extract logo (uploaded OR default)
+      // Extract logo (uploaded OR default)
       const possibleLogos = [
         user.logo,
         user.businessLogo,
@@ -114,7 +114,7 @@ export const ThemeProvider = ({ children }) => {
 
   }, [authValue]);
 
-  // 6️⃣ Apply CSS variables
+  // Apply CSS variables
   useEffect(() => {
     const root = document.documentElement;
 
@@ -129,7 +129,7 @@ export const ThemeProvider = ({ children }) => {
 
   }, [theme]);
 
-  // 7️⃣ Safe exposed context
+  // Safe exposed context
   const safeTheme = useMemo(() => {
     return {
       primaryColor: theme.primaryColor || DEFAULT_THEME.primaryColor,

@@ -3,81 +3,8 @@ import { TrendingUp, ShoppingCart, DollarSign, Eye } from "lucide-react";
 import DataTable from "../../../../../components/datatable";
 import SummaryCard from "./SummaryCard";
 import StatusBadge from "./StatusBadge";
+import renderFirstItemWithCount from "./renderFirstItemWithCount";
 import { formatCurrency, formatTime } from "../../../../../utilities/Sharedfunctions.jsx";
-
-// Custom function to show only first item + count
-const renderFirstItemWithCount = (items) => {
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return <span className="text-gray-500">No items</span>;
-  }
-  
-  const firstItem = items[0];
-  const itemName = firstItem.productName || firstItem.name || "Unknown Product";
-  const quantity = firstItem.quantity || 1;
-  
-  return (
-    <div className="flex items-center gap-2">
-      <span className="font-medium text-sm">
-        {itemName} ({quantity}x)
-      </span>
-      {items.length > 1 && (
-        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-          +{items.length - 1} more
-        </span>
-      )}
-    </div>
-  );
-};
-
-// Alternative: Show item summary with tooltip
-const renderItemSummary = (items) => {
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return <span className="text-gray-500">No items</span>;
-  }
-  
-  const firstItem = items[0];
-  const itemName = firstItem.productName || firstItem.name || "Unknown Product";
-  const quantity = firstItem.quantity || 1;
-  
-  return (
-    <div className="group relative">
-      <div className="flex items-center gap-2">
-        <span className="font-medium text-sm">
-          {itemName} ({quantity}x)
-        </span>
-        {items.length > 1 && (
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-            +{items.length - 1} more
-          </span>
-        )}
-      </div>
-      
-      {/* Tooltip on hover showing all items */}
-      {items.length > 1 && (
-        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10">
-          <div className="bg-gray-800 text-white text-xs rounded py-2 px-3 shadow-lg">
-            <div className="font-medium mb-1">All Items:</div>
-            {items.slice(0, 5).map((item, index) => {
-              const name = item.productName || item.name || "Unknown Product";
-              const qty = item.quantity || 1;
-              return (
-                <div key={index} className="flex justify-between gap-4">
-                  <span>{name}</span>
-                  <span className="text-gray-300">({qty}x)</span>
-                </div>
-              );
-            })}
-            {items.length > 5 && (
-              <div className="text-gray-400 mt-1">
-                ... and {items.length - 5} more
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const SalesReport = ({ salesData, color, onViewTransaction }) => {
   // Add safe access with defaults
@@ -120,23 +47,23 @@ const SalesReport = ({ salesData, color, onViewTransaction }) => {
     { key: "time", title: "Time" },
     { key: "transactionId", title: "Transaction ID" },
     { key: "amount", title: "Amount" },
-    { 
-      key: "paymentMethod", 
+    {
+      key: "paymentMethod",
       title: "Payment Method",
       render: (value) => <StatusBadge status={value} type="payment" />
     },
-    { 
-      key: "status", 
+    {
+      key: "status",
       title: "Status",
       render: (value) => <StatusBadge status={value} />
     },
-    { 
-      key: "items", 
+    {
+      key: "items",
       title: "Items",
-      render: (value) => renderFirstItemWithCount(value) // Show only first item + count
+      render: (value) => renderFirstItemWithCount(value)
     },
-    { 
-      key: "action", 
+    {
+      key: "action",
       title: "Actions",
       isAction: true
     },
@@ -150,7 +77,7 @@ const SalesReport = ({ salesData, color, onViewTransaction }) => {
       return <StatusBadge status={column.status} />;
     }
     if (header.key === "items") {
-      return renderFirstItemWithCount(column.items); // Show only first item + count
+      return renderFirstItemWithCount(column.items);
     }
     if (header.key === "action") {
       return column.action;
@@ -160,7 +87,7 @@ const SalesReport = ({ salesData, color, onViewTransaction }) => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <SummaryCard
           title="Sales Revenue"
           value={formatCurrency(totalRevenue)}
@@ -187,9 +114,9 @@ const SalesReport = ({ salesData, color, onViewTransaction }) => {
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
+          <div className="flex flex-wrap justify-between items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               Today's Sales Transactions ({statusCounts.total})
             </h3>
@@ -224,12 +151,6 @@ const SalesReport = ({ salesData, color, onViewTransaction }) => {
               data={salesTableData}
               headers={salesHeaders}
               actions={[]}
-              selectedRow={(e, row) => {
-                console.log('Row clicked:', row.id);
-              }}
-              actionSelected={(action, id) => {
-                console.log('Action selected:', action, id);
-              }}
               customRenderCell={customRenderCell}
               showActionsColumn={true}
             />

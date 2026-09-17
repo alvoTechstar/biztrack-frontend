@@ -73,18 +73,18 @@ export default function RestockProductModal({
     onSubmit: async (values) => {
       setIsLoading(true);
       try {
-        console.log('📦 Restocking product:', product?.name);
-        console.log('➕ Adding quantity:', values.addQuantity);
-        
+        console.log('Restocking product:', product?.name);
+        console.log('Adding quantity:', values.addQuantity);
+
         if (!product) {
           throw new Error('Product information is missing');
         }
 
         const productId = product._id || product.id;
-        console.log('🔍 Product ID found:', productId);
-        
+        console.log('Product ID found:', productId);
+
         if (!productId) {
-          console.log('📋 Product object structure:', Object.keys(product));
+          console.log('Product object structure:', Object.keys(product));
           throw new Error('Product ID is required but not found in product data');
         }
 
@@ -107,7 +107,7 @@ export default function RestockProductModal({
           status: newStatus
         };
 
-        console.log('🔄 Updated product data for parent:', updatedProduct);
+        console.log('Updated product data for parent:', updatedProduct);
         
         // Call the parent's save function
         await onSave(updatedProduct);
@@ -117,7 +117,7 @@ export default function RestockProductModal({
         onClose();
         
       } catch (error) {
-        console.error('❌ Error restocking product:', error);
+        console.error('Error restocking product:', error);
         showToaster("error", "Error", error.message || "Failed to restock product");
       } finally {
         setIsLoading(false);

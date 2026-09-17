@@ -1,14 +1,26 @@
 import React, { useState } from "react";
+import { Coffee, Soup, Sandwich, CupSoda, CakeSlice, UtensilsCrossed } from "lucide-react";
 
-// Emoji placeholder used when a menu item has no image (or the URL is broken)
-const CATEGORY_EMOJI = {
-  breakfast: "🍳",
-  mains: "🍛",
-  sides: "🍟",
-  beverages: "🥤",
-  drinks: "🥤",
-  desserts: "🍰",
-  snacks: "🥪",
+// Icon placeholder used when a menu item has no image (or the URL is broken)
+const CATEGORY_ICON = {
+  breakfast: Coffee,
+  mains: Soup,
+  sides: Sandwich,
+  beverages: CupSoda,
+  drinks: CupSoda,
+  desserts: CakeSlice,
+  snacks: Sandwich,
+};
+
+// emojiSize keeps its historical Tailwind-text-size prop shape for callers,
+// mapped here to the pixel size lucide icons expect.
+const SIZE_MAP = {
+  "text-base": 20,
+  "text-lg": 22,
+  "text-xl": 24,
+  "text-2xl": 28,
+  "text-3xl": 34,
+  "text-4xl": 40,
 };
 
 /**
@@ -17,7 +29,8 @@ const CATEGORY_EMOJI = {
  */
 export default function MenuItemImage({ src, name, category, emojiSize = "text-2xl", className = "" }) {
   const [failed, setFailed] = useState(false);
-  const emoji = CATEGORY_EMOJI[(category || "").trim().toLowerCase()] || "🍽️";
+  const Icon = CATEGORY_ICON[(category || "").trim().toLowerCase()] || UtensilsCrossed;
+  const iconSize = SIZE_MAP[emojiSize] || 28;
 
   if (src && !failed) {
     return (
@@ -35,9 +48,7 @@ export default function MenuItemImage({ src, name, category, emojiSize = "text-2
     <div
       className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 ${className}`}
     >
-      <span className={`${emojiSize} select-none`} role="img" aria-label={name || "Menu item"}>
-        {emoji}
-      </span>
+      <Icon size={iconSize} className="text-orange-400" aria-label={name || "Menu item"} />
     </div>
   );
 }

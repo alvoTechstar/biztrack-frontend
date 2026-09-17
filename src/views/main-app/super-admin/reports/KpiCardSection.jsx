@@ -4,8 +4,6 @@ import {
   Receipt as TransactionIcon,
   TrendingUp as AvgCommissionIcon,
   PendingActions as PendingIcon,
-  Business as BusinessIcon,
-  TrendingUp as GrowthIcon,
 } from "@mui/icons-material";
 import { CircularProgress, Box, Typography } from "@mui/material";
 
@@ -95,19 +93,17 @@ const KPICardsSection = ({ kpiData = {}, loading = false, transactions = [] }) =
   // Loading skeleton
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 mb-8 md:mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[1, 2, 3, 4].map((item) => (
           <div
             key={item}
-            className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm p-5 animate-pulse min-h-[140px] sm:min-h-[150px]"
+            className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3 sm:p-4 animate-pulse"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
-              <div className="flex-grow ml-4">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-200 rounded-lg shrink-0"></div>
             </div>
+            <div className="h-5 bg-gray-200 rounded w-1/2 mt-3"></div>
           </div>
         ))}
       </div>
@@ -130,139 +126,55 @@ const KPICardsSection = ({ kpiData = {}, loading = false, transactions = [] }) =
   const cards = [
     {
       id: "commission",
-      title: "Total Commission Earned",
+      title: "Total Commission",
       value: calculatedKpiData.totalCommissionEarned,
-      icon: <CommissionIcon fontSize="medium" className="text-green-600" />,
-      bgColor: "bg-green-50",
-      iconBg: "bg-green-100",
-      borderColor: "border-green-200",
-      hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-green-100",
-      description: "From completed transactions",
+      icon: <CommissionIcon fontSize="small" className="text-green-600" />,
+      iconBg: "bg-green-50",
+      caption: "From completed transactions",
     },
     {
       id: "transactions",
       title: "Total Transactions",
       value: calculatedKpiData.totalTransactions,
-      icon: <TransactionIcon fontSize="medium" className="text-blue-600" />,
-      bgColor: "bg-blue-50",
-      iconBg: "bg-blue-100",
-      borderColor: "border-blue-200",
-      hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-100",
-      description: `${calculatedKpiData.completedTransactions} completed, ${calculatedKpiData.failedTransactions} failed`,
+      icon: <TransactionIcon fontSize="small" className="text-blue-600" />,
+      iconBg: "bg-blue-50",
+      caption: `${calculatedKpiData.completedTransactions} completed, ${calculatedKpiData.failedTransactions} failed`,
     },
     {
       id: "avg-commission",
-      title: "Avg. Commission per Txn",
+      title: "Avg. Commission/Txn",
       value: calculatedKpiData.avgCommissionPerTransaction,
-      icon: <AvgCommissionIcon fontSize="medium" className="text-purple-600" />,
-      bgColor: "bg-purple-50",
-      iconBg: "bg-purple-100",
-      borderColor: "border-purple-200",
-      hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-100",
-      description: "Average per transaction",
+      icon: <AvgCommissionIcon fontSize="small" className="text-purple-600" />,
+      iconBg: "bg-purple-50",
+      caption: "Average per transaction",
     },
     {
       id: "pending",
       title: "Pending Commissions",
       value: calculatedKpiData.pendingCommissions,
-      icon: <PendingIcon fontSize="medium" className="text-amber-600" />,
-      bgColor: "bg-amber-50",
-      iconBg: "bg-amber-100",
-      borderColor: "border-amber-200",
-      hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-100",
-      description: "Awaiting payment",
+      icon: <PendingIcon fontSize="small" className="text-amber-600" />,
+      iconBg: "bg-amber-50",
+      caption: "Awaiting payment",
     },
-    // Additional KPI cards (optional - uncomment if needed)
-    // {
-    //   id: "businesses",
-    //   title: "Active Businesses",
-    //   value: calculatedKpiData.uniqueBusinesses,
-    //   icon: <BusinessIcon fontSize="medium" className="text-indigo-600" />,
-    //   bgColor: "bg-indigo-50",
-    //   iconBg: "bg-indigo-100",
-    //   borderColor: "border-indigo-200",
-    //   hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-100",
-    //   description: "With active transactions",
-    // },
-    // {
-    //   id: "growth",
-    //   title: "Growth Rate",
-    //   value: calculatedKpiData.growthRate,
-    //   icon: <GrowthIcon fontSize="medium" className="text-teal-600" />,
-    //   bgColor: "bg-teal-50",
-    //   iconBg: "bg-teal-100",
-    //   borderColor: "border-teal-200",
-    //   hover: "hover:scale-[1.02] hover:shadow-lg hover:shadow-teal-100",
-    //   description: "Compared to previous period",
-    // },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 mb-8 md:mb-10">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((card) => (
         <div
           key={card.id}
-          className={`
-            ${card.bgColor}
-            border ${card.borderColor}
-            rounded-xl shadow-sm
-            p-4 sm:p-5 md:p-6
-            transition-all duration-300 ease-out
-            transform
-            ${card.hover}
-            flex flex-col
-            min-h-[140px] sm:min-h-[150px]
-            relative
-            group
-          `}
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4"
         >
-          {/* Top Section: Icon and Title */}
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            {/* Icon Container */}
-            <div
-              className={`
-                flex items-center justify-center
-                w-10 h-10 sm:w-12 sm:h-12
-                rounded-xl ${card.iconBg}
-                p-2 sm:p-3
-                flex-shrink-0
-                transition-all duration-300
-                group-hover:scale-110
-              `}
-            >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{card.title}</p>
+            <div className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg shrink-0 ${card.iconBg}`}>
               {card.icon}
             </div>
-
-            {/* Title */}
-            <div className="ml-3 sm:ml-4 flex-grow">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 leading-tight text-right">
-                {card.title}
-              </p>
-            </div>
           </div>
-
-          {/* Center Section: Value */}
-          <div className="flex-1 flex items-center justify-center mb-2">
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 text-center truncate">
-              {card.value}
-            </p>
-          </div>
-
-          {/* Bottom Section: Description */}
-          {card.description && (
-            <div className="mt-auto pt-2 border-t border-gray-200 border-opacity-50">
-              <p className="text-xs text-gray-500 text-center truncate">
-                {card.description}
-              </p>
-            </div>
+          <p className="text-base sm:text-xl font-bold text-gray-900 mt-2 truncate">{card.value}</p>
+          {card.caption && (
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{card.caption}</p>
           )}
-
-          {/* Hover effect overlay */}
-          <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none"
-               style={{ 
-                 background: `linear-gradient(135deg, ${card.iconBg.replace('bg-', '').replace('-100', '-200')} 0%, transparent 100%)`
-               }}>
-          </div>
         </div>
       ))}
     </div>

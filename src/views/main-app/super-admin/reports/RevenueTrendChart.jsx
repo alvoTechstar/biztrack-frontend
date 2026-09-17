@@ -8,10 +8,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
-import dayjs from "dayjs";
 import { TrendingUp } from "lucide-react";
 
 const formatKSh = (amount) => {
@@ -22,42 +20,19 @@ const formatKSh = (amount) => {
   })}`;
 };
 
-const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend" }) => {
-  // Process data from API
+const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend", year }) => {
+  // `data` arrives already aggregated into a fixed Jan-Dec series (12 entries,
+  // months with no revenue filled with 0) by processSalesData in the parent page -
+  // just reshape the field name here.
   const revenueTrendData = useMemo(() => {
     if (!data || !Array.isArray(data)) {
       return [];
     }
 
-    // If data is already aggregated by date (from API response)
-    if (data.length > 0 && data[0].date && data[0].amount !== undefined) {
-      return data
-        .map(item => ({
-          date: item.date,
-          commission: parseFloat(item.amount) || 0
-        }))
-        .sort((a, b) => dayjs(a.date).diff(dayjs(b.date)));
-    }
-
-    // If data is raw transactions from API
-    const dailyData = data.reduce((acc, curr) => {
-      const date = curr?.date || curr?.createdAt || curr?.timestamp;
-      if (date) {
-        const formattedDate = dayjs(date).format("MMM D");
-        const commission = parseFloat(curr?.commission) || 
-                          (parseFloat(curr?.totalAmount) || 0) * 0.05; // 5% commission if not specified
-        
-        acc[formattedDate] = (acc[formattedDate] || 0) + commission;
-      }
-      return acc;
-    }, {});
-
-    return Object.entries(dailyData)
-      .map(([date, commission]) => ({
-        date,
-        commission: parseFloat(commission.toFixed(2))
-      }))
-      .sort((a, b) => dayjs(a.date, "MMM D").diff(dayjs(b.date, "MMM D")));
+    return data.map(item => ({
+      date: item.date,
+      commission: parseFloat(item.amount) || 0
+    }));
   }, [data]);
 
   // Calculate statistics
@@ -112,7 +87,7 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
               {title}
             </Typography>
             <Typography variant="body2" className="text-gray-500">
-              Loading revenue trend data...
+              Loading {year}'s monthly revenue...
             </Typography>
           </div>
         </div>
@@ -163,7 +138,7 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-sm">Daily Rank:</span>
+              <span className="text-gray-600 text-sm">Month Rank:</span>
               <span className="font-medium text-green-600">
                 {revenueTrendData.findIndex(item => item.date === label) + 1}/{revenueTrendData.length}
               </span>
@@ -184,7 +159,7 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
             {title}
           </Typography>
           <Typography variant="body2" className="text-gray-500">
-            Daily commission earnings over time
+            Monthly commission earnings across {year}
           </Typography>
         </div>
 
@@ -197,7 +172,7 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
             </p>
           </div>
           <div className="bg-green-50 px-3 py-2 rounded-lg">
-            <p className="text-xs text-gray-600">Avg. Daily</p>
+            <p className="text-xs text-gray-600">Avg. Monthly</p>
             <p className="text-lg font-bold text-green-700">
               {formatKSh(stats.avgDailyRevenue)}
             </p>
@@ -234,6 +209,7 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
               tickLine={false}
               tick={{ fill: '#6b7280', fontSize: 12 }}
               tickMargin={10}
+              interval={0}
             />
 
             <YAxis
@@ -244,21 +220,15 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#6b7280', fontSize: 12 }}
+              width={64}
             />
 
             <Tooltip content={<CustomTooltip />} />
-            <Legend
-              verticalAlign="top"
-              height={36}
-              formatter={(value) => (
-                <span className="text-sm font-medium text-gray-700">{value}</span>
-              )}
-            />
 
             <Area
               type="monotone"
               dataKey="commission"
-              name="Daily Commission"
+              name="Monthly Commission"
               stroke="#3b82f6"
               strokeWidth={2}
               fill="url(#colorCommission)"

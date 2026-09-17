@@ -177,15 +177,12 @@ const ProductsDashboard = ({
           // Fallback: If still no cost price, estimate at 60% of selling price
           if (costPrice === 0 && unitPrice > 0) {
             costPrice = unitPrice * 0.6; // Reasonable default assumption
-            console.warn(`⚠️ Cost price not found for product ${productId}, using 60% estimate: ${costPrice}`);
           }
-          
+
           // ==================== Calculate profit correctly ====================
           const profitPerUnit = unitPrice - costPrice;
           const totalCost = costPrice * quantity;
           const profit = totalPrice - totalCost;
-
-          console.log(`📊 Product ${productId}: unitPrice=${unitPrice}, costPrice=${costPrice}, profit=${profit}, totalPrice=${totalPrice}, totalCost=${totalCost}`);
 
           if (!soldMap[productId]) {
             soldMap[productId] = {
@@ -212,7 +209,6 @@ const ProductsDashboard = ({
       }
     });
 
-    console.log('💰 Final sold map:', soldMap);
     return soldMap;
   }, [filteredTransactions, calculateInitialStock]);
 
@@ -440,9 +436,7 @@ const ProductsDashboard = ({
     setDateAnchorEl(null);
   };
 
-  const handleDateFilterChange = (hasFilter) => {
-    console.log("Date filter changed:", hasFilter);
-  };
+  const handleDateFilterChange = (hasFilter) => {};
 
   // Filter handlers
   const handleFilterClick = (event) => {
@@ -453,9 +447,7 @@ const ProductsDashboard = ({
     setFilterAnchorEl(null);
   };
 
-  const handleTableFilterChange = (hasFilter) => {
-    console.log("Table filter changed:", hasFilter);
-  };
+  const handleTableFilterChange = (hasFilter) => {};
 
   // Handle date range change from parent or local
   const handleDateRangeChange = (dateRange) => {
@@ -573,7 +565,7 @@ const ProductsDashboard = ({
   // If we have no product data
   if (stockTableData.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="flex flex-col items-center justify-center h-80 bg-white rounded-2xl border-2 border-dashed border-gray-200 text-center px-4">
         <PackageIcon className="mx-auto mb-4 text-gray-400" size={48} />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">No Product Data Available</h3>
         <p className="text-gray-600">Add products to your inventory to see stock tracking.</p>
@@ -583,12 +575,8 @@ const ProductsDashboard = ({
 
   return (
     <div className="space-y-8">
-      {/* Header with controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Stock & Inventory Tracking</h1>
-          <p className="text-gray-600 mt-1">Real-time stock levels, sales performance, and profit analysis</p>
-        </div>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center justify-end gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {onRefresh && (
             <button
@@ -697,7 +685,7 @@ const ProductsDashboard = ({
 
       {/* Stock Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-5 sm:p-6 text-white shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm opacity-90">Total Stock Value</p>
@@ -712,7 +700,7 @@ const ProductsDashboard = ({
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 sm:p-6 text-white shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm opacity-90">Total Revenue</p>
@@ -727,7 +715,7 @@ const ProductsDashboard = ({
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-5 sm:p-6 text-white shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm opacity-90">Total Profit</p>
@@ -744,7 +732,7 @@ const ProductsDashboard = ({
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-5 sm:p-6 text-white shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm opacity-90">ROI %</p>
@@ -821,7 +809,7 @@ const ProductsDashboard = ({
       </div>
 
       {/* Stock Tracking Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div>

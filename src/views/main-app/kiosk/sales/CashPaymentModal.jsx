@@ -90,7 +90,7 @@ const CashPaymentModal = ({
               isDebtPayment: true,
             });
           } catch (completeError) {
-            console.error('⚠️ CashPaymentModal: onPaymentComplete error:', completeError);
+            console.error('CashPaymentModal: onPaymentComplete error:', completeError);
             throw completeError;
           }
         }
@@ -112,7 +112,7 @@ const CashPaymentModal = ({
         throw new Error(result?.message || 'Payment failed');
       }
     } catch (error) {
-      console.error('❌ Cash payment error:', error);
+      console.error('Cash payment error:', error);
       setPaymentStatus('failed');
       setLocalErrorMessage(error.message || 'Payment failed'); // Set error message for internal display
       setFailureData({

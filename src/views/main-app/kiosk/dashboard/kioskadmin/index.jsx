@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { DollarSign, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { DollarSign, TrendingUp, Clock, AlertCircle, Calendar, RefreshCw, LayoutDashboard } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import StatsCard from "./StatsCard";
@@ -20,12 +20,11 @@ const getTodayDateString = () => {
   return today.toISOString().split('T')[0];
 };
 
-// Calendar icon component
-const Calendar = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
+const getYesterdayDateString = () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -46,9 +45,9 @@ export default function DashboardPage() {
   });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [viewingTransaction, setViewingTransaction] = useState(false);
 
   const todayDate = getTodayDateString();
+  const yesterdayDate = getYesterdayDateString();
   const currentDate = new Date();
   const dateString = currentDate.toLocaleDateString("en-US", {
     weekday: "long",
@@ -64,17 +63,13 @@ export default function DashboardPage() {
 
   // Check authentication and extract user data
   useEffect(() => {
-    console.log("🔍 Checking authentication status...");
-
     const authTimeout = setTimeout(() => {
       if (loading) {
-        console.log("⚠️ Authentication check taking too long, proceeding...");
         setLoading(false);
       }
     }, 2000);
 
     if (!currentUser || !token) {
-      console.log("❌ User not authenticated, redirecting to login");
       setTimeout(() => {
         navigate('/login');
       }, 1500);
@@ -82,18 +77,11 @@ export default function DashboardPage() {
       return;
     }
 
-    console.log("✅ User authenticated:", {
-      id: currentUser.id,
-      name: `${currentUser.firstName} ${currentUser.lastName}`,
-      email: currentUser.email,
-      role: currentUser.role
-    });
-
     const businessId = currentUser.businessId;
     const businessUUID = currentUser.businessUUID;
 
     if (!businessId || !businessUUID) {
-      console.error("❌ No business information found in user data");
+      console.error("No business information found in user data");
       setError("No business assigned to your account. Please contact administrator.");
       setLoading(false);
       clearTimeout(authTimeout);
@@ -110,8 +98,6 @@ export default function DashboardPage() {
       businessName: currentUser.businessName,
       businessType: currentUser.businessType
     };
-
-    console.log("👤 Derived user data:", shopkeeperInfo);
 
     setUserData({
       user: currentUser,
@@ -131,7 +117,6 @@ export default function DashboardPage() {
       setContentLoaded(false);
 
       if (!userData.businessId) {
-        console.log("⏳ Waiting for business data initialization...");
         setTimeout(() => {
           setContentLoaded(true);
           setLoading(false);
@@ -139,22 +124,18 @@ export default function DashboardPage() {
         return;
       }
 
-      console.log('🔍 Fetching transactions for business:', userData.businessId);
-
       let endpoint;
       if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_BUSINESS) {
         endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS.replace(
           ':businessId',
           userData.businessId
         );
-        console.log('🌐 Using business endpoint:', endpoint);
       }
       else if (URLS.TRANSACTIONS?.GET_TRANSACTIONS_BY_KIOSK) {
         endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_KIOSK.replace(
           ':kioskId',
           userData.businessId
         );
-        console.log('🌐 Using kiosk endpoint with businessId:', endpoint);
       } else {
         throw new Error('No transaction endpoints configured');
       }
@@ -162,13 +143,11 @@ export default function DashboardPage() {
       const result = await GET(endpoint);
 
       if (!result || result.success === false) {
-        console.log('⚠️ Business endpoint failed, trying alternative...');
         await fetchAllTransactionsAndFilter();
         return;
       }
 
       const transactionData = result.transactions || result.data || [];
-      console.log('✅ Transactions data received:', transactionData.length, 'transactions');
 
       setTransactions(transactionData);
 
@@ -185,21 +164,17 @@ export default function DashboardPage() {
 
   const fetchAllTransactionsAndFilter = async () => {
     try {
-      console.log('🔄 Trying to fetch all transactions and filter...');
-
       if (URLS.TRANSACTIONS?.GET_ALL_TRANSACTIONS) {
         const result = await GET(URLS.TRANSACTIONS.GET_ALL_TRANSACTIONS);
 
         if (result && result.success) {
           const allTransactions = result.transactions || result.data || [];
-          console.log('📋 All transactions loaded:', allTransactions.length);
 
           const filteredTransactions = allTransactions.filter(t =>
             t.businessId === userData.businessId ||
             t.businessId?.toString() === userData.businessId?.toString()
           );
 
-          console.log('✅ Filtered by businessId:', filteredTransactions.length);
           setTransactions(filteredTransactions);
           setTimeout(() => {
             setContentLoaded(true);
@@ -208,7 +183,6 @@ export default function DashboardPage() {
         }
       }
 
-      console.log('⚠️ No transactions available or endpoints not working');
       setTransactions([]);
       setTimeout(() => {
         setContentLoaded(true);
@@ -235,9 +209,16 @@ export default function DashboardPage() {
     });
   }, [transactions, todayDate]);
 
-  // Calculate total sales for TODAY only
-  const totalSalesToday = useMemo(() => {
-    return todayTransactions
+  // Filter yesterday's transactions - used only to compute the day-over-day change
+  const yesterdayTransactions = useMemo(() => {
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.timestamp || transaction.createdAt).toISOString().split('T')[0];
+      return transactionDate === yesterdayDate;
+    });
+  }, [transactions, yesterdayDate]);
+
+  const sumCompletedSales = (list) =>
+    list
       .filter(
         (t) =>
           t.status?.toLowerCase() === "completed" &&
@@ -247,12 +228,28 @@ export default function DashboardPage() {
             t.paymentMethod?.toLowerCase() === "debt")
       )
       .reduce((sum, t) => sum + (t.totalAmount || 0), 0);
-  }, [todayTransactions]);
+
+  // Calculate total sales for TODAY only
+  const totalSalesToday = useMemo(() => sumCompletedSales(todayTransactions), [todayTransactions]);
+
+  // Calculate total sales for YESTERDAY only, used for the day-over-day comparison
+  const totalSalesYesterday = useMemo(() => sumCompletedSales(yesterdayTransactions), [yesterdayTransactions]);
 
   // Calculate profit for TODAY only
   const totalProfitToday = useMemo(() => {
     return Math.round(totalSalesToday * 0.35);
   }, [totalSalesToday]);
+
+  // Day-over-day % change. Profit is a fixed 35% of sales, so the same
+  // percentage change applies to both the sales and profit cards.
+  const salesChangePercent = useMemo(() => {
+    if (totalSalesYesterday > 0) {
+      return ((totalSalesToday - totalSalesYesterday) / totalSalesYesterday) * 100;
+    }
+    return totalSalesToday > 0 ? 100 : 0;
+  }, [totalSalesToday, totalSalesYesterday]);
+
+  const formattedSalesChange = `${salesChangePercent >= 0 ? '+' : ''}${salesChangePercent.toFixed(1)}%`;
 
   // Calculate payment counts for TODAY only (including debt)
   const paymentCounts = useMemo(() => {
@@ -294,30 +291,9 @@ export default function DashboardPage() {
       .slice(0, 4);
   }, [todayTransactions]);
 
-  // Create transactions map
-  const transactionsMap = useMemo(() => {
-    return transactions.reduce((map, transaction) => {
-      const id = transaction.transactionId || transaction._id || transaction.id;
-      if (id) {
-        map[id] = transaction;
-      }
-      return map;
-    }, {});
-  }, [transactions]);
-
-  // Handle view transaction with 2-second delay
   const handleViewTransaction = (transaction) => {
-    console.log('handleViewTransaction called with:', transaction);
-
-    // Show loading state
-    setViewingTransaction(true);
-
-    // Wait 2 seconds before opening modal
-    setTimeout(() => {
-      setSelectedTransaction(transaction);
-      setModalOpen(true);
-      setViewingTransaction(false);
-    }, 2000);
+    setSelectedTransaction(transaction);
+    setModalOpen(true);
   };
 
   const handleRefresh = () => {
@@ -325,77 +301,44 @@ export default function DashboardPage() {
     fetchTransactions();
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedTransaction(null);
-  };
-
   const isLoading = loading || !contentLoaded || (!userData.initialized && loading);
-
-  // Show loading state for transaction view
-  if (viewingTransaction) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText="Loading transaction details..."
-                loadedText=""
-                color={theme.primaryColor || "primary"}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Show initial loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className='main-app-view'>
-            <div className="main-app-content-container">
-              <ContentLoader
-                state={true}
-                loading={true}
-                loadingText="Loading dashboard..."
-                loadedText=""
-                color={theme.primaryColor || "primary"}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText="Loading dashboard..."
+          loadedText=""
+          color={theme.primaryColor || "primary"}
+        />
       </div>
     );
   }
 
   if (!userData.user || !userData.businessId) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="text-red-500 text-xl mb-4">
-              {!userData.user ? "User Not Logged In" : "No Business Assigned"}
-            </div>
-            <div className="text-gray-600 mb-6">
-              {!userData.user
-                ? "Please log in to access the dashboard."
-                : "Your account is not assigned to any business. Please contact your administrator."}
-            </div>
-            {!userData.user && (
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
-              >
-                Go to Login
-              </button>
-            )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-xl mb-4">
+            {!userData.user ? "User Not Logged In" : "No Business Assigned"}
           </div>
+          <div className="text-gray-600 mb-6">
+            {!userData.user
+              ? "Please log in to access the dashboard."
+              : "Your account is not assigned to any business. Please contact your administrator."}
+          </div>
+          {!userData.user && (
+            <button
+              onClick={() => navigate('/login')}
+              className="text-white px-6 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: theme.primaryColor || '#3b82f6' }}
+            >
+              Go to Login
+            </button>
+          )}
         </div>
       </div>
     );
@@ -403,24 +346,26 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white p-2">
-        <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-700">Sales Overview</h2>
-          <p className="text-sm text-gray-500">
-            {userData.shopkeeperInfo?.businessName || "Dashboard"}
-          </p>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
-            <p className="text-red-700">{error}</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+          <div className="mb-6">
+            <h2 className="text-lg font-medium text-gray-700">Sales Overview</h2>
+            <p className="text-sm text-gray-500">
+              {userData.shopkeeperInfo?.businessName || "Dashboard"}
+            </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            className="mt-3 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded text-sm"
-          >
-            Try Again
-          </button>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+              <p className="text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="mt-3 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg text-sm"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -428,16 +373,25 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white p-2">
+      <div className="min-h-screen bg-gray-50">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+              style={{ backgroundColor: theme.primaryColor || '#3b82f6' }}
+            >
+              <LayoutDashboard size={22} />
+            </div>
             <div>
-              <h2 className="text-lg font-medium text-gray-700">Sales Overview</h2>
-              <p className="text-sm text-gray-500">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+                Sales Overview
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                 Welcome back, {userData.shopkeeperInfo?.shopkeeperName}! Here's your business at a glance
               </p>
-              <div className="flex items-center gap-4 text-gray-600 mt-1">
+              <div className="flex items-center gap-4 text-gray-500 mt-1.5">
                 <div className="flex items-center gap-1 text-xs">
                   <Calendar className="w-3 h-3" />
                   <span>{dateString}</span>
@@ -448,31 +402,30 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
           </div>
-        </div>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed w-fit"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </header>
 
         {/* Stats Cards - TODAY only */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Total Sales Today"
             value={`KSh ${totalSalesToday.toLocaleString()}`}
-            change="+8.2%"
+            change={formattedSalesChange}
             icon={<DollarSign />}
             color="blue"
           />
           <StatsCard
             title="Profit Today"
             value={`KSh ${totalProfitToday.toLocaleString()}`}
-            change="+5.7%"
+            change={formattedSalesChange}
             icon={<TrendingUp />}
             color="green"
           />
@@ -486,10 +439,11 @@ export default function DashboardPage() {
 
         {/* Transactions Table Component - ALL transactions */}
         <TransactionsTable
-          todayTransactions={transactions} // Changed from todayTransactions to transactions
+          todayTransactions={transactions}
           onViewTransaction={handleViewTransaction}
           isLoading={loading}
         />
+        </div>
       </div>
 
       {/* Transaction Details Modal Component */}

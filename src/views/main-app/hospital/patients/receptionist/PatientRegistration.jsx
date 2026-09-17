@@ -192,7 +192,7 @@ const PatientRegistration = ({
         ? format(formData.dob, "yyyy-MM-dd")
         : null;
       await onRegisterPatient({ ...formData, dob: formattedDob });
-      setSuccessMessage("Patient registered and added to queue ✓");
+      setSuccessMessage("Patient registered and added to queue");
       setTimeout(onClose, 1500);
     } catch (err) {
       console.error(err);

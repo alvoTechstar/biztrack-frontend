@@ -92,14 +92,14 @@ const StaffControls = ({
   }));
 
   return (
-    <div className="bg-white p-4 mb-4 ml-2 sm:p-1 m-0">
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
 
         {/* Left: Search + Date + Filter */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 items-stretch sm:items-center w-full sm:flex-1">
 
           {/* Search */}
-          <div className="w-full sm:w-auto sm:flex-1 mb-2 sm:mb-0">
+          <div className="w-full sm:w-auto">
             <SearchInput
               id="staff-search"
               placeholder="Search by name, email, or phone..."
@@ -111,53 +111,49 @@ const StaffControls = ({
             />
           </div>
 
-          <div className="flex gap-0 sm:gap-4 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center">
             {/* Date Range */}
-            <div className="flex-1 sm:flex-none">
-              <DateRangeInput
-                type="staff"
-                color={theme.primaryColor}
-                selected={
-                  filters.startDate && filters.endDate
-                    ? { startDate: filters.startDate, endDate: filters.endDate }
-                    : null
-                }
-                dateFilter={dateFilter}
-                anchorEl={dateFilterAnchorEl}
-                selectedAction={handleDateSelected}
-                handleDateFilter={handleDateFilter}
-                handleClose={handleDateFilterClose}
-                handleClick={handleDateFilterClick}
-              />
-            </div>
+            <DateRangeInput
+              type="staff"
+              color={theme.primaryColor}
+              selected={
+                filters.startDate && filters.endDate
+                  ? { startDate: filters.startDate, endDate: filters.endDate }
+                  : null
+              }
+              dateFilter={dateFilter}
+              anchorEl={dateFilterAnchorEl}
+              selectedAction={handleDateSelected}
+              handleDateFilter={handleDateFilter}
+              handleClose={handleDateFilterClose}
+              handleClick={handleDateFilterClick}
+            />
 
             {/* Advanced Filter */}
-            <div className="flex-1 sm:flex-none ml-0 sm:ml-0">
-              <FilterInput
-                color={theme.primaryColor}
-                label="advanced-filter"
-                filters={statusFilters}
-                filters2={roleFilters}
-                options={filterOptions}
-                selected={selectedStatuses}
-                selectedAction={handleStatusAction}
-                selected2={selectedRoles}
-                selectedAction2={handleRoleAction}
-                tableFilter={tableFilter}
-                handleTableFilter={handleTableFilter}
-                anchorEl={filterAnchorEl}
-                handleClose={handleFilterClose}
-                handleClick={handleFilterClick}
-              />
-            </div>
+            <FilterInput
+              color={theme.primaryColor}
+              label="advanced-filter"
+              filters={statusFilters}
+              filters2={roleFilters}
+              options={filterOptions}
+              selected={selectedStatuses}
+              selectedAction={handleStatusAction}
+              selected2={selectedRoles}
+              selectedAction2={handleRoleAction}
+              tableFilter={tableFilter}
+              handleTableFilter={handleTableFilter}
+              anchorEl={filterAnchorEl}
+              handleClose={handleFilterClose}
+              handleClick={handleFilterClick}
+            />
           </div>
         </div>
 
         {/* Right: Add Staff */}
-        <div className="w-full lg:w-auto mt-4 lg:mt-0">
+        <div className="w-full sm:w-auto">
           <AppFormButton
             text={
-              <div className="flex items-center justify-center lg:justify-start gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Plus size={18} />
                 Add Staff
               </div>

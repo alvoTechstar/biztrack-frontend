@@ -11,17 +11,20 @@ import CreateOrder from "../views/main-app/hotel/sales/CreateOrder";
 import CompleteOrder from "../views/main-app/hotel/sales/CompleteOrder";
 import MenuManagement from "../views/main-app/hotel/products/menumanagement";
 import IngredientsManagementPage from "../views/main-app/hotel/products/ingredient-management";
-import StaffManagement from "../views/main-app/hotel/User-Management";
 import StaffPayment from "../views/main-app/hotel/User-Management/staff/StaffPayment";
 import HotelOrders from "../views/main-app/hotel/sales/hotel-orders";
 import HotelExpenses from "../views/main-app/hotel/expenses/Hotelexpenses";
 import HotelReports from "../views/main-app/hotel/reports/admin";
 import Dashboard from "../views/main-app/kiosk/dashboard/kioskadmin";
 import InventoryPage from "../views/main-app/kiosk/products/inventory";
-import KioskStaffManagement from "../views/main-app/kiosk/User-Management";
+// Shared staff-management page, reused by both kiosk-admin and hotel-admin
+// (role list is derived at runtime from the logged-in user's business type).
+import StaffManagementPage from "../views/main-app/kiosk/User-Management";
+import CreateStaffPage from "../views/main-app/kiosk/User-Management/CreateStaffPage.jsx";
 import KioskAdminReportsPage from "../views/main-app/kiosk/reports/kioskadmin/KioskAdminReportsPage";
 import SalesPage from "../views/main-app/kiosk/sales";
 import ShopkeeperReportsPage from "../views/main-app/kiosk/reports/shopkeeper/ShopkeeperReportsPage";
+import TransactionDetailsPage from "../views/main-app/kiosk/reports/shopkeeper/TransactionDetailsPage";
 import DebtManagement from "../views/main-app/kiosk/debtmanagement/index.jsx";
 import HospitalAdminDashboard from "../views/main-app/hospital/dashboard/hospitaladmin/HospitalAdminDashboard";
 import PharmacyStock from "../views/main-app/hospital/products/PharmacyStock";
@@ -36,8 +39,11 @@ import AdminPatientRecordsPage from "../views/main-app/hospital/patients/patient
 import DoctorView from "../views/main-app/hospital/dashboard/doctor/index.jsx";
 import PatientListPage from "../views/main-app/hospital/dashboard/doctor/patientshistory/PatientListPage.jsx";
 import StockManagementPage from "../views/main-app/kiosk/products/stock-management/index.jsx";
+import CreateProductPage from "../views/main-app/kiosk/products/stock-management/CreateProductPage.jsx";
 import BusinessesPage from "../views/main-app/super-admin/User-Management/businesses/index.jsx";
+import CreateBusinessPage from "../views/main-app/super-admin/User-Management/businesses/CreateBusinessPage.jsx";
 import UsersPage from "../views/main-app/super-admin/User-Management/user-management/index.jsx";
+import CreateUserPage from "../views/main-app/super-admin/User-Management/user-management/CreateUserPage.jsx";
 
 export const routes = [
   // Public Routes
@@ -49,7 +55,11 @@ export const routes = [
   // Super Admin
   { path: "/dashboard/super-admin", element: <SuperAdminDashboard />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
   { path: "/businesses", element: <BusinessesPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
+  { path: "/businesses/new", element: <CreateBusinessPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
+  { path: "/businesses/:id/edit", element: <CreateBusinessPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
   { path: "/user-management", element: <UsersPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
+  { path: "/user-management/new", element: <CreateUserPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
+  { path: "/user-management/:id/edit", element: <CreateUserPage />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
   { path: "/reports", element: <SuperAdminReports />, isPrivate: true, allowedRoles: ["biztrack-admin"] },
 
   // Hotel Admin
@@ -57,7 +67,9 @@ export const routes = [
   { path: "/menu-management", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/products", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin", "kiosk-admin"] },
   { path: "/products/ingredient-management", element: <IngredientsManagementPage />, isPrivate: true, allowedRoles: ["hotel-admin"] },
-  { path: "/staff", element: <StaffManagement />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/staff", element: <StaffManagementPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/staff/new", element: <CreateStaffPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/staff/:id/edit", element: <CreateStaffPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/staffpayment", element: <StaffPayment />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/orders/hotel", element: <HotelOrders />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/hotel/expenses", element: <HotelExpenses />, isPrivate: true, allowedRoles: ["hotel-admin"] },
@@ -76,7 +88,11 @@ export const routes = [
   { path: "/dashboard/kiosk", element: <Dashboard />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
   { path: "/inventory", element: <InventoryPage />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
   { path: "/products/stock-management", element: <StockManagementPage />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
-  { path: "/kiosk/user-management", element: <KioskStaffManagement />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
+  { path: "/products/stock-management/new", element: <CreateProductPage />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
+  { path: "/products/stock-management/:id/edit", element: <CreateProductPage />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
+  { path: "/kiosk/user-management", element: <StaffManagementPage basePath="/kiosk/user-management" />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
+  { path: "/kiosk/user-management/new", element: <CreateStaffPage basePath="/kiosk/user-management" />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
+  { path: "/kiosk/user-management/:id/edit", element: <CreateStaffPage basePath="/kiosk/user-management" />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
   { path: "/kiosk/debts", element: <DebtManagement />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
   { path: "/kioskreports", element: <KioskAdminReportsPage />, isPrivate: true, allowedRoles: ["kiosk-admin"] },
 
@@ -84,6 +100,7 @@ export const routes = [
   { path: "/shopkeeper/sales", element: <SalesPage />, isPrivate: true, allowedRoles: ["kiosk-shopkeeper"] },
   { path: "/shopkeeper/debts", element: <DebtManagement />, isPrivate: true, allowedRoles: ["kiosk-shopkeeper"] },
   { path: "/shopkeeper/reports", element: <ShopkeeperReportsPage />, isPrivate: true, allowedRoles: ["kiosk-shopkeeper"] },
+  { path: "/shopkeeper/reports/transactions/:transactionId", element: <TransactionDetailsPage />, isPrivate: true, allowedRoles: ["kiosk-shopkeeper"] },
 
   // Hospital Admin
   { path: "/dashboard/hospital-admin", element: <HospitalAdminDashboard />, isPrivate: true, allowedRoles: ["hospital-admin"] },

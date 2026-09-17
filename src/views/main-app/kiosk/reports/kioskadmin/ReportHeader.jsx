@@ -1,32 +1,39 @@
 // kiosk-admin/ReportHeader.jsx
 import React from "react";
-import { Activity } from "lucide-react";
+import { Activity, RefreshCw } from "lucide-react";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
 
-const ReportHeader = ({ refreshData, error, ErrorAlert }) => {
+const ReportHeader = ({ refreshData, loading, businessName }) => {
+  const { primaryColor } = useTheme();
+
   return (
-    <div className="mb-8 relative">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-5 rounded-3xl blur-xl"></div>
-      <div className="relative">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                <Activity className="text-white" size={24} />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Analytics Dashboard
-              </h1>
-            </div>
-            <p className="text-gray-600 ml-1">
-              Real-time insights and comprehensive business analytics
-            </p>
-          </div>
+    <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+      <div className="flex items-center gap-3">
+        <div
+          className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white shadow-sm shrink-0"
+          style={{ backgroundColor: primaryColor || '#3b82f6' }}
+        >
+          <Activity size={22} />
         </div>
-
-        {/* Error Display */}
-        {error && <ErrorAlert message={error} onRetry={refreshData} />}
+        <div>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+            Analytics Dashboard
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            Real-time insights and business analytics{businessName ? ` · ${businessName}` : ''}
+          </p>
+        </div>
       </div>
-    </div>
+
+      <button
+        onClick={refreshData}
+        disabled={loading}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        {loading ? 'Refreshing' : 'Refresh'}
+      </button>
+    </header>
   );
 };
 

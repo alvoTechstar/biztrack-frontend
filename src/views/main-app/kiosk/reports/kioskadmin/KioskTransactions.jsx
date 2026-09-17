@@ -154,7 +154,7 @@ const KioskTransactionsTable = ({
     // No Results State
     if (todayTransactions.length === 0 && !loading) {
         return (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
                 <Package size={48} className="text-gray-400 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-1">No transactions found</h3>
                 <p className="text-gray-500">
@@ -169,7 +169,7 @@ const KioskTransactionsTable = ({
 
     if (loading) {
         return (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="mt-4 text-gray-600">Loading transactions...</p>
             </div>
@@ -197,7 +197,7 @@ const KioskTransactionsTable = ({
     };
 
     return (
-        <div className="mt-8 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div className="mt-8 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Header */}
             <div className="border-b border-gray-200 p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -252,7 +252,7 @@ const KioskTransactionsTable = ({
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                         <p className="text-xs text-blue-600 font-medium mb-1">Total Amount</p>
                         <p className="text-lg font-bold text-blue-900">
                             KSh {summary.totalAmount.toLocaleString('en-KE', {
@@ -261,15 +261,15 @@ const KioskTransactionsTable = ({
                             })}
                         </p>
                     </div>
-                    <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-4">
                         <p className="text-xs text-green-600 font-medium mb-1">Completed</p>
                         <p className="text-lg font-bold text-green-900">{summary.completedCount}</p>
                     </div>
-                    <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
                         <p className="text-xs text-gray-600 font-medium mb-1">Total Transactions</p>
                         <p className="text-lg font-bold text-gray-900">{summary.totalCount}</p>
                     </div>
-                    <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                    <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
                         <p className="text-xs text-purple-600 font-medium mb-1">Success Rate</p>
                         <p className="text-lg font-bold text-purple-900">{summary.successRate}%</p>
                     </div>

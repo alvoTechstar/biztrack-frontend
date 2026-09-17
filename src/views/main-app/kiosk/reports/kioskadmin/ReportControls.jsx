@@ -37,9 +37,7 @@ const ReportControls = ({
     setDateAnchorEl(null);
   };
 
-  const handleDateFilterChange = (hasFilter) => {
-    console.log("Date filter changed:", hasFilter);
-  };
+  const handleDateFilterChange = (hasFilter) => {};
 
   // Filter handlers
   const handleFilterClick = (event) => {
@@ -50,9 +48,7 @@ const ReportControls = ({
     setFilterAnchorEl(null);
   };
 
-  const handleTableFilterChange = (hasFilter) => {
-    console.log("Table filter changed:", hasFilter);
-  };
+  const handleTableFilterChange = (hasFilter) => {};
 
   // Format date for display
   const formatDateRangeDisplay = () => {
@@ -68,7 +64,7 @@ const ReportControls = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 mb-8 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 sm:mb-8 overflow-hidden">
       <div className="p-4 md:p-6">
         {/* DESKTOP LAYOUT: Filters on left, buttons on right */}
         <div className="hidden lg:flex items-center justify-between gap-6">

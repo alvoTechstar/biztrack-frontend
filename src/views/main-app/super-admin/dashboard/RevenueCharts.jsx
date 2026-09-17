@@ -104,7 +104,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
   if (loading || chartData.loading) {
     return (
       <div className="flex flex-col lg:flex-row gap-6 w-full font-[Averta]">
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Revenue by Business Type
@@ -120,7 +120,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
             </div>
           </CardContent>
         </Card>
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Transactions by Business Type
@@ -142,7 +142,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
   if (chartData.error) {
     return (
       <div className="flex flex-col lg:flex-row gap-6 w-full font-[Averta]">
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Revenue by Business Type
@@ -152,7 +152,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
               <p className="text-gray-500 text-sm">{chartData.error}</p>
               <button
                 onClick={fetchBusinessTransactions}
-                className="mt-4 px-4 py-2 rounded transition-colors"
+                className="mt-4 px-4 py-2 rounded-lg transition-colors"
                 style={{
                   backgroundColor: theme.primaryColor || '#3b82f6',
                   color: 'white'
@@ -165,7 +165,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
             </div>
           </CardContent>
         </Card>
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Transactions by Business Type
@@ -175,7 +175,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
               <p className="text-gray-500 text-sm">{chartData.error}</p>
               <button
                 onClick={fetchBusinessTransactions}
-                className="mt-4 px-4 py-2 rounded transition-colors"
+                className="mt-4 px-4 py-2 rounded-lg transition-colors"
                 style={{
                   backgroundColor: theme.primaryColor || '#3b82f6',
                   color: 'white'
@@ -194,7 +194,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
   if (!businesses || businesses.length === 0) {
     return (
       <div className="flex flex-col lg:flex-row gap-6 w-full font-[Averta]">
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Revenue by Business Type
@@ -204,7 +204,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
             </div>
           </CardContent>
         </Card>
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <Typography variant="h6" className="font-semibold mb-4 text-gray-800">
               Transactions by Business Type
@@ -217,7 +217,6 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
       </div>
     );
   }
-  const hasAnyTransactions = Object.values(chartData.transactionsByType).some(val => val > 0);
   const barChartData = {
     labels: Object.keys(chartData.revenueByType),
     datasets: [
@@ -250,7 +249,7 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
+        display: false,
       },
       tooltip: {
         callbacks: {
@@ -288,9 +287,10 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
   const doughnutChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: '68%',
     plugins: {
       legend: {
-        position: 'right',
+        display: false,
       },
       tooltip: {
         callbacks: {
@@ -306,39 +306,56 @@ const BusinessCharts = ({ businesses = [], loading = false }) => {
     }
   };
 
+  // Draws the transaction total in the center of the doughnut - mirrors the
+  // hover-to-see-breakdown, center-total treatment used on the kiosk dashboard's
+  // Payment Methods donut instead of an always-on legend.
+  const totalTransactions = Object.values(chartData.transactionsByType).reduce((a, b) => a + b, 0);
+  const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw: (chart) => {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const { left, top, width, height } = chartArea;
+      const cx = left + width / 2;
+      const cy = top + height / 2;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#1f2937';
+      ctx.font = "bold 22px Averta, sans-serif";
+      ctx.fillText(totalTransactions.toLocaleString(), cx, cy - 10);
+      ctx.fillStyle = '#6b7280';
+      ctx.font = "11px Averta, sans-serif";
+      ctx.fillText('transactions', cx, cy + 12);
+      ctx.restore();
+    }
+  };
+
   return (
     <div className="w-full font-[Averta]">
-      {!hasAnyTransactions && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-700 text-sm">
-            📊 <strong>Note:</strong> No transactions recorded yet. Charts show all business types (Kiosk, Hotel, Hospital) with zero values. Data will update as transactions are recorded.
-          </p>
-        </div>
-      )}
-
-      <div className="flex flex-col lg:flex-row gap-6">
-        <Card className="flex-1 shadow-lg">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <div className="flex justify-between items-center mb-4">
               <Typography variant="h6" className="font-semibold text-gray-800">
                 Revenue by Business Type
               </Typography>
-
             </div>
-            <div className="h-80">
+            <div className="h-72 sm:h-80">
               <Bar data={barChartData} options={barChartOptions} />
             </div>
           </CardContent>
         </Card>
-        <Card className="flex-1 shadow-lg">
+        <Card className="flex-1 rounded-2xl border border-gray-100 shadow-sm" elevation={0}>
           <CardContent>
             <div className="flex justify-between items-center mb-4">
               <Typography variant="h6" className="font-semibold text-gray-800">
                 Transactions by Business Type
               </Typography>
             </div>
-            <div className="h-80">
-              <Doughnut data={doughnutChartData} options={doughnutChartOptions} />
+            <div className="h-72 sm:h-80">
+              <Doughnut data={doughnutChartData} options={doughnutChartOptions} plugins={[centerTextPlugin]} />
             </div>
           </CardContent>
         </Card>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { hotelOrderActions } from "../../../../../store";
-import { ChefHat, Clock, Bell, CheckCircle, AlertCircle, UtensilsCrossed } from "lucide-react";
+import { ChefHat, Clock, Bell, CheckCircle, AlertCircle, UtensilsCrossed, MapPin, StickyNote } from "lucide-react";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
 
 const formatKsh = (amount) => `KSh ${Number(amount).toLocaleString()}`;
@@ -63,8 +63,9 @@ const OrderCard = ({ order, onStartCooking, onMarkReady }) => {
       <div className="flex items-start justify-between">
         <div>
           <span className="font-bold text-gray-800 text-lg">{order.id}</span>
-          <p className="text-sm font-semibold text-gray-600 mt-0.5">
-            📍 {order.tableNumber}
+          <p className="text-sm font-semibold text-gray-600 mt-0.5 flex items-center gap-1">
+            <MapPin size={13} />
+            {order.tableNumber}
           </p>
         </div>
         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${cfg.badge}`}>
@@ -95,8 +96,9 @@ const OrderCard = ({ order, onStartCooking, onMarkReady }) => {
 
       {/* Note */}
       {order.note && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800">
-          📝 {order.note}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800 flex items-start gap-1.5">
+          <StickyNote size={13} className="shrink-0 mt-0.5" />
+          {order.note}
         </div>
       )}
 
