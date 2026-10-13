@@ -20,10 +20,12 @@ export const ROLES = [
     role: "hotel-admin",
     options: [
       { value: "hotel-admin", label: "Hotel Admin" },
+      { value: "hotel-kitchen-admin", label: "Kitchen Admin" },
       { value: "hotel-cashier", label: "Cashier" },
       { value: "hotel-waiter", label: "Waiter" },
     ],
     optionsCreate: [
+      { value: "hotel-kitchen-admin", label: "Kitchen Admin" },
       { value: "hotel-cashier", label: "Cashier" },
       { value: "hotel-waiter", label: "Waiter" },
     ],
@@ -68,6 +70,11 @@ export const ROLES = [
     optionsCreate: [{ value: "hotel-cashier", label: "Cashier" }],
   },
   {
+    role: "hotel-kitchen-admin",
+    options: [{ value: "hotel-kitchen-admin", label: "Kitchen Admin" }],
+    optionsCreate: [{ value: "hotel-kitchen-admin", label: "Kitchen Admin" }],
+  },
+  {
     role: "hotel-waiter",
     options: [{ value: "hotel-waiter", label: "Waiter" }],
     optionsCreate: [{ value: "hotel-waiter", label: "Waiter" }],
@@ -109,6 +116,7 @@ export const ROLES = [
     options: [
       { value: "biztrack-admin", label: "Super Admin" },
       { value: "hotel-admin", label: "Hotel Admin" },
+      { value: "hotel-kitchen-admin", label: "Kitchen Admin" },
       { value: "hotel-cashier", label: "Cashier" },
       { value: "hotel-waiter", label: "Waiter" },
       { value: "kiosk-admin", label: "Kiosk Admin" },

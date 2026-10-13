@@ -14,7 +14,7 @@ import URLS from '../../../../../utilities/Endpoints';
 import { isFailureResponse, getResponseErrorMessage } from '../../../../../utilities/apiResponse';
 
 const rolesByType = {
-    'Hotel': ['Hotel Admin', 'Hotel Cashier', 'Hotel Waiter'],
+    'Hotel': ['Hotel Admin', 'Kitchen Admin', 'Hotel Cashier', 'Hotel Waiter'],
     'Kiosk': ['Kiosk Admin', 'Kiosk Shopkeeper'],
     'Hospital': ['Hospital Admin', 'Doctor', 'Nurse', 'Lab Technician', 'Receptionist', 'Pharmacist'],
     'Retail': ['Retail Admin', 'Cashier', 'Sales Associate'],
@@ -108,7 +108,7 @@ const CreateUserPage = () => {
                         lastName: userObj.lastName || '',
                         email: userObj.email || '',
                         institutionId: (userObj.businessId || userObj.associatedBusinessId || userObj.institutionId || '').toString(),
-                        role: userObj.role || userObj.userRole || '',
+                        role: String(userObj.role || userObj.userRole || '').replace(/_/g, ' '),
                         username: userObj.username || '',
                         phoneNumber: userObj.phone || userObj.phoneNumber || '',
                         password: '',
@@ -139,7 +139,7 @@ const CreateUserPage = () => {
                 email: values.email.trim(),
                 username: values.username.trim(),
                 phoneNumber: values.phoneNumber.trim(),
-                role: values.role,
+                role: values.role.replace(/ /g, '_'),
                 businessId: values.institutionId,
             };
 

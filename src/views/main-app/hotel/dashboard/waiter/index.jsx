@@ -1,19 +1,31 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { hotelOrderActions } from "../../../../../store";
 import { useNavigate } from "react-router-dom";
 import {
-  Plus, Clock, CheckCircle, ChefHat, Bell,
-  ShoppingBag, AlertCircle, UtensilsCrossed, Printer,
-  MapPin, StickyNote,
+  Plus, Clock, CheckCircle, Bell,
+  ShoppingCart, DollarSign, UtensilsCrossed, Eye,
+  StickyNote,
 } from "lucide-react";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
 import { GET, PUT } from "../../../../../services/DatabaseServiceImp";
 import URLS from "../../../../../utilities/Endpoints";
-import MenuItemImage from "../../../../../components/menu/MenuItemImage";
+import SearchInput from "../../../../../components/Input/SearchInput";
+import DateRangeInput from "../../../../../components/Input/DateRangeInput";
+import FilterInput from "../../../../../components/Input/FilterInput";
+import OrderDetailsModal from "../../../../../components/modal/OrderDetailsModal";
+import ContentLoader from "../../../../../components/Loader/ContentLoader";
+import OrderStatusPill, {
+  ORDER_STATUS_META,
+  ORDER_STATUS_ORDER,
+} from "../../../../../components/datatable/OrderStatusPill";
 import { printOrderReceipt } from "../../../../../utilities/ReceiptPrinter";
 
 const formatKsh = (n) => `KSh ${Number(n).toLocaleString()}`;
+
+dayjs.extend(customParseFormat);
 
 // Backend transaction items use productName/unitPrice; local ones use name/price
 const normalizeItems = (items = []) =>
@@ -48,147 +60,23 @@ const elapsed = (iso) => {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 };
 
-const STATUS_CONFIG = {
-  pending: {
-    label: "Waiting for Kitchen",
-    icon: Clock,
-    cardBorder: "border-amber-300",
-    cardBg: "bg-amber-50",
-    badge: "bg-amber-100 text-amber-700",
-    dot: "bg-amber-400",
-  },
-  "in-progress": {
-    label: "Kitchen Cooking",
-    icon: ChefHat,
-    cardBorder: "border-blue-300",
-    cardBg: "bg-blue-50",
-    badge: "bg-blue-100 text-blue-700",
-    dot: "bg-blue-400",
-  },
-  ready: {
-    label: "Ready — Collect Now!",
-    icon: Bell,
-    cardBorder: "border-green-400",
-    cardBg: "bg-green-50",
-    badge: "bg-green-100 text-green-700",
-    dot: "bg-green-500",
-  },
-  served: {
-    label: "Served",
-    icon: CheckCircle,
-    cardBorder: "border-gray-200",
-    cardBg: "bg-gray-50",
-    badge: "bg-gray-100 text-gray-500",
-    dot: "bg-gray-300",
-  },
-};
+// Backend order statuses (pending → in-progress → ready → served →
+// completed, plus cancelled). Pills render via the shared OrderStatusPill
+// so every status is the same rectangle, same width, same small radius.
 
-const OrderCard = ({ order, onMarkServed, onPrintBill }) => {
-  const [, tick] = useState(0);
-  const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-  const Icon = cfg.icon;
-  const isReady = order.status === "ready";
-
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 60000);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <div
-      className={`rounded-2xl border-2 ${cfg.cardBorder} ${cfg.cardBg} p-4 flex flex-col gap-3 shadow-sm transition-all ${
-        isReady ? "ring-2 ring-green-400 ring-offset-1 shadow-green-100 shadow-md" : ""
-      }`}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-bold text-gray-800">{order.id}</p>
-          <p className="text-sm font-semibold text-gray-600 flex items-center gap-1">
-            <MapPin size={12} />
-            {order.tableNumber}
-          </p>
-        </div>
-        <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${cfg.badge}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${isReady ? "animate-pulse" : ""}`} />
-          {cfg.label}
-        </span>
+// Same card language as the cashier dashboard
+const SummaryCard = ({ title, value, icon: Icon, bgColor, textColor, sub }) => (
+  <div className={`${bgColor} rounded-2xl p-5 shadow-sm border border-white/60`}>
+    <div className="flex items-start justify-between">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-600 truncate">{title}</p>
+        <p className={`text-2xl font-bold ${textColor} mt-1 truncate`}>{value}</p>
+        {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
       </div>
-
-      {/* Time */}
-      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-        <Clock size={11} />
-        {elapsed(order.createdAt)}
-        {" · "}
-        {new Date(order.createdAt).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: true })}
-      </div>
-
-      {/* Items */}
-      <div className="border-t border-gray-200 pt-2.5 space-y-1.5">
-        {order.items.slice(0, 4).map((item, i) => (
-          <div key={i} className="flex items-center gap-2.5 text-sm">
-            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white shadow-sm">
-              <MenuItemImage
-                src={item.image}
-                name={item.name}
-                category={item.category}
-                emojiSize="text-base"
-              />
-            </div>
-            <span className="text-gray-700 min-w-0 truncate flex-1">{item.name}</span>
-            <span className="text-xs font-bold text-gray-500 bg-white/70 border border-gray-200 rounded-full px-2 py-0.5 shrink-0">
-              ×{item.quantity}
-            </span>
-          </div>
-        ))}
-        {order.items.length > 4 && (
-          <p className="text-xs text-gray-400 pl-11">+{order.items.length - 4} more items</p>
-        )}
-      </div>
-
-      {/* Note */}
-      {order.note && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-800 flex items-start gap-1.5">
-          <StickyNote size={12} className="shrink-0 mt-0.5" />
-          {order.note}
-        </div>
-      )}
-
-      {/* Total */}
-      <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-2">
-        <span className="text-gray-500">{order.items.length} item{order.items.length !== 1 ? "s" : ""}</span>
-        <span className="font-bold text-gray-800">{formatKsh(order.total)}</span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        {isReady && (
-          <button
-            onClick={() => onMarkServed(order.id)}
-            className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <CheckCircle size={15} /> Mark as Served
-          </button>
-        )}
-        <button
-          onClick={() => onPrintBill(order)}
-          title="Print bill for the table"
-          className={`${
-            isReady ? "px-3" : "flex-1"
-          } py-2.5 border border-gray-300 bg-white text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-100 active:scale-95 transition-all flex items-center justify-center gap-2`}
-        >
-          <Printer size={15} />
-          {!isReady && "Print Bill"}
-        </button>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ml-3 ${bgColor.replace("50", "100")}`}>
+        <Icon className={`h-5 w-5 ${textColor}`} />
       </div>
     </div>
-  );
-};
-
-const StatChip = ({ label, value, color, pulse }) => (
-  <div className={`bg-white rounded-xl border px-4 py-3 text-center shadow-sm min-w-[80px] ${pulse ? "animate-pulse" : ""}`}>
-    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-    <p className="text-xs text-gray-500 mt-0.5">{label}</p>
   </div>
 );
 
@@ -198,8 +86,21 @@ const WaiterDashboard = () => {
   const { primaryColor, businessName } = useTheme();
   const currentUser = useSelector((s) => s.auth?.value);
   const allOrders = useSelector((s) => s.hotelOrders.orders);
-  const [activeFilter, setActiveFilter] = useState("active");
   const [, tick] = useState(0);
+
+  // View modal
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Filters — same inputs as everywhere else: search, date, status
+  const [searchTerm, setSearchTerm] = useState("");
+  const todayStr = dayjs().format("DD-MM-YYYY");
+  const [dateFilter, setDateFilter] = useState(true);
+  const [selectedDates, setSelectedDates] = useState({ startDate: todayStr, endDate: todayStr });
+  const [dateAnchorEl, setDateAnchorEl] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [tableFilter, setTableFilter] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 60000);
@@ -212,7 +113,7 @@ const WaiterDashboard = () => {
 
   // Fetch orders from backend, merging into Redux (keeps local status if ahead)
   const fetchOrders = useCallback(async () => {
-    if (!businessId) return;
+    if (!businessId) { setLoading(false); return; }
     try {
       const endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS.replace(":businessId", businessId);
       const res = await GET(endpoint);
@@ -224,6 +125,8 @@ const WaiterDashboard = () => {
       }
     } catch (_) {
       // Keep showing local orders if the fetch fails
+    } finally {
+      setLoading(false);
     }
   }, [businessId, dispatch]);
 
@@ -245,24 +148,68 @@ const WaiterDashboard = () => {
 
   const readyOrders    = myOrders.filter((o) => o.status === "ready");
   const activeOrders   = myOrders.filter((o) => ["pending", "in-progress", "ready"].includes(o.status));
-  const servedToday    = myOrders.filter((o) => o.status === "served" || o.status === "completed");
+  // served = food delivered to customer but order still OPEN (awaiting payment).
+  // completed = CLOSED by cashier after payment. Only completed is done.
+  const servedOpen     = myOrders.filter((o) => o.status === "served");
+  const completedClosed = myOrders.filter((o) => o.status === "completed");
+  // Sales = closed (paid) orders only — open orders are not revenue yet.
+  const salesToday     = completedClosed.reduce((s, o) => s + Number(o.total || 0), 0);
 
-  const displayed =
-    activeFilter === "active"
-      ? activeOrders
-      : activeFilter === "ready"
-      ? readyOrders
-      : servedToday;
-
-  // Sort: ready first, then by oldest
-  const sorted = [...displayed].sort((a, b) => {
+  // One table, ready first, then oldest — status lives in its own column
+  const sorted = useMemo(() => [...myOrders].sort((a, b) => {
     if (a.status === "ready" && b.status !== "ready") return -1;
     if (a.status !== "ready" && b.status === "ready") return 1;
     return new Date(a.createdAt) - new Date(b.createdAt);
-  });
+  }), [myOrders]);
 
+  const statusFilters = useMemo(
+    () =>
+      [...new Set(myOrders.map((o) => o.status))]
+        .sort(
+          (a, b) => ORDER_STATUS_ORDER.indexOf(a) - ORDER_STATUS_ORDER.indexOf(b)
+        )
+        .map((s) => ({
+          label: (ORDER_STATUS_META[s] && ORDER_STATUS_META[s].label) || String(s).charAt(0).toUpperCase() + String(s).slice(1),
+          value: s,
+        })),
+    [myOrders]
+  );
+
+  const filtered = useMemo(() => {
+    let result = [...sorted];
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (o) =>
+          String(o.id ?? "").toLowerCase().includes(term) ||
+          String(o.tableNumber ?? "").toLowerCase().includes(term) ||
+          (o.items || []).some((i) => String(i.name || "").toLowerCase().includes(term)) ||
+          String(o.status ?? "").toLowerCase().includes(term)
+      );
+    }
+    if (dateFilter && selectedDates?.startDate && selectedDates?.endDate) {
+      const from = dayjs(selectedDates.startDate, "DD-MM-YYYY").startOf("day");
+      const to = dayjs(selectedDates.endDate, "DD-MM-YYYY").endOf("day");
+      result = result.filter((o) => {
+        const dt = dayjs(o.createdAt);
+        return dt.isAfter(from) && dt.isBefore(to);
+      });
+    }
+    if (tableFilter && selectedItems.length > 0) {
+      result = result.filter((o) => selectedItems.includes(o.status));
+    }
+    return result;
+  }, [sorted, searchTerm, dateFilter, selectedDates, tableFilter, selectedItems]);
+
+  const formatItems = (items = []) =>
+    items.slice(0, 3).map((i) => `${i.quantity}× ${i.name}`).join(", ") +
+    (items.length > 3 ? ` +${items.length - 3} more` : "");
+
+  // Served = waiter has taken the food to the customer. Order stays OPEN —
+  // only the cashier closes it (completed) after payment.
   const markServed = (id) => {
     dispatch(hotelOrderActions.updateOrderStatus({ id, status: "served" }));
+    setSelectedOrder(null);
     // Persist to backend so the cashier sees the order as served (fire-and-forget)
     const order = allOrders.find((o) => o.id === id);
     const backendId = order?.backendId || order?.id;
@@ -291,6 +238,24 @@ const WaiterDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 pb-20">
+      {loading ? (
+        <div className="min-h-screen bg-white p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="main-app-view">
+              <div className="main-app-content-container">
+                <ContentLoader
+                  state={true}
+                  loading={true}
+                  loadingText="Loading orders..."
+                  loadedText=""
+                  color={primaryColor}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
@@ -311,11 +276,39 @@ const WaiterDashboard = () => {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <StatChip label="Active"  value={activeOrders.length}  color="text-indigo-600" />
-        <StatChip label="Ready"   value={readyOrders.length}   color="text-green-600"  pulse={readyOrders.length > 0} />
-        <StatChip label="Served Today" value={servedToday.length} color="text-gray-600" />
+      {/* Stats — same cards as the cashier */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <SummaryCard
+          title="Active Orders"
+          value={activeOrders.length}
+          icon={ShoppingCart}
+          bgColor="bg-blue-50"
+          textColor="text-blue-600"
+          sub={readyOrders.length > 0 ? `${readyOrders.length} ready to collect` : "All caught up!"}
+        />
+        <SummaryCard
+          title="Ready to Collect"
+          value={readyOrders.length}
+          icon={Bell}
+          bgColor="bg-green-50"
+          textColor="text-green-600"
+          sub={readyOrders.length > 0 ? "Pick up from the kitchen" : "Nothing waiting"}
+        />
+        <SummaryCard
+          title="Served · awaiting payment"
+          value={servedOpen.length}
+          icon={CheckCircle}
+          bgColor="bg-teal-50"
+          textColor="text-teal-600"
+          sub={completedClosed.length > 0 ? `${completedClosed.length} closed by cashier` : "Still open until cashier closes"}
+        />
+        <SummaryCard
+          title="My Sales Today"
+          value={formatKsh(salesToday)}
+          icon={DollarSign}
+          bgColor="bg-orange-50"
+          textColor="text-orange-600"
+        />
       </div>
 
       {/* Ready alert banner */}
@@ -333,57 +326,168 @@ const WaiterDashboard = () => {
         </div>
       )}
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-gray-200 mb-5">
-        {[
-          { key: "active", label: `Active (${activeOrders.length})` },
-          { key: "ready",  label: `Ready (${readyOrders.length})` },
-          { key: "served", label: `Served Today (${servedToday.length})` },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveFilter(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeFilter === tab.key
-                ? "border-indigo-600 text-indigo-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Filters — same inputs as everywhere else: search, date, status */}
+      <div className="bg-white p-4 mb-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex gap-4 flex-wrap items-center">
+          <div className="min-w-64">
+            <SearchInput
+              id="waiter-order-search"
+              placeholder="Search by order, table, item or status..."
+              input={searchTerm}
+              handleInput={setSearchTerm}
+              handleClear={() => setSearchTerm("")}
+              error={false}
+              disabled={false}
+            />
+          </div>
+
+          <DateRangeInput
+            type="orders"
+            color={primaryColor}
+            selected={selectedDates}
+            dateFilter={dateFilter}
+            anchorEl={dateAnchorEl}
+            selectedAction={setSelectedDates}
+            handleDateFilter={setDateFilter}
+            handleClose={() => setDateAnchorEl(null)}
+            handleClick={(e) => setDateAnchorEl(e.currentTarget)}
+          />
+
+          <FilterInput
+            color={primaryColor}
+            label="waiter-order-filter"
+            filters={statusFilters}
+            options={["Status"]}
+            selected={selectedItems}
+            selectedAction={setSelectedItems}
+            tableFilter={tableFilter}
+            handleTableFilter={setTableFilter}
+            anchorEl={filterAnchorEl}
+            handleClose={() => setFilterAnchorEl(null)}
+            handleClick={(e) => setFilterAnchorEl(e.currentTarget)}
+          />
+        </div>
       </div>
 
-      {/* Order grid */}
-      {sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-          <UtensilsCrossed size={52} className="mb-4 opacity-30" />
-          <p className="text-lg font-semibold">
-            {myOrders.length === 0
-              ? "No orders yet — create one to get started"
-              : "Nothing here right now"}
+      {/* Orders table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-5 pt-4 pb-2 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">My Orders</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {dateFilter && selectedDates?.startDate && selectedDates?.endDate
+              ? `Showing results for ${selectedDates.startDate} to ${selectedDates.endDate}`
+              : "Showing all results"}
           </p>
-          {myOrders.length === 0 && (
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+            <UtensilsCrossed size={52} className="mb-4 opacity-30" />
+            <p className="text-lg font-semibold">
+              {myOrders.length === 0
+                ? "No orders yet — create one to get started"
+                : "Nothing here right now"}
+            </p>
+            {myOrders.length === 0 && (
+              <button
+                onClick={() => navigate("/dashboard/create-order")}
+                className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Plus size={15} /> Create First Order
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                <tr>
+                  <th className="px-5 py-3 text-left">Order</th>
+                  <th className="px-5 py-3 text-left">Table</th>
+                  <th className="px-5 py-3 text-left">Time</th>
+                  <th className="px-5 py-3 text-left">Items</th>
+                  <th className="px-5 py-3 text-right">Amount</th>
+                  <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((order) => {
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-sm font-mono font-semibold text-gray-800">
+                        {order.id}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-600">
+                        {order.tableNumber}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-500 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <Clock size={12} className="text-gray-400" />
+                          {elapsed(order.createdAt)}
+                          {" · "}
+                          {new Date(order.createdAt).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-600">
+                        <span>{formatItems(order.items)}</span>
+                        {order.note && (
+                          <span className="flex items-start gap-1 mt-1 text-xs text-yellow-800">
+                            <StickyNote size={12} className="shrink-0 mt-0.5" />
+                            <span className="truncate max-w-[220px]">{order.note}</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-800 text-right whitespace-nowrap">
+                        {formatKsh(order.total)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <OrderStatusPill status={order.status} />
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            title="View order details"
+                            className="p-1.5 border border-gray-300 bg-white text-gray-600 rounded-lg hover:bg-gray-100 active:scale-95 transition-all"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Order details — print lives inside */}
+      <OrderDetailsModal
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        order={selectedOrder}
+        statusBadge={
+          <OrderStatusPill status={selectedOrder?.status} />
+        }
+        accentColor={primaryColor}
+        onPrint={printBill}
+        extraActions={
+          selectedOrder && selectedOrder.status === "ready" ? (
             <button
-              onClick={() => navigate("/dashboard/create-order")}
-              className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
+              type="button"
+              onClick={() => markServed(selectedOrder.id)}
+              className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-95 transition-all"
             >
-              <Plus size={15} /> Create First Order
+              Mark served
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sorted.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onMarkServed={markServed}
-              onPrintBill={printBill}
-            />
-          ))}
-        </div>
+          ) : null
+        }
+      />
+      </>
       )}
     </div>
   );

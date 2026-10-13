@@ -81,6 +81,7 @@ export const normalizeRole = (role) => {
   const roleMap = {
     "Super_Admin": "Super Admin",   
     "Hotel_Admin": "Hotel Admin",
+    "Kitchen_Admin": "Kitchen Admin",
     "Hotel_Cashier": "Cashier",
     "Hotel_Waiter": "Waiter",
     "Kiosk_Admin": "Kiosk Admin",
@@ -141,6 +142,21 @@ export const roleFormat = (str) =>
   ).join(" ");
 
 export const getUsername = (str) => str.substring(0, str.indexOf("@"));
+
+// Hex color + opacity → rgba(). Safe for 3/6/8-digit hex (the login-returned
+// primary is often 8-digit, where appending "14" would produce invalid CSS
+// and the whole declaration gets dropped).
+export const hexWithAlpha = (hex, alpha = 0.08) => {
+  const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(String(hex || "").trim());
+  if (!m) return hex;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (h.length === 8) h = h.slice(0, 6);
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 export const getInitials = (firstName, lastName) => {
   if (!firstName) return "";

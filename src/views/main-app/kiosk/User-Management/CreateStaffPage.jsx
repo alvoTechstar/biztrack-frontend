@@ -17,7 +17,7 @@ import URLS from '../../../../utilities/Endpoints';
 // the super admin uses when creating users (see CreateUserPage's rolesByType).
 const ROLES_BY_BUSINESS_TYPE = {
     Kiosk: ['Kiosk Admin', 'Kiosk Shopkeeper'],
-    Hotel: ['Hotel Admin', 'Hotel Cashier', 'Hotel Waiter'],
+    Hotel: ['Hotel Admin', 'Kitchen Admin', 'Hotel Cashier', 'Hotel Waiter'],
 };
 
 const validationSchema = Yup.object({
@@ -114,7 +114,7 @@ const CreateStaffPage = ({ basePath = '/kiosk/user-management' }) => {
                     firstName: staffObj.firstName || '',
                     lastName: staffObj.lastName || '',
                     email: staffObj.email || '',
-                    role: staffObj.role || '',
+                    role: String(staffObj.role || '').replace(/_/g, ' '),
                     username: staffObj.username || '',
                     phoneNumber: staffObj.phone || staffObj.phoneNumber || '',
                 });
@@ -143,7 +143,7 @@ const CreateStaffPage = ({ basePath = '/kiosk/user-management' }) => {
                 username: values.username.trim(),
                 phone: values.phoneNumber.trim(),
                 phoneNumber: values.phoneNumber.trim(),
-                role: values.role,
+                role: values.role.replace(/ /g, '_'),
                 status: 'active',
                 businessId: currentBusiness.id,
                 associatedBusinessId: currentBusiness.id,

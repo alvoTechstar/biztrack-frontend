@@ -21,7 +21,6 @@ import {
   useMediaQuery,
   TextField,
   Alert,
-  CircularProgress,
 } from "@mui/material";
 import {
   BarChart as BarChartIcon,
@@ -36,6 +35,8 @@ import {
   Medication,
 } from "@mui/icons-material";
 import { Line, Doughnut, Bar } from "react-chartjs-2";
+import ContentLoader from "../../../../../components/Loader/ContentLoader";
+import { useTheme as useAppTheme } from "../../../../../components/theme/ThemeContext";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -118,6 +119,7 @@ const mockNewPatients = Array.from({ length: 15 }, (_, i) => ({
 
 const HospitalReports = () => {
   const theme = useTheme();
+  const { primaryColor } = useAppTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isMedium = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -374,8 +376,13 @@ const HospitalReports = () => {
           height: "100vh",
         }}
       >
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Reports...</Typography>
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText="Loading Reports..."
+          loadedText=""
+          color={primaryColor}
+        />
       </Box>
     );
   }

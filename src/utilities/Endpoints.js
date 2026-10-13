@@ -64,6 +64,15 @@ const URLS = {
     DELETE_ITEM: "/api/menu/delete-item/:id",
   },
 
+  // Kitchen stock (ingredients) — per-business inventory
+  INGREDIENTS: {
+    GET_BY_BUSINESS: "/api/ingredients/business/:businessId",
+    CATEGORIES: "/api/ingredients/categories",
+    CREATE: "/api/ingredients",
+    UPDATE: "/api/ingredients/:id",
+    DELETE: "/api/ingredients/:id",
+  },
+
   TRANSACTIONS: {
     CREATE_TRANSACTION: "/api/transactions/create-transaction",
     GET_ALL_TRANSACTIONS: "/api/transactions/get-all-transactions",
@@ -83,6 +92,19 @@ const URLS = {
     GET_TRANSACTION: "/api/mpesa/get-transaction/:transactionId",
     QUERY_STATUS: "/api/mpesa/payment-status/:checkoutRequestId",
     POLL_STATUS: "/api/mpesa/poll-status/:transactionId",
+  },
+
+  // Money out: expenses + staff salary payouts (one pay endpoint handles
+  // both paying a pending payout and recording + paying in a single call)
+  PAYOUTS: {
+    CREATE_PAYOUT: "/api/payouts/create-payout",
+    PAY: "/api/payouts/pay",
+    LIST_BY_BUSINESS: "/api/payouts/get-payouts/:businessId",
+  },
+
+  NOTIFICATIONS: {
+    SEND_RECEIPT: "/api/notifications/send-receipt",
+    SEND_RECEIPT_IMAGE: "/api/notifications/send-receipt-image",
   },
 
   // The sections below are NOT in the backend reference document.

@@ -102,6 +102,7 @@ const Login = () => {
       "Super_Admin": "/dashboard/super-admin",
       "Kiosk_Shopkeeper": "/shopkeeper/sales",
       "Hotel_Cashier": "/dashboard/cashier",
+      "Kitchen_Admin": "/menu-management",
       "Hotel_Waiter": "/dashboard/waiter",
       "Hospital_Receptionist": "/patient/queue",
       "Hospital_Doctor": "/dashboard/doctor",

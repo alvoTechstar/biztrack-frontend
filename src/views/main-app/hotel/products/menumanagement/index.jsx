@@ -10,6 +10,8 @@ import { UtensilsCrossed, CheckCircle, EyeOff, LayoutGrid } from 'lucide-react';
 import MenuControls from './MenuControls';
 import MenuTable from './MenuTable';
 import MenuFormModal from './MenuFormModal';
+import { listIngredients } from '../ingredient-management/ingredientService';
+import { listRecipes, saveRecipe, keyOf } from './recipeService';
 
 // Helper: normalise a backend menu item to local shape
 const toLocal = (p) => ({
@@ -22,6 +24,7 @@ const toLocal = (p) => ({
   available:   p.available !== false,
   image:       p.image || '',
   businessId:  p.businessId,
+  recipe:      Array.isArray(p.recipe) ? p.recipe : [],
 });
 
 const SummaryCard = ({ title, value, icon: Icon, bgColor, textColor }) => (
@@ -49,7 +52,8 @@ const MenuManagement = () => {
   const [menuItems, setMenuItems]   = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
-  const [errorMessage, setErrorMessage]   = useState(null);
+  const [ingredients, setIngredients] = useState([]);
+  const [recipes, setRecipes] = useState({});
 
   // Modal states
   const [showFormModal, setShowFormModal]     = useState(false);
@@ -72,17 +76,31 @@ const MenuManagement = () => {
   const loadMenuItems = useCallback(async () => {
     if (!businessId) { setLoading(false); return; }
     setLoading(true);
-    setErrorMessage(null);
     try {
       const endpoint = URLS.MENU.GET_ITEMS_BY_BUSINESS.replace(':businessId', businessId);
       const res = await GET(endpoint);
       if (res?.success) {
-        setMenuItems((res.items || res.data || []).map(toLocal));
+        const items = (res.items || res.data || []).map(toLocal);
+        setMenuItems(items);
+        // Backend recipes win over the local cache — merge both so the
+        // table and editor see one unified map.
+        const fromItems = {};
+        items.forEach((it) => {
+          if (Array.isArray(it.recipe) && it.recipe.length > 0) {
+            fromItems[keyOf(it.name)] = {
+              menuItemId: it._id || it.id || "",
+              menuItemName: it.name,
+              lines: it.recipe
+                .filter((l) => l && l.ingredientId && Number(l.quantity) > 0)
+                .map((l) => ({ ingredientId: String(l.ingredientId), quantity: Number(l.quantity) })),
+            };
+          }
+        });
+        setRecipes({ ...listRecipes(businessId), ...fromItems });
       } else {
         throw new Error(res?.message || 'Failed to load menu items');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to load menu items');
       showToaster(false, 'Error', err.message || 'Failed to load menu items');
     } finally {
       setLoading(false);
@@ -90,6 +108,12 @@ const MenuManagement = () => {
   }, [businessId, showToaster]);
 
   useEffect(() => { loadMenuItems(); }, [loadMenuItems]);
+
+  // Ingredients + recipes for the recipe editor (local-first, per business)
+  useEffect(() => {
+    if (!businessId) return;
+    listIngredients(businessId).then(setIngredients).catch(() => {});
+  }, [businessId]);
 
   // Categories derived from items
   const categories = useMemo(
@@ -128,24 +152,36 @@ const MenuManagement = () => {
   const handleAddClick = () => {
     setCurrentItem(null);
     setFormMode('add');
-    setErrorMessage(null);
     setShowFormModal(true);
   };
 
   const handleEdit = (item) => {
     setCurrentItem(item);
     setFormMode('edit');
-    setErrorMessage(null);
     setShowFormModal(true);
   };
 
   const closeFormModal = () => {
     setShowFormModal(false);
     setCurrentItem(null);
-    setErrorMessage(null);
   };
 
   // ── CRUD operations ───────────────────────────────────────────
+  const persistRecipe = (itemData) => {
+    try {
+      setRecipes(
+        saveRecipe(businessId, {
+          menuItemId: itemData._id || currentItem?._id || currentItem?.id || "",
+          menuItemName: itemData.name,
+          lines: itemData.recipe || [],
+          prevName: formMode === "edit" ? currentItem?.name : "",
+        })
+      );
+    } catch {
+      // Recipes are local-first; a failure here must not block the save
+    }
+  };
+
   const handleSaveItem = async (itemData) => {
     const payload = { ...itemData, businessId };
     try {
@@ -156,6 +192,7 @@ const MenuManagement = () => {
           setMenuItems((prev) =>
             prev.map((it) => (it._id === itemData._id ? toLocal(res.item || { ...it, ...payload }) : it))
           );
+          persistRecipe(itemData);
           showToaster(true, 'Success', 'Menu item updated successfully');
           closeFormModal();
         } else {
@@ -165,6 +202,7 @@ const MenuManagement = () => {
         const res = await POST(URLS.MENU.CREATE_ITEM, payload);
         if (res?.success) {
           setMenuItems((prev) => [...prev, toLocal(res.item || res.data || payload)]);
+          persistRecipe(itemData);
           showToaster(true, 'Success', 'Menu item added successfully');
           closeFormModal();
         } else {
@@ -172,8 +210,7 @@ const MenuManagement = () => {
         }
       }
     } catch (err) {
-      // Keep the modal open for retry; surface the error inside it
-      setErrorMessage(err.message || 'Something went wrong');
+      // Keep the modal open for retry; surface the error via toaster only
       showToaster(false, 'Error', err.message || 'Something went wrong');
     }
   };
@@ -252,12 +289,6 @@ const MenuManagement = () => {
       </h1>
 
       <div className="bg-white p-2">
-        {errorMessage && !showFormModal && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-            <p className="text-red-800">{errorMessage}</p>
-          </div>
-        )}
-
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ml-2">
           <SummaryCard
@@ -304,6 +335,8 @@ const MenuManagement = () => {
         <div className="ml-2">
           <MenuTable
             items={filteredItems}
+            recipes={recipes}
+            ingredients={ingredients}
             onEditItem={handleEdit}
             onToggleItem={handleToggleAvailability}
             onDeleteItem={handleDeleteClick}
@@ -320,7 +353,8 @@ const MenuManagement = () => {
         onClose={closeFormModal}
         onSave={handleSaveItem}
         categories={categories}
-        errorMessage={showFormModal ? errorMessage : null}
+        ingredients={ingredients}
+        initialRecipe={formMode === "edit" && currentItem ? (recipes[keyOf(currentItem.name)]?.lines || []) : []}
       />
 
       {/* Delete confirmation */}

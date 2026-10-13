@@ -18,6 +18,9 @@ const ROLE_MAP = {
   "biztrack-admin": "biztrack-admin",
   // Add role variants from your routes
   "hotel-cashier": "hotel-cashier",
+  "hotel-kitchen-admin": "hotel-kitchen-admin",
+  "Kitchen_Admin": "hotel-kitchen-admin",
+  "KITCHEN_ADMIN": "hotel-kitchen-admin",
   "hotel-waiter": "hotel-waiter",
   "kiosk-shopkeeper": "kiosk-shopkeeper",
   "hospital-receptionist": "hospital-receptionist",

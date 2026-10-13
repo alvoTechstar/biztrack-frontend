@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Dialog, Fade, styled, Switch, CircularProgress, Box } from "@mui/material";
 import { useFormik } from "formik";
 import * as yup from "yup";
@@ -8,6 +8,7 @@ import SelectInput from "../../../../../components/Input/SelectInput";
 import TextBoxInput from "../../../../../components/Input/TextBoxInput";
 import AppFormButton from "../../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../../components/theme/ThemeContext";
+import { dishCost } from "./recipeService";
 
 const StyledDialog = styled(Dialog)(() => ({
   "& .MuiDialog-paper": {
@@ -75,11 +76,15 @@ export default function MenuFormModal({
   onClose,
   onSave,
   categories = [],
-  errorMessage,
+  ingredients = [],
+  initialRecipe = [],
 }) {
   const { primaryColor } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [recipeLines, setRecipeLines] = useState([]);
+  const [newLineIngredient, setNewLineIngredient] = useState("");
+  const [newLineQty, setNewLineQty] = useState("");
   const fileInputRef = useRef(null);
 
   const modalTitle = mode === "edit" ? "Edit menu item" : "Add menu item";
@@ -125,6 +130,11 @@ export default function MenuFormModal({
           description: String(values.description || "").trim(),
           available: !!values.available,
           image: values.image || "",
+          // Recipe travels with the item for forward-compat; the recipe
+          // store (local, per business) is the source of truth for now.
+          recipe: recipeLines
+            .filter((l) => l.ingredientId && Number(l.quantity) > 0)
+            .map((l) => ({ ingredientId: String(l.ingredientId), quantity: Number(l.quantity) })),
         };
         if (mode === "edit" && values._id) itemData._id = values._id;
         await onSave(itemData);
@@ -133,6 +143,16 @@ export default function MenuFormModal({
       }
     },
   });
+
+  // Recipe lines reset whenever a different item is opened
+  useEffect(() => {
+    if (show) {
+      setRecipeLines((initialRecipe || []).map((l) => ({ ...l })));
+      setNewLineIngredient("");
+      setNewLineQty("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show, item?._id, item?.id, mode]);
 
   const handleImageSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -174,6 +194,21 @@ export default function MenuFormModal({
     onClose();
   };
 
+  // Recipe cost roll-up vs the selling price
+  const ingredientById = useMemo(
+    () => new Map((ingredients || []).map((ing) => [String(ing.id), ing])),
+    [ingredients]
+  );
+  const recipeCost = useMemo(
+    () => dishCost(recipeLines, ingredients),
+    [recipeLines, ingredients]
+  );
+  const dishMargin = useMemo(() => {
+    const price = Number(formik.values.price) || 0;
+    if (recipeCost <= 0 || price <= 0) return null;
+    return ((price - recipeCost) / price) * 100;
+  }, [recipeCost, formik.values.price]);
+
   if (!show) return null;
 
   return (
@@ -195,12 +230,6 @@ export default function MenuFormModal({
 
           {/* Body */}
           <div className="px-6 py-5 overflow-y-auto">
-            {errorMessage && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700 mb-4">
-                {errorMessage}
-              </div>
-            )}
-
             {/* Image upload */}
             <div className="mb-4">
               <div className="mb-1">
@@ -310,6 +339,111 @@ export default function MenuFormModal({
               error={formik.touched.description && Boolean(formik.errors.description)}
               errorMessage={formik.touched.description && formik.errors.description}
             />
+
+            {/* Recipe — ingredients consumed by ONE serving */}
+            <div className="mb-4">
+              <div className="mb-1 flex items-baseline justify-between">
+                <span className="text-[14px] leading-4 font-bold text-[#353f50]">
+                  Recipe <span className="font-normal text-gray-400">· per serving</span>
+                </span>
+                {recipeCost > 0 && (
+                  <span className="text-xs text-gray-500">
+                    Dish cost <span className="font-bold text-gray-700">KSh {recipeCost.toLocaleString()}</span>
+                    {dishMargin !== null && (
+                      <span className={`ml-1 font-semibold ${dishMargin >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        {dishMargin >= 0 ? "+" : ""}{dishMargin.toFixed(0)}%
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+              {ingredients.length === 0 ? (
+                <p className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+                  No ingredients yet — add them in Ingredient Management first, then link them here.
+                </p>
+              ) : (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {recipeLines.length === 0 && (
+                    <p className="px-3 py-2.5 text-xs text-gray-400">
+                      No recipe linked — stock won't auto-deduct for this item.
+                    </p>
+                  )}
+                  {recipeLines.map((line, idx) => {
+                    const ing = ingredientById.get(String(line.ingredientId));
+                    return (
+                      <div key={idx} className="flex items-center gap-2 px-3 py-2">
+                        <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">
+                          {ing ? ing.name : "Unknown ingredient"}
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={line.quantity}
+                          onChange={(e) => {
+                            const next = [...recipeLines];
+                            next[idx] = { ...next[idx], quantity: e.target.value };
+                            setRecipeLines(next);
+                          }}
+                          className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+                          aria-label="Quantity per serving"
+                        />
+                        <span className="text-xs text-gray-400 w-12 shrink-0">{ing?.unit || ""}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRecipeLines(recipeLines.filter((_, i) => i !== idx))}
+                          className="text-red-300 hover:text-red-500 transition-colors shrink-0"
+                          title="Remove from recipe"
+                          aria-label="Remove from recipe"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50">
+                    <select
+                      value={newLineIngredient}
+                      onChange={(e) => setNewLineIngredient(e.target.value)}
+                      className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+                      aria-label="Ingredient to add"
+                    >
+                      <option value="">Add ingredient…</option>
+                      {ingredients
+                        .filter((ing) => !recipeLines.some((l) => String(l.ingredientId) === String(ing.id)))
+                        .map((ing) => (
+                          <option key={ing.id} value={ing.id}>
+                            {ing.name} ({ing.unit}, {Number(ing.quantity).toLocaleString()} in stock)
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={newLineQty}
+                      onChange={(e) => setNewLineQty(e.target.value)}
+                      placeholder="Qty"
+                      className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+                      aria-label="Quantity per serving"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newLineIngredient || !(Number(newLineQty) > 0)) return;
+                        setRecipeLines([...recipeLines, { ingredientId: newLineIngredient, quantity: Number(newLineQty) }]);
+                        setNewLineIngredient("");
+                        setNewLineQty("");
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Availability */}
             <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">

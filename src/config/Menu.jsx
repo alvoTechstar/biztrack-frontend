@@ -40,27 +40,13 @@ export const MENU = [
     path: "/reports",
   },
 
-  // Hotel Admin
+  // Hotel Admin — menu lives with the Kitchen Admin now
   {
     key: "hotel-dashboard",
     title: "Dashboard",
     icon: <DashboardIcon />,
     permissions: ["Hotel Admin"],
     path: "/dashboard/hotel-admin",
-  },
-  {
-    key: "menu-management",
-    title: "Menu Management",
-    icon: <StoreIcon />,
-    permissions: ["Hotel Admin"],
-    path: "/menu-management",
-  },
-  {
-    key: "ingredients",
-    title: "Ingredient Management",
-    icon: <StoreIcon />,
-    permissions: ["Hotel Admin"],
-    path: "/products/ingredient-management",
   },
   {
     key: "hotel-users",
@@ -70,29 +56,15 @@ export const MENU = [
     path: "/staff",
   },
   {
-    key: "staff-payment",
-    title: "Staff Payments",
-    icon: <PeopleIcon />,
-    permissions: ["Hotel Admin"],
-    path: "/staffpayment",
-  },
-  {
-    key: "hotel-orders",
-    title: "All Orders",
+    key: "hotel-transactions",
+    title: "Transactions",
     icon: <ListIcon />,
     permissions: ["Hotel Admin"],
-    path: "/orders/hotel",
-  },
-  {
-    key: "hotel-kitchen",
-    title: "Kitchen Display",
-    icon: <RestaurantIcon />,
-    permissions: ["Hotel Admin"],
-    path: "/hotel/kitchen",
+    path: "/transactions/hotel",
   },
   {
     key: "expenses",
-    title: "Expenses",
+    title: "Expenses & Payouts",
     icon: <AccountBalanceWalletIcon />,
     permissions: ["Hotel Admin"],
     path: "/hotel/expenses",
@@ -112,13 +84,42 @@ export const MENU = [
     icon: <DashboardIcon />,
     permissions: ["Cashier"],
     path: "/dashboard/cashier",
-  },
-  {
+  },  {
     key: "complete-order",
     title: "Process Payments",
     icon: <ListIcon />,
     permissions: ["Cashier"],
     path: "/orders/complete",
+  },
+  {
+    key: "cashier-transactions",
+    title: "Transactions",
+    icon: <ListIcon />,
+    permissions: ["Cashier"],
+    path: "/transactions/hotel",
+  },
+
+  // Kitchen Admin — owns the menu and the kitchen queue
+  {
+    key: "kitchen-menu",
+    title: "Menu Management",
+    icon: <StoreIcon />,
+    permissions: ["Kitchen Admin"],
+    path: "/menu-management",
+  },
+  {
+    key: "kitchen-ingredients",
+    title: "Ingredient Management",
+    icon: <StoreIcon />,
+    permissions: ["Kitchen Admin"],
+    path: "/products/ingredient-management",
+  },
+  {
+    key: "kitchen-display",
+    title: "Kitchen Display",
+    icon: <RestaurantIcon />,
+    permissions: ["Kitchen Admin"],
+    path: "/hotel/kitchen",
   },
 
   // Waiter

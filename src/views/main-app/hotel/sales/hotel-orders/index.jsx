@@ -2,26 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { hotelOrderActions } from "../../../../../store";
 import { Clock, ChevronDown, ChevronUp, CheckCircle, XCircle, ChefHat, Bell, RefreshCw } from "lucide-react";
-import { GET } from "../../../../../services/DatabaseServiceImp";
+import { GET, PUT } from "../../../../../services/DatabaseServiceImp";
 import URLS from "../../../../../utilities/Endpoints";
-
-const STATUS_STYLES = {
-  pending:       "bg-yellow-100 text-yellow-800",
-  "in-progress": "bg-blue-100 text-blue-800",
-  ready:         "bg-purple-100 text-purple-800",
-  served:        "bg-green-100 text-green-800",
-  completed:     "bg-emerald-100 text-emerald-800",
-  cancelled:     "bg-red-100 text-red-800",
-};
-
-const STATUS_LABEL = {
-  pending:       "Pending",
-  "in-progress": "In Progress",
-  ready:         "Ready",
-  served:        "Served",
-  completed:     "Completed",
-  cancelled:     "Cancelled",
-};
+import Toaster from "../../../../../components/Toaster";
+import ContentLoader from "../../../../../components/Loader/ContentLoader";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
+import OrderStatusPill from "../../../../../components/datatable/OrderStatusPill";
 
 const formatKsh = (amount) => `KSh ${Number(amount).toLocaleString()}`;
 
@@ -35,7 +21,7 @@ const elapsed = (iso) => {
   return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
 };
 
-const FILTERS = ["all", "active", "served", "cancelled"];
+const FILTERS = ["all", "active", "served", "completed", "cancelled"];
 
 // Backend transaction items use productName/unitPrice; local ones use name/price
 const normalizeItems = (items = []) =>
@@ -66,6 +52,7 @@ export default function HotelOrders() {
   const dispatch    = useDispatch();
   const currentUser = useSelector((s) => s.auth?.value);
   const orders      = useSelector((state) => state.hotelOrders.orders);
+  const { primaryColor } = useTheme();
 
   const businessId = String(
     currentUser?.businessId || currentUser?.institutionId ||
@@ -75,10 +62,14 @@ export default function HotelOrders() {
   const [activeFilter, setActiveFilter]   = useState("active");
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [refreshing, setRefreshing]       = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [toaster, setToaster] = useState({ open: false, state: "true", title: "", message: "" });
+  const showToaster = (success, title, message) =>
+    setToaster({ open: true, state: success ? "true" : "false", title, message });
 
   // ── Fetch & merge on mount ────────────────────────────────────
   const fetchOrders = useCallback(async () => {
-    if (!businessId) return;
+    if (!businessId) { setLoading(false); return; }
     setRefreshing(true);
     try {
       const endpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS
@@ -91,30 +82,66 @@ export default function HotelOrders() {
         dispatch(hotelOrderActions.mergeOrders(incoming));
       }
     } catch (_) {}
-    finally { setRefreshing(false); }
+    finally { setRefreshing(false); setLoading(false); }
   }, [businessId, dispatch]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
+  // served = food delivered but still OPEN (awaiting payment, cashier closes).
+  // completed = CLOSED by cashier after payment. Only completed is done.
   const filtered = orders.filter((o) => {
     if (activeFilter === "all") return true;
     if (activeFilter === "active") return ["pending", "in-progress", "ready"].includes(o.status);
-    if (activeFilter === "served") return o.status === "served" || o.status === "completed";
+    if (activeFilter === "served") return o.status === "served";
+    if (activeFilter === "completed") return o.status === "completed";
     if (activeFilter === "cancelled") return o.status === "cancelled";
     return true;
   });
 
   const counts = {
     active: orders.filter((o) => ["pending", "in-progress", "ready"].includes(o.status)).length,
-    served: orders.filter((o) => o.status === "served" || o.status === "completed").length,
+    served: orders.filter((o) => o.status === "served").length,
+    completed: orders.filter((o) => o.status === "completed").length,
     cancelled: orders.filter((o) => o.status === "cancelled").length,
   };
 
-  const updateStatus = (id, status) =>
+  // Persist every status change to the backend so kitchen / waiter /
+  // cashier all see the same status. Optimistic update with revert on failure.
+  // served = waiter delivered the food, order stays OPEN (cashier closes it).
+  const updateStatus = async (id, status) => {
+    const order = orders.find((o) => o.id === id);
+    const prevStatus = order?.status;
     dispatch(hotelOrderActions.updateOrderStatus({ id, status }));
+    const backendId = order?.backendId || order?.id;
+    try {
+      if (!backendId) throw new Error("Missing order reference");
+      await PUT(URLS.TRANSACTIONS.UPDATE_TRANSACTION.replace(":id", backendId), { status });
+    } catch {
+      if (prevStatus) dispatch(hotelOrderActions.updateOrderStatus({ id, status: prevStatus }));
+      showToaster(false, "Error", "Could not update status — check connection and retry");
+    }
+  };
 
   return (
     <div className="p-6">
+      {loading ? (
+        <div className="min-h-screen bg-white p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="main-app-view">
+              <div className="main-app-content-container">
+                <ContentLoader
+                  state={true}
+                  loading={true}
+                  loadingText="Loading orders..."
+                  loadedText=""
+                  color={primaryColor}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Hotel Orders</h1>
         <div className="flex items-center gap-3">
@@ -144,6 +171,7 @@ export default function HotelOrders() {
           >
             {f === "active" ? `Active (${counts.active})`
               : f === "served" ? `Served (${counts.served})`
+              : f === "completed" ? `Completed (${counts.completed})`
               : f === "cancelled" ? `Cancelled (${counts.cancelled})`
               : "All"}
           </button>
@@ -208,9 +236,7 @@ export default function HotelOrders() {
                       {formatKsh(total)}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[order.status] || "bg-gray-100 text-gray-500"}`}>
-                        {STATUS_LABEL[order.status] || order.status}
-                      </span>
+                      <OrderStatusPill status={order.status} />
                     </td>
                     <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
                       <div className="flex items-center gap-1">
@@ -275,6 +301,17 @@ export default function HotelOrders() {
             </tbody>
           </table>
         </div>
+      )}
+
+      <Toaster
+        open={toaster.open}
+        state={toaster.state}
+        title={toaster.title}
+        message={toaster.message}
+        action={() => setToaster((prev) => ({ ...prev, open: false }))}
+        position="right"
+      />
+      </>
       )}
     </div>
   );

@@ -73,6 +73,17 @@ export const ROLE_MATRIX = [
       "View profile details and change own password",
     ],
   },
+  {
+    id: 13,
+    role: "Kitchen Admin",
+    permissions: [
+      "Login",
+      "Create and manage menu items (food and drinks)",
+      "Manage ingredients and stock levels",
+      "View kitchen display and order queue",
+      "View profile details and change own password",
+    ],
+  },
 
   // Hospital Management Roles
   {

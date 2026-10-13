@@ -19,7 +19,7 @@ import ActionModal from "../../../../components/modal/ActionModal";
 // the super admin uses when creating users (see CreateUserPage's rolesByType).
 const ROLES_BY_BUSINESS_TYPE = {
   Kiosk: ['Kiosk Admin', 'Kiosk Shopkeeper'],
-  Hotel: ['Hotel Admin', 'Hotel Cashier', 'Hotel Waiter'],
+  Hotel: ['Hotel Admin', 'Kitchen Admin', 'Hotel Cashier', 'Hotel Waiter'],
 };
 
 // Treats "Kiosk_Admin", "Kiosk-Admin" and "Kiosk Admin" as equivalent, so

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Package, Calendar, Filter, Download, Clock, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import DataTable from "../../../../../components/datatable";
+import ContentLoader from "../../../../../components/Loader/ContentLoader";
 import { useTheme } from '../../../../../components/theme/ThemeContext';
 
 // Helper functions
@@ -170,8 +171,13 @@ const KioskTransactionsTable = ({
     if (loading) {
         return (
             <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading transactions...</p>
+                <ContentLoader
+                  state={true}
+                  loading={true}
+                  loadingText="Loading transactions..."
+                  loadedText=""
+                  color={theme.primaryColor}
+                />
             </div>
         );
     }

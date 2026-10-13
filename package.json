@@ -29,6 +29,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "formik": "^2.4.6",
+    "html2canvas": "^1.4.1",
     "js-cookie": "^3.0.5",
     "jsencrypt": "^3.5.4",
     "jspdf": "^3.0.1",

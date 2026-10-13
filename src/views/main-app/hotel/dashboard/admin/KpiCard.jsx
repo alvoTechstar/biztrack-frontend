@@ -1,53 +1,66 @@
-// src/components/KpiCard.jsx
 import React from "react";
-import { Card, CardContent, Box, Typography, Avatar } from "@mui/material";
-import {
-  ArrowUpward as ArrowUpwardIcon,
-  ArrowDownward as ArrowDownwardIcon,
-} from "@mui/icons-material";
 
-const KpiCard = ({ icon, title, value, color, trend = null, onClick }) => {
+const colorStyles = {
+  blue: "from-blue-50 to-blue-100 text-blue-600",
+  green: "from-green-50 to-green-100 text-green-600",
+  purple: "from-purple-50 to-purple-100 text-purple-600",
+  amber: "from-amber-50 to-amber-100 text-amber-600",
+  red: "from-red-50 to-red-100 text-red-600",
+  pink: "from-pink-50 to-pink-100 text-pink-600",
+};
+
+// Same card language as kiosk StatsCard: gradient header + value + day-over-day change.
+// Accepts kiosk-style `change` ("+12.5%") or hotel-style `trend` ({ type: "up"|"down", value }).
+const KpiCard = ({
+  icon,
+  title,
+  value,
+  color = "blue",
+  change,
+  trend = null,
+  footer = "Compared to yesterday",
+  onClick,
+}) => {
+  const colors = colorStyles[color] || colorStyles.blue;
+  const changeText =
+    change ?? (trend ? `${trend.type === "up" ? "+" : "-"}${trend.value}%` : null);
+  const isNegative =
+    typeof changeText === "string" && changeText.trim().startsWith("-");
+
   return (
-    <Card
-      sx={{
-        height: "100%",
-        cursor: onClick ? "pointer" : "default",
-        "&:hover": { boxShadow: onClick ? 6 : 1 },
-      }}
+    <div
+      className={`bg-white rounded-xl shadow-md overflow-hidden h-full${
+        onClick ? " cursor-pointer hover:shadow-lg transition-shadow" : ""
+      }`}
       onClick={onClick}
     >
-      <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box>
-            {/* Typography variants handle font sizing responsively */}
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-              {value}
-            </Typography>
-            {trend && (
-              <Box display="flex" alignItems="center" mt={0.5}>
-                {trend.type === "up" ? (
-                  <ArrowUpwardIcon fontSize="small" color="success" />
-                ) : (
-                  <ArrowDownwardIcon fontSize="small" color="error" />
-                )}
-                <Typography
-                  variant="caption" // Caption variant is small, suitable for small text, adjusts responsively
-                  color={trend.type === "up" ? "success.main" : "error.main"}
-                  ml={0.5}
-                >
-                  {trend.value}% {trend.type === "up" ? "increase" : "decrease"}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          {/* Avatar has fixed size, which is usually fine for icons within a card */}
-          <Avatar sx={{ bgcolor: color, width: 56, height: 56 }}>{icon}</Avatar>
-        </Box>
-      </CardContent>
-    </Card>
+      <div className={`bg-gradient-to-r ${colors} px-4 py-3`}>
+        <div className="flex items-center justify-between gap-2">
+          <h3
+            className="text-sm font-medium text-gray-700 truncate leading-5 min-h-[20px]"
+            title={title}
+          >
+            {title}
+          </h3>
+          <div className={`${colors} shrink-0`}>{icon}</div>
+        </div>
+      </div>
+      <div className="px-5 py-4">
+        <div className="flex items-baseline">
+          <p className="text-2xl font-bold text-gray-800">{value}</p>
+          {changeText && (
+            <span
+              className={`ml-2 text-sm font-medium ${
+                isNegative ? "text-red-600" : "text-green-600"
+              }`}
+            >
+              {changeText}
+            </span>
+          )}
+        </div>
+        {footer && <p className="text-xs text-gray-500 mt-2">{footer}</p>}
+      </div>
+    </div>
   );
 };
 

@@ -3,17 +3,69 @@ import { UtensilsCrossed, PlusCircle } from 'lucide-react';
 import { useTheme } from '../../../../../components/theme/ThemeContext';
 import DataTable from '../../../../../components/datatable';
 import AppFormButton from '../../../../../components/buttons/AppFormButton';
+import { keyOf } from './recipeService';
+import { LOW_STOCK_THRESHOLD } from '../ingredient-management/ingredientService';
 
 const MENU_TABLE_HEADERS = [
   { title: 'Item', key: 'item' },
   { title: 'Category', key: 'categoryDisplay' },
   { title: 'Price', key: 'priceDisplay' },
+  { title: 'Recipe', key: 'recipeDisplay' },
   { title: 'Description', key: 'descriptionDisplay' },
   { title: 'Availability', key: 'availability' },
   { title: 'Action', key: 'action' },
 ];
 
-const MenuTable = ({ items = [], onEditItem, onToggleItem, onDeleteItem, onAddItem }) => {
+// Recipe + stock readiness per dish — the visible end of the
+// menu ↔ recipe ↔ stock integration.
+const recipeStatus = (item, recipes, ingredientById) => {
+  const byName = (recipes || {})[keyOf(item.name)];
+  const recipe = byName || Object.values(recipes || {}).find(
+    (r) => String(r.menuItemId || "") && String(r.menuItemId) === String(item._id || item.id || "")
+  );
+  if (!recipe || recipe.lines.length === 0) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+        No recipe
+      </span>
+    );
+  }
+  const names = [];
+  let out = false;
+  let low = false;
+  recipe.lines.forEach((l) => {
+    const ing = ingredientById.get(String(l.ingredientId));
+    if (!ing) {
+      low = true;
+      names.push("missing ingredient");
+      return;
+    }
+    names.push(`${ing.name} ${l.quantity}${ing.unit}`);
+    const qty = Number(ing.quantity) || 0;
+    if (qty <= 0) out = true;
+    else if (qty <= LOW_STOCK_THRESHOLD) low = true;
+  });
+  const style = out
+    ? "bg-red-100 text-red-700"
+    : low
+      ? "bg-amber-100 text-amber-700"
+      : "bg-green-100 text-green-700";
+  const label = out
+    ? "Out of stock"
+    : low
+      ? "Low stock"
+      : `Ready · ${recipe.lines.length} item${recipe.lines.length !== 1 ? "s" : ""}`;
+  return (
+    <span
+      title={names.join(", ")}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${style}`}
+    >
+      {label}
+    </span>
+  );
+};
+
+const MenuTable = ({ items = [], recipes = {}, ingredients = [], onEditItem, onToggleItem, onDeleteItem, onAddItem }) => {
   const theme = useTheme();
   const safeItems = Array.isArray(items) ? items : [];
 
@@ -65,6 +117,7 @@ const MenuTable = ({ items = [], onEditItem, onToggleItem, onDeleteItem, onAddIt
   };
 
   // Transform only for display — raw data stays intact in safeItems
+  const ingredientById = new Map((ingredients || []).map((ing) => [String(ing.id), ing]));
   const transformedItems = safeItems.map((item) => {
     const itemId = item._id || item.id;
     return {
@@ -89,6 +142,7 @@ const MenuTable = ({ items = [], onEditItem, onToggleItem, onDeleteItem, onAddIt
       ),
       categoryDisplay: item.category || '—',
       priceDisplay: `KSh ${Number(item.price || 0).toLocaleString()}`,
+      recipeDisplay: recipeStatus(item, recipes, ingredientById),
       descriptionDisplay:
         (item.description || '').length > 60
           ? `${item.description.slice(0, 60)}…`

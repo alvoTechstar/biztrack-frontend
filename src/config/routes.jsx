@@ -11,8 +11,8 @@ import CreateOrder from "../views/main-app/hotel/sales/CreateOrder";
 import CompleteOrder from "../views/main-app/hotel/sales/CompleteOrder";
 import MenuManagement from "../views/main-app/hotel/products/menumanagement";
 import IngredientsManagementPage from "../views/main-app/hotel/products/ingredient-management";
-import StaffPayment from "../views/main-app/hotel/User-Management/staff/StaffPayment";
 import HotelOrders from "../views/main-app/hotel/sales/hotel-orders";
+import HotelTransactions from "../views/main-app/hotel/sales/transactions";
 import HotelExpenses from "../views/main-app/hotel/expenses/Hotelexpenses";
 import HotelReports from "../views/main-app/hotel/reports/admin";
 import Dashboard from "../views/main-app/kiosk/dashboard/kioskadmin";
@@ -64,17 +64,17 @@ export const routes = [
 
   // Hotel Admin
   { path: "/dashboard/hotel-admin", element: <HotelAdminDashboard />, isPrivate: true, allowedRoles: ["hotel-admin"] },
-  { path: "/menu-management", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin"] },
-  { path: "/products", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin", "kiosk-admin"] },
-  { path: "/products/ingredient-management", element: <IngredientsManagementPage />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/menu-management", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin", "hotel-kitchen-admin"] },
+  { path: "/products", element: <MenuManagement />, isPrivate: true, allowedRoles: ["hotel-admin", "kiosk-admin", "hotel-kitchen-admin"] },
+  { path: "/products/ingredient-management", element: <IngredientsManagementPage />, isPrivate: true, allowedRoles: ["hotel-admin", "hotel-kitchen-admin"] },
   { path: "/staff", element: <StaffManagementPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/staff/new", element: <CreateStaffPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/staff/:id/edit", element: <CreateStaffPage basePath="/staff" />, isPrivate: true, allowedRoles: ["hotel-admin"] },
-  { path: "/staffpayment", element: <StaffPayment />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/orders/hotel", element: <HotelOrders />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/transactions/hotel", element: <HotelTransactions />, isPrivate: true, allowedRoles: ["hotel-admin", "hotel-cashier"] },
   { path: "/hotel/expenses", element: <HotelExpenses />, isPrivate: true, allowedRoles: ["hotel-admin"] },
   { path: "/hotel/reports", element: <HotelReports />, isPrivate: true, allowedRoles: ["hotel-admin"] },
-  { path: "/hotel/kitchen", element: <KitchenDisplay />, isPrivate: true, allowedRoles: ["hotel-admin"] },
+  { path: "/hotel/kitchen", element: <KitchenDisplay />, isPrivate: true, allowedRoles: ["hotel-admin", "hotel-kitchen-admin"] },
 
   // Cashier
   { path: "/dashboard/cashier", element: <CashierDashboard />, isPrivate: true, allowedRoles: ["hotel-cashier"] },

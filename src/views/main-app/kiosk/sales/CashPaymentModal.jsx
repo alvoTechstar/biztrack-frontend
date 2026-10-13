@@ -3,6 +3,7 @@ import Modal from "../../../../components/modal/Modal";
 import TextInput from "../../../../components/Input/TextInput";
 import AppFormButton from "../../../../components/buttons/AppFormButton";
 import { useTheme } from "../../../../components/theme/ThemeContext";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
 import SuccessModal from "../../../../components/modal/SuccessModal";
 import FailureModal from "../../../../components/modal/FailureModal";
 import { CheckCircle, AlertTriangle } from "lucide-react";
@@ -19,6 +20,11 @@ const CashPaymentModal = ({
   submitting = false,
   isDebtPayment = false,
   onPaymentComplete,
+  // When true, skip the internal success screen (amount / reference /
+  // countdown) and notify the parent immediately so it can move straight to
+  // the next step (e.g. the hotel receipt share sheet). Defaults to false so
+  // existing kiosk/debt flows are unchanged.
+  skipSuccessScreen = false,
   // Props for internal SuccessModal
   successModalCustomMessage,
   successModalConfirmButtonText,
@@ -95,6 +101,13 @@ const CashPaymentModal = ({
           }
         }
 
+        // Skip the internal success screen when the parent wants to move
+        // straight on (e.g. hotel receipt share sheet).
+        if (skipSuccessScreen) {
+          onClose(true);
+          return;
+        }
+
         // Show success modal for both regular and debt payments
         setReceiptNumber(receipt);
         setPaymentStatus('completed');
@@ -146,23 +159,17 @@ const CashPaymentModal = ({
 
   // Render loading state
   const renderProcessingView = () => (
-    <div className="space-y-6 p-4 text-center">
-      <div className="animate-pulse">
-        <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-4">
-          <CheckCircle className="h-10 w-10 text-green-500" />
-        </div>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          Processing Cash Payment
-        </h3>
-        <p className="text-gray-600">
-          Please wait while we complete your transaction...
-        </p>
-      </div>
-      <div className="flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-      </div>
+    <div className="space-y-4 p-4 text-center">
+      <ContentLoader
+        state={true}
+        loading={true}
+        loadingText="Processing cash payment..."
+        loadedText=""
+        color={PrimaryColor}
+      />
+      <p className="text-gray-600 text-sm">
+        Please wait while we complete your transaction...
+      </p>
     </div>
   );
 

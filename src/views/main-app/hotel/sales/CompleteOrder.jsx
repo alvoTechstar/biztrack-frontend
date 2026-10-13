@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { hotelOrderActions } from "../../../../store";
-import { RefreshCw, Printer, ShoppingCart, CheckCircle, Clock, DollarSign, Smartphone, StickyNote } from "lucide-react";
+import { RefreshCw, Printer, ShoppingCart, CheckCircle, Clock, DollarSign, Smartphone, StickyNote, Share2 } from "lucide-react";
 import { GET, PUT, POST } from "../../../../services/DatabaseServiceImp";
 import URLS from "../../../../utilities/Endpoints";
 import DataTable from "../../../../components/datatable";
@@ -13,8 +13,12 @@ import CashPaymentModal from "../../kiosk/sales/CashPaymentModal";
 import MpesaPaymentModal from "../../kiosk/sales/MpesaPaymentModal";
 import ContentLoader from "../../../../components/Loader/ContentLoader";
 import Toaster from "../../../../components/Toaster";
+import ReceiptShareModal from "../../../../components/receipt/ReceiptShareModal";
+import ReceiptCard from "../../../../components/receipt/ReceiptCard";
+import { captureReceiptImage, shareReceiptImage } from "../../../../utilities/receiptShare";
 import { useTheme } from "../../../../components/theme/ThemeContext";
 import { printOrderReceipt } from "../../../../utilities/ReceiptPrinter";
+import { consumeOrderStock } from "../products/menumanagement/recipeService";
 
 const formatKsh = (amount) => `KSh ${Number(amount || 0).toLocaleString()}`;
 
@@ -32,6 +36,8 @@ const normalizeItems = (items = []) =>
     price: Number(it.unitPrice ?? it.price) || 0,
     category: it.category || "",
     image: it.image || "",
+    productId: it.productId || it.menuItemId || "",
+    menuItemId: it.menuItemId || it.productId || "",
   }));
 
 // Transform a backend hotel_order transaction into the Redux order shape
@@ -51,14 +57,11 @@ const toReduxOrder = (t) => ({
   updatedAt: t.updatedAt,
 });
 
-const STATUS_PILL = {
-  pending: "bg-amber-100 text-amber-700",
-  "in-progress": "bg-blue-100 text-blue-700",
-  ready: "bg-purple-100 text-purple-700",
-  served: "bg-teal-100 text-teal-700",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-};
+import OrderStatusPill, {
+  ORDER_STATUS_META,
+  ORDER_STATUS_ORDER,
+} from "../../../../components/datatable/OrderStatusPill";
+import PaymentChannelPill from "../../../../components/datatable/PaymentChannelPill";
 
 const ORDERS_TABLE_HEADERS = [
   { title: "Order ID", key: "orderNo" },
@@ -66,6 +69,7 @@ const ORDERS_TABLE_HEADERS = [
   { title: "Waiter", key: "waiterDisplay" },
   { title: "Items", key: "itemsDisplay" },
   { title: "Total", key: "totalDisplay" },
+  { title: "Payment", key: "paymentDisplay" },
   { title: "Time", key: "timeDisplay" },
   { title: "Status", key: "statusPill" },
   { title: "Action", key: "action" },
@@ -99,7 +103,7 @@ const isToday = (iso) => {
 
 export default function CompleteOrder() {
   const dispatch = useDispatch();
-  const { primaryColor, businessName } = useTheme();
+  const { primaryColor, businessName, logoUrl } = useTheme();
   const reduxOrders = useSelector((state) => state.hotelOrders.orders);
   const currentUser = useSelector((state) => state.auth?.value);
 
@@ -109,7 +113,7 @@ export default function CompleteOrder() {
   const cashierName =
     currentUser?.name || currentUser?.firstName || currentUser?.username || "Cashier";
 
-  // ── Filters ───────────────────────────────────────────────────
+  // ── Filters (date filter off by default — table lists all orders) ─
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [dateRange, setDateRange] = useState(null);
@@ -127,6 +131,36 @@ export default function CompleteOrder() {
   const [amountPaid, setAmountPaid] = useState("");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Paid order awaiting receipt share (WhatsApp / image / print)
+  const [receiptOrder, setReceiptOrder] = useState(null);
+
+  // View-modal receipt preview refs + share state
+  const viewCardRef = useRef(null);
+  const [sharingView, setSharingView] = useState(false);
+  const [viewNotice, setViewNotice] = useState(null);
+
+  const handleShareViewReceipt = async () => {
+    if (!viewOrder) return;
+    setSharingView(true);
+    setViewNotice(null);
+    try {
+      const file = await captureReceiptImage(viewCardRef.current, viewOrder.id);
+      const result = await shareReceiptImage(file);
+      setViewNotice({
+        ok: true,
+        text:
+          result === "shared"
+            ? "Pick WhatsApp in the share options to send the receipt image."
+            : "Receipt image downloaded — attach it in the customer's WhatsApp chat.",
+      });
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        setViewNotice({ ok: false, text: err?.message || "Could not share the receipt image." });
+      }
+    } finally {
+      setSharingView(false);
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -163,7 +197,7 @@ export default function CompleteOrder() {
     return () => clearInterval(id);
   }, [fetchOrders]);
 
-  // ── Filtering ─────────────────────────────────────────────────
+  // ── Filtering (table lists all orders with their statuses) ──
   const filteredOrders = useMemo(() => {
     let list = [...reduxOrders];
 
@@ -179,19 +213,13 @@ export default function CompleteOrder() {
 
     if (selectedItems.length > 0) {
       const statusSel = selectedItems.filter((s) =>
-        ["Pending", "Completed", "Cancelled"].includes(s)
+        ORDER_STATUS_ORDER.includes(s)
       );
       const paySel = selectedItems.filter((s) => ["Cash", "M-Pesa"].includes(s));
 
       list = list.filter((o) => {
         const statusOk =
-          statusSel.length === 0 ||
-          statusSel.some((s) => {
-            if (s === "Pending") return ["pending", "in-progress", "ready", "served"].includes(o.status);
-            if (s === "Completed") return o.status === "completed";
-            if (s === "Cancelled") return o.status === "cancelled";
-            return false;
-          });
+          statusSel.length === 0 || statusSel.includes(o.status);
         const payOk =
           paySel.length === 0 ||
           paySel.some((p) => {
@@ -203,7 +231,7 @@ export default function CompleteOrder() {
       });
     }
 
-    if (dateRange?.startDate && dateRange?.endDate) {
+    if (dateFilterOn && dateRange?.startDate && dateRange?.endDate) {
       const start = parseDMY(dateRange.startDate);
       const end = parseDMY(dateRange.endDate);
       end.setHours(23, 59, 59, 999);
@@ -213,8 +241,10 @@ export default function CompleteOrder() {
       });
     }
 
-    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [reduxOrders, searchTerm, selectedItems, dateRange]);
+    return list.sort(
+      (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+    );
+  }, [reduxOrders, searchTerm, selectedItems, dateRange, dateFilterOn]);
 
   // ── Table rows ────────────────────────────────────────────────
   const tableRows = filteredOrders.map((o) => {
@@ -234,16 +264,9 @@ export default function CompleteOrder() {
         <span className="text-gray-600">{itemsSummary || "—"}</span>
       ),
       totalDisplay: <span className="font-semibold">{formatKsh(o.total)}</span>,
+      paymentDisplay: <PaymentChannelPill method={o.paymentMethod} />,
       timeDisplay: o.createdAt ? formatDateTime(o.createdAt) : "—",
-      statusPill: (
-        <span
-          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
-            STATUS_PILL[o.status] || "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {o.status}
-        </span>
-      ),
+      statusPill: <OrderStatusPill status={o.status} />,
       availableActions: awaitingPayment ? ["view", "pay"] : ["view"],
     };
   });
@@ -253,6 +276,7 @@ export default function CompleteOrder() {
     if (!order) return;
     if (action.toLowerCase() === "view") {
       setViewOrder(order);
+      setViewNotice(null);
     } else if (action.toLowerCase() === "pay") {
       setPayOrder(order);
       setAmountPaid("");
@@ -261,7 +285,10 @@ export default function CompleteOrder() {
     }
   };
 
-  // ── Payment ───────────────────────────────────────────────────
+  // ── Payment = CLOSE ─────────────────────────────────────────
+  // Taking payment is what closes the order (completed). Kitchen "serve"
+  // only means the waiter delivered the food — the order stays OPEN
+  // (served, awaiting payment) until the cashier completes it here.
   const completeOnBackend = async (order, method, paid) => {
     const backendId = order.backendId || order.id;
     const completedAt = new Date().toISOString();
@@ -289,6 +316,8 @@ export default function CompleteOrder() {
           paymentMethod: "cash",
         })
       );
+      // Stock auto-deduct — fire-and-forget, never blocks the payment
+      consumeOrderStock(businessId, payOrder.items);
       return {
         success: true,
         change: Math.max(0, paid - payOrder.total),
@@ -351,6 +380,8 @@ export default function CompleteOrder() {
         paymentMethod: "mpesa",
       })
     );
+    // Stock auto-deduct — fire-and-forget, never blocks the payment
+    consumeOrderStock(businessId, payOrder.items);
   };
 
   const closePaymentFlow = (success) => {
@@ -359,22 +390,22 @@ export default function CompleteOrder() {
     setShowMpesaModal(false);
     setShowPayOptions(false);
     if (success) {
-      showToaster(true, "Payment complete", `Order ${payOrder?.id} has been paid`);
-      // Auto-print the paid receipt so the waiter can take it to the table
+      // Open the receipt share sheet so the cashier can send the receipt to
+      // the customer's WhatsApp (as image or text), download it, or print it.
       if (payOrder) {
         const paid = method === "cash"
           ? Number.parseFloat(amountPaid) || payOrder.total
           : payOrder.total;
-        printOrderReceipt(
-          {
-            ...payOrder,
-            status: "completed",
-            paymentMethod: method,
-            amountPaid: paid,
-            change: Math.max(0, paid - payOrder.total),
-          },
-          { businessName, businessTagline: "Restaurant", variant: "receipt" }
-        );
+        setReceiptOrder({
+          ...payOrder,
+          status: "completed",
+          paymentMethod: method,
+          amountPaid: paid,
+          change: Math.max(0, paid - payOrder.total),
+          // M-Pesa already knows the customer number — the receipt sheet
+          // prefills it so the cashier just taps Send. Cash stays blank.
+          customerPhone: method === "mpesa" ? formatPhone(mpesaPhone) : "",
+        });
       }
       fetchOrders();
     }
@@ -390,7 +421,7 @@ export default function CompleteOrder() {
     });
   };
 
-  // ── Stats ─────────────────────────────────────────────────────
+  // ── Stats: open (awaiting payment, incl. served) vs closed ──
   const awaitingCount = reduxOrders.filter((o) =>
     ["pending", "in-progress", "ready", "served"].includes(o.status)
   ).length;
@@ -422,7 +453,12 @@ export default function CompleteOrder() {
   return (
     <div className="min-h-screen bg-white p-2">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6 p-2">
-        <h1 className="text-2xl font-bold text-gray-800">Complete Orders</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Complete Orders</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Served orders stay open until you take payment here — payment closes the order.
+          </p>
+        </div>
         <button
           onClick={fetchOrders}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
@@ -434,14 +470,14 @@ export default function CompleteOrder() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 ml-2">
         <SummaryCard
-          title="Awaiting payment"
+          title="Awaiting payment · open"
           value={awaitingCount}
           icon={Clock}
           bgColor="bg-amber-50"
           textColor="text-amber-600"
         />
         <SummaryCard
-          title="Completed today"
+          title="Completed today · closed"
           value={completedToday.length}
           icon={CheckCircle}
           bgColor="bg-green-50"
@@ -486,11 +522,10 @@ export default function CompleteOrder() {
           <FilterInput
             color={primaryColor}
             label="advanced-filter"
-            filters={[
-              { label: "Pending", value: "Pending" },
-              { label: "Completed", value: "Completed" },
-              { label: "Cancelled", value: "Cancelled" },
-            ]}
+            filters={ORDER_STATUS_ORDER.map((s) => ({
+              label: ORDER_STATUS_META[s].label,
+              value: s,
+            }))}
             filters2={[
               { label: "Cash", value: "Cash" },
               { label: "M-Pesa", value: "M-Pesa" },
@@ -509,8 +544,13 @@ export default function CompleteOrder() {
         </div>
       </div>
 
-      {/* Orders table */}
+      {/* Orders table — all orders with their statuses */}
       <div className="ml-2 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+        <div className="px-4 pt-3 text-sm text-gray-500">
+          {dateFilterOn && dateRange?.startDate && dateRange?.endDate
+            ? `Showing orders for ${dateRange.startDate} to ${dateRange.endDate}`
+            : "Showing all orders"}
+        </div>
         <DataTable
           data={tableRows}
           headers={ORDERS_TABLE_HEADERS}
@@ -528,23 +568,26 @@ export default function CompleteOrder() {
 
       {/* ── View order modal ── */}
       {viewOrder && (
-        <Modal isOpen={true} onClose={() => setViewOrder(null)} title={`Order ${viewOrder.id}`}>
+        <Modal isOpen={true} onClose={() => { setViewOrder(null); setViewNotice(null); }} title={`Order ${viewOrder.id}`}>
+          {/* Receipt preview (same card that gets shared as an image) */}
+          <div className="flex justify-center rounded-xl bg-gray-100 border border-gray-200 p-4 mb-3 overflow-x-auto max-h-[50vh] overflow-y-auto">
+            <div className="shadow-lg rounded-[16px] shrink-0">
+              <ReceiptCard
+                ref={viewCardRef}
+                order={viewOrder}
+                businessName={businessName}
+                businessTagline="Restaurant"
+                businessLogo={logoUrl}
+                accent={primaryColor}
+                paid={viewOrder.status === "completed"}
+              />
+            </div>
+          </div>
+
           <div className="space-y-3 p-2">
             <div className="row flex justify-between text-sm">
-              <span className="text-gray-500">Table</span>
-              <span className="font-semibold">{viewOrder.tableNumber}</span>
-            </div>
-            <div className="row flex justify-between text-sm">
-              <span className="text-gray-500">Waiter</span>
-              <span className="font-semibold">{viewOrder.waiter || "—"}</span>
-            </div>
-            <div className="row flex justify-between text-sm">
-              <span className="text-gray-500">Time</span>
-              <span>{viewOrder.createdAt ? formatDateTime(viewOrder.createdAt) : "—"}</span>
-            </div>
-            <div className="row flex justify-between text-sm">
               <span className="text-gray-500">Status</span>
-              <span className="capitalize font-semibold">{viewOrder.status}</span>
+              <OrderStatusPill status={viewOrder.status} />
             </div>
             {viewOrder.paymentMethod && (
               <div className="row flex justify-between text-sm">
@@ -553,53 +596,55 @@ export default function CompleteOrder() {
               </div>
             )}
 
-            <div className="line border-t border-dashed border-gray-300 my-2" />
-
-            <div className="space-y-1.5">
-              {(viewOrder.items || []).map((item, i) => (
-                <div key={i} className="row flex justify-between text-sm">
-                  <span>
-                    {item.quantity}× {item.name}
-                  </span>
-                  <span>{formatKsh(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="line border-t border-dashed border-gray-300 my-2" />
-
-            <div className="row flex justify-between text-base font-bold">
-              <span>Total</span>
-              <span>{formatKsh(viewOrder.total)}</span>
-            </div>
-
             {viewOrder.note && (
               <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1.5 flex items-start gap-1.5">
                 <StickyNote size={13} className="shrink-0 mt-0.5" />
                 {viewOrder.note}
               </p>
             )}
+
+            {viewNotice && (
+              <p
+                className={`text-xs font-medium rounded-lg px-3 py-2 ${
+                  viewNotice.ok
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
+                {viewNotice.text}
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-3 p-2 pt-3">
+          <div className="flex gap-3 p-2 pt-3 flex-wrap">
             <button
               onClick={() => printReceipt(viewOrder)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors min-w-[130px]"
             >
               <Printer size={15} />
               {viewOrder.status === "completed" ? "Print receipt" : "Print bill"}
+            </button>
+            <button
+              onClick={handleShareViewReceipt}
+              disabled={sharingView}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 min-w-[130px]"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Share2 size={15} />
+              {sharingView ? "Sharing…" : "Share image"}
             </button>
             {["pending", "in-progress", "ready", "served"].includes(viewOrder.status) && (
               <button
                 onClick={() => {
                   const order = viewOrder;
                   setViewOrder(null);
+                  setViewNotice(null);
                   setPayOrder(order);
                   setAmountPaid("");
                   setMpesaPhone("");
                   setShowPayOptions(true);
                 }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90 min-w-[130px]"
                 style={{ backgroundColor: primaryColor }}
               >
                 <ShoppingCart size={15} /> Take payment
@@ -650,6 +695,7 @@ export default function CompleteOrder() {
           formatCurrency={formatKsh}
           shopkeeperName={cashierName}
           submitting={submitting}
+          skipSuccessScreen
         />
       )}
 
@@ -667,8 +713,23 @@ export default function CompleteOrder() {
           shopkeeperName={cashierName}
           validatePhone={validatePhone}
           transactionId={payOrder.id}
+          skipSuccessScreen
         />
       )}
+
+      {/* ── Receipt share sheet (WhatsApp direct send, image, print) ── */}
+      <ReceiptShareModal
+        open={!!receiptOrder}
+        onClose={() => setReceiptOrder(null)}
+        order={receiptOrder}
+        businessName={businessName}
+        businessTagline="Restaurant"
+        businessLogo={logoUrl}
+        accent={primaryColor}
+        businessId={businessId}
+        initialPhone={receiptOrder?.customerPhone || ""}
+        onPrint={printReceipt}
+      />
 
       <Toaster
         open={toaster.open}

@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Menu, Bell } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import Cookies from "js-cookie";
 import ProfilePopper from "./ProfilePopperr";
 import { useTheme } from "../theme/ThemeContext";
 import { authActions } from "../../store";
+import URLS from "../../utilities/Endpoints";
+
+const DEFAULT_LOGO = "https://biztrack-backend-ifjk.onrender.com/assets/biztrack-logo.png";
+const BACKEND_URL = URLS.TAG_BASE_URL || "http://localhost:3000";
 
 export default function Topbar({ toggleSidebar, openProfile }) {
   const user = useSelector((state) => state.auth.value);
@@ -51,6 +55,49 @@ export default function Topbar({ toggleSidebar, openProfile }) {
     return role.replace(/[-_]/g, " ");
   };
 
+  // Business logo — same resolution as the sidebar used to do:
+  // user logo → business logo → theme logo → fallback.
+  const displayLogo = useMemo(() => {
+    const normalizeLogoUrl = (url) => {
+      if (!url || typeof url !== 'string') return null;
+      url = url.trim();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      if (url.startsWith('/assets/logos/')) {
+        return `${BACKEND_URL}${url}`;
+      }
+      if (url && url.includes('.')) {
+        const cleanFilename = url.replace(/^\//, '');
+        const hasExtension = /\.(jpg|jpeg|png|gif|svg|webp|bmp)$/i.test(cleanFilename);
+        if (hasExtension) {
+          return `${BACKEND_URL}/assets/logos/${cleanFilename}`;
+        }
+      }
+      if (url.startsWith('/')) {
+        return `${BACKEND_URL}${url}`;
+      }
+      return null;
+    };
+    if (user?.logo) {
+      const normalizedUrl = normalizeLogoUrl(user.logo);
+      if (normalizedUrl) return normalizedUrl;
+    }
+    if (user?.businessLogo) {
+      const normalizedUrl = normalizeLogoUrl(user.businessLogo);
+      if (normalizedUrl) return normalizedUrl;
+    }
+    if (logoUrl) {
+      const normalizedUrl = normalizeLogoUrl(logoUrl);
+      if (normalizedUrl) return normalizedUrl;
+    }
+    if (user?.logoUrl) {
+      const normalizedUrl = normalizeLogoUrl(user.logoUrl);
+      if (normalizedUrl) return normalizedUrl;
+    }
+    return DEFAULT_LOGO;
+  }, [user?.logo, user?.businessLogo, user?.logoUrl, logoUrl]);
+
   // Get business name from user data
   const businessName = user?.businessName || user?.organization || "My Business";
   const businessType = user?.businessType || user?.organizationType || "";
@@ -60,13 +107,24 @@ export default function Topbar({ toggleSidebar, openProfile }) {
 
   return (
     <header
-      className="shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10"
+      className="h-16 shrink-0 w-full shadow-sm px-4 flex items-center justify-between sticky top-0 z-10"
       style={{ backgroundColor: primaryColor || "#6f42c1" }}
     >
-      <div className="flex items-center gap-3">
-        <button className="mr-1 text-white lg:hidden" onClick={toggleSidebar}>
+      <div className="flex items-center gap-3 min-w-0">
+        <button className="mr-1 text-white lg:hidden shrink-0" onClick={toggleSidebar}>
           <Menu size={24} />
         </button>
+
+        {/* Business logo */}
+        <img
+          src={displayLogo}
+          alt="Business Logo"
+          className="h-8 w-auto object-contain max-w-[140px] shrink-0"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = DEFAULT_LOGO;
+          }}
+        />
 
         {/* Simple Business Name | Business Type on LEFT */}
         <div className="flex items-center text-white">

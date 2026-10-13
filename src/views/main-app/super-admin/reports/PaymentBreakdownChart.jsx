@@ -21,7 +21,15 @@ const PAYMENT_METHOD_CONFIG = {
 // Colors for chart segments - MPesa (green) and Cash (orange)
 const PIE_COLORS = ['#10B981', '#F59E0B'];
 
-const PaymentBreakdownChart = ({ transactions, title = "Commission Split by Payment Method" }) => {
+const PaymentBreakdownChart = ({
+  transactions,
+  title = "Commission Split by Payment Method",
+  subtitle = "Distribution of commissions between MPesa and Cash payments",
+  // Share of each transaction counted here. Super-admin reports pass the
+  // default 0.05 (5% commission); hotel reports pass 1 for full sales revenue.
+  commissionRate = 0.05,
+  totalLabel = "Total Commission",
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -42,9 +50,9 @@ const PaymentBreakdownChart = ({ transactions, title = "Commission Split by Paym
       const status = (transaction?.status || '').toLowerCase();
       if (status !== 'completed') return;
 
-      // Calculate commission (5% of total amount)
+      // Share of the transaction counted here (commission or full sales)
       const totalAmount = parseFloat(transaction?.totalAmount || transaction?.amount || 0);
-      const commission = totalAmount * 0.05;
+      const commission = totalAmount * commissionRate;
 
       // Get payment method from transaction
       const paymentMethod = (
@@ -85,7 +93,7 @@ const PaymentBreakdownChart = ({ transactions, title = "Commission Split by Paym
 
     // Sort by value descending
     return result.sort((a, b) => b.value - a.value);
-  }, [transactions]);
+  }, [transactions, commissionRate]);
 
   // Calculate total commission
   const totalCommission = useMemo(() => {
@@ -193,7 +201,7 @@ const PaymentBreakdownChart = ({ transactions, title = "Commission Split by Paym
           style={{ fontSize: smallFontSize }}
           fill="#6B7280"
         >
-          {isMobile ? 'Total' : 'Total Commission'}
+          {isMobile ? 'Total' : totalLabel}
         </text>
       </g>
     );
@@ -219,7 +227,7 @@ const PaymentBreakdownChart = ({ transactions, title = "Commission Split by Paym
           className="text-gray-500"
           sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
         >
-          {isMobile ? 'MPesa vs Cash' : 'Distribution of commissions between MPesa and Cash payments'}
+          {isMobile ? 'MPesa vs Cash' : subtitle}
         </Typography>
       </div>
 

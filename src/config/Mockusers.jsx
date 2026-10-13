@@ -63,6 +63,15 @@ export const MockUsers = [
     associatedBusinessId: 'biz-hotel-grandhyatt' // Same business as Hotel Admin
   },
   {
+    id: 'user-kitchen-admin',
+    email: "kitchen@biztrack.com",
+    password: "Kitchen123!",
+    role: "Kitchen_Admin",
+    name: "Chef Otieno",
+    phoneNumber: "0711000013",
+    associatedBusinessId: 'biz-hotel-grandhyatt' // Same business as Hotel Admin
+  },
+  {
     id: 'user-kiosk-admin',
     email: "kioskadmin@biztrack.com",
     password: "Kiosk123!",

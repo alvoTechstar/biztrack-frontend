@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader, Smartphone, Clock, X } from "lucide-react";
+import { Smartphone, Clock, X } from "lucide-react";
 import Modal from "../../../../components/modal/Modal";
 import TextInput from "../../../../components/Input/TextInput";
 import AppFormButton from "../../../../components/buttons/AppFormButton";
@@ -7,6 +7,7 @@ import { useTheme } from "../../../../components/theme/ThemeContext";
 import URLS from "../../../../utilities/Endpoints";
 import SuccessModal from "../../../../components/modal/SuccessModal";
 import FailureModal from "../../../../components/modal/FailureModal";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
 
 const MpesaPaymentModal = ({
   isOpen,
@@ -22,6 +23,11 @@ const MpesaPaymentModal = ({
   onTransactionCreated,
   transactionId,
   isDebtPayment = false,
+  // When true, skip the internal success screen (amount / reference /
+  // countdown) and notify the parent immediately so it can move straight to
+  // the next step (e.g. the hotel receipt share sheet). Defaults to false so
+  // existing kiosk/debt flows are unchanged.
+  skipSuccessScreen = false,
   paymentType = 'TILL',
   paymentInfo = {},
   successModalCustomMessage,
@@ -157,9 +163,6 @@ const MpesaPaymentModal = ({
                 transactionId: currentTransactionId
               });
 
-              // Show success modal
-              setShowSuccessModal(true);
-
               // Call onPaymentComplete to update the transaction record
               if (onPaymentComplete) {
                 await onPaymentComplete({
@@ -173,6 +176,15 @@ const MpesaPaymentModal = ({
                   isDebtPayment: isDebtPayment,
                   checkoutRequestId: checkoutRequestId
                 });
+              }
+
+              // Skip the internal success screen when the parent wants to
+              // move straight on (e.g. hotel receipt share sheet).
+              if (skipSuccessScreen) {
+                handleClose(true);
+              } else {
+                // Show success modal
+                setShowSuccessModal(true);
               }
             }
             break;
@@ -249,8 +261,6 @@ const MpesaPaymentModal = ({
         transactionId: currentTransactionId
       });
 
-      setShowSuccessModal(true);
-
       if (onPaymentComplete) {
         await onPaymentComplete({
           transactionId: currentTransactionId,
@@ -261,6 +271,12 @@ const MpesaPaymentModal = ({
           source: 'direct_query',
           isDebtPayment: isDebtPayment
         });
+      }
+
+      if (skipSuccessScreen) {
+        handleClose(true);
+      } else {
+        setShowSuccessModal(true);
       }
     } else {
       setPaymentStatus('failed');
@@ -508,21 +524,14 @@ const MpesaPaymentModal = ({
   );
 
   const renderSendingView = () => (
-    <div className="space-y-6 p-4 text-center">
-      <div className="animate-pulse">
-        <Smartphone className="h-16 w-16 mx-auto text-blue-500" />
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          Sending {paymentType} Request
-        </h3>
-        <p className="text-gray-600">
-          Sending payment request to {mpesaPhone}...
-        </p>
-      </div>
-      <div className="flex justify-center">
-        <Loader className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
+    <div className="space-y-4 p-4 text-center">
+      <ContentLoader
+        state={true}
+        loading={true}
+        loadingText={`Sending ${paymentType} request to ${mpesaPhone}...`}
+        loadedText=""
+        color={PrimaryColor}
+      />
     </div>
   );
 
@@ -560,13 +569,14 @@ const MpesaPaymentModal = ({
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Loader className="h-4 w-4 animate-spin text-blue-600" />
-          <span className="text-sm font-medium text-blue-700">
-            Checking payment status...
-          </span>
-        </div>
-        <p className="text-xs text-blue-600">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText="Checking payment status..."
+          loadedText=""
+          color={PrimaryColor}
+        />
+        <p className="text-xs text-blue-600 mt-1">
           Last checked: {lastPollTime || 'Just now'}
         </p>
         {currentTransactionId && (

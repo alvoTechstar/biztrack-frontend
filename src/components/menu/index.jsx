@@ -2,68 +2,13 @@ import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { MENU } from "../../config/Menu";
-import { X } from "lucide-react";
 import { useTheme } from "../theme/ThemeContext";
 import { normalizeRole } from "../../utilities/Sharedfunctions.jsx";
-import URLS from "../../utilities/Endpoints";
-
-// const DEFAULT_LOGO = "http://localhost:3000/assets/biztrack-logo.png";  
-const DEFAULT_LOGO = "https://biztrack-backend-ifjk.onrender.com/assets/biztrack-logo.png";  
-const BACKEND_URL = URLS.TAG_BASE_URL || "http://localhost:3000";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const user = useSelector((state) => state.auth.value);
   const location = useLocation();
-  const { logoUrl, primaryColor } = useTheme();
-
-  const displayLogo = useMemo(() => {
-    const normalizeLogoUrl = (url) => {
-      if (!url || typeof url !== 'string') return null;
-      url = url.trim();
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
-      }
-      if (url.startsWith('/assets/logos/')) {
-        return `${BACKEND_URL}${url}`;
-      }
-      if (url && url.includes('.')) {
-        const cleanFilename = url.replace(/^\//, '');
-        const hasExtension = /\.(jpg|jpeg|png|gif|svg|webp|bmp)$/i.test(cleanFilename);
-        if (hasExtension) {
-          return `${BACKEND_URL}/assets/logos/${cleanFilename}`;
-        }
-      }
-      if (url.startsWith('/')) {
-        return `${BACKEND_URL}${url}`;
-      }
-      return null;
-    };
-    if (user?.logo) {
-      const normalizedUrl = normalizeLogoUrl(user.logo);
-      if (normalizedUrl) {
-        return normalizedUrl;
-      }
-    }
-    if (user?.businessLogo) {
-      const normalizedUrl = normalizeLogoUrl(user.businessLogo);
-      if (normalizedUrl) {
-        return normalizedUrl;
-      }
-    }
-    if (logoUrl) {
-      const normalizedUrl = normalizeLogoUrl(logoUrl);
-      if (normalizedUrl) {
-        return normalizedUrl;
-      }
-    }
-    if (user?.logoUrl) {
-      const normalizedUrl = normalizeLogoUrl(user.logoUrl);
-      if (normalizedUrl) {
-        return normalizedUrl;
-      }
-    }
-    return DEFAULT_LOGO;
-  }, [user?.logo, user?.businessLogo, user?.logoUrl, logoUrl]);
+  const { primaryColor } = useTheme();
 
 
   const normalizedRole = useMemo(() => {
@@ -86,7 +31,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 z-20 lg:hidden"
+          className="fixed inset-x-0 top-16 bottom-0 z-20 lg:hidden"
           onClick={toggleSidebar}
           style={{
             backdropFilter: "blur(2px)",
@@ -96,47 +41,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-white border-r border-gray-100 shadow-sm z-30 flex flex-col transform transition-transform duration-300 ease-in-out
+        className={`fixed left-0 top-16 bottom-0 w-60 bg-white border-r border-gray-100 shadow-sm z-30 flex flex-col transform transition-transform duration-300 ease-in-out
         lg:translate-x-0 lg:static ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 lg:hidden shrink-0">
-          <img
-            src={displayLogo}
-            alt="Business Logo"
-            className="h-8 w-auto object-contain max-w-full"
-            onError={(e) => {
-              console.error("Image failed to load:", displayLogo);
-              console.error("User data for debugging:", {
-                user: user,
-                logoField: user?.logo,
-                themeLogo: logoUrl,
-                backendUrl: BACKEND_URL
-              });
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = DEFAULT_LOGO;
-            }}
-            onLoad={() => {
-            }}
-          />
-          <button onClick={toggleSidebar}>
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="hidden lg:flex items-center justify-center py-4 border-b border-gray-100 shrink-0">
-          <img
-            src={displayLogo}
-            alt="Business Logo"
-            className="h-8 w-auto object-contain max-w-full"
-            onError={(e) => {
-              console.error("Image failed to load:", displayLogo);
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = DEFAULT_LOGO;
-            }}
-            onLoad={() => {
-            }}
-          />
-        </div>
+      {/* No header row here — the sidebar starts directly with the menu.
+          On mobile it closes via the backdrop or tapping a menu item. */}
         <nav className="px-3 py-4 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {allowedMenuItems.map((item) => {

@@ -5,7 +5,9 @@ import {
   TrendingUp as AvgCommissionIcon,
   PendingActions as PendingIcon,
 } from "@mui/icons-material";
-import { CircularProgress, Box, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
+import { useTheme as useAppTheme } from "../../../../components/theme/ThemeContext";
 
 const formatKSh = (amount) => {
   if (!amount || isNaN(amount)) return "KSh 0.00";
@@ -16,6 +18,7 @@ const formatKSh = (amount) => {
 };
 
 const KPICardsSection = ({ kpiData = {}, loading = false, transactions = [] }) => {
+  const { primaryColor } = useAppTheme();
   // Calculate KPI data from provided kpiData or fallback to processing transactions
   const calculatedKpiData = useMemo(() => {
     // If kpiData is provided from API, use it directly
@@ -90,22 +93,17 @@ const KPICardsSection = ({ kpiData = {}, loading = false, transactions = [] }) =
     };
   }, [kpiData, transactions]);
 
-  // Loading skeleton
+  // Loading state — same ContentLoader used across kiosk, hotel and super admin
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {[1, 2, 3, 4].map((item) => (
-          <div
-            key={item}
-            className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3 sm:p-4 animate-pulse"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-200 rounded-lg shrink-0"></div>
-            </div>
-            <div className="h-5 bg-gray-200 rounded w-1/2 mt-3"></div>
-          </div>
-        ))}
+      <div className="flex items-center justify-center py-8">
+        <ContentLoader
+          state={true}
+          loading={true}
+          loadingText="Loading KPIs..."
+          loadedText=""
+          color={primaryColor}
+        />
       </div>
     );
   }

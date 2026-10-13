@@ -2,6 +2,7 @@ import React from "react";
 import { Select, MenuItem, Chip, Box } from "@mui/material";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import { useTheme } from "../theme/ThemeContext"; // Verify this path is correct for your theme context
+import { hexWithAlpha } from "../../utilities/Sharedfunctions.jsx";
 
 export default function SelectInput({
   id,
@@ -52,6 +53,7 @@ export default function SelectInput({
           onBlur={onBlur}
           multiple={multiple}
           variant="outlined"
+          notched={false}
           className={`
             w-full px-4 py-2 shadow-sm rounded-lg
             ${disabled ? `bg-[${tailwindGray100}] cursor-not-allowed` : ""}
@@ -67,7 +69,6 @@ export default function SelectInput({
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
               borderColor: primaryColor,
-              boxShadow: `0 0 0 2px ${primaryColor}33`,
               outline: 'none',
             },
             '&.Mui-focused': {
@@ -149,20 +150,21 @@ export default function SelectInput({
 
           {options.map((option, index) => {
             const val = returnObject ? option : option.value || option.name;
-            const isSelected = multiple
-              ? (value || []).includes(val)
-              : (returnObject && option === value) ||
-                option.value === value ||
-                JSON.stringify(option) === JSON.stringify(value) ||
-                option.name === value;
+            const accent = primaryColor || "#edb211ff";
 
             return (
               <MenuItem
                 key={index}
                 value={val}
                 sx={{
-                  ":hover": { color: primaryColor },
-                  color: isSelected ? primaryColor : "inherit",
+                  // && doubles specificity so this beats MUI's own hover rule —
+                  // otherwise only the white text applies and the label vanishes.
+                  "&&:hover": { backgroundColor: accent, color: "#fff" },
+                  "&.Mui-selected": {
+                    backgroundColor: hexWithAlpha(accent, 0.08),
+                    color: accent,
+                    "&&:hover": { backgroundColor: accent, color: "#fff" },
+                  },
                 }}
               >
                 {option.label || option.name}

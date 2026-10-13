@@ -89,6 +89,7 @@ const UsersControls = ({
 
   const roleFilters = [
     { label: 'Hotel Admin', value: 'Hotel Admin' },
+    { label: 'Kitchen Admin', value: 'Kitchen Admin' },
     { label: 'Hotel Cashier', value: 'Hotel Cashier' },
     { label: 'Hotel Waiter', value: 'Hotel Waiter' },
     { label: 'Kiosk Admin', value: 'Kiosk Admin' },

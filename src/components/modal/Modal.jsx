@@ -2,10 +2,11 @@ import React from "react";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "../theme/ThemeContext";
+import { hexWithAlpha } from "../../utilities/Sharedfunctions.jsx";
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   const theme = useTheme();
-  const PrimaryColor = theme.primaryColor;
+  const PrimaryColor = theme.primaryColor || "#edb211ff";
 
   if (!isOpen) return null;
 
@@ -27,13 +28,16 @@ const Modal = ({ isOpen, onClose, title, children }) => {
           <IconButton
             onClick={onClose}
             size="small"
+            aria-label="Close"
             sx={{
-              backgroundColor: PrimaryColor,
-              color: "white",
+              backgroundColor: hexWithAlpha(PrimaryColor, 0.08),
+              color: PrimaryColor,
               borderRadius: "50%",
-              "&:hover": {
+              // && doubles specificity so this beats MUI's own hover rule —
+              // otherwise only the white icon applies and the × vanishes.
+              "&&:hover": {
                 backgroundColor: PrimaryColor,
-                opacity: 0.9,
+                color: "#fff",
               },
               padding: "3px",
             }}

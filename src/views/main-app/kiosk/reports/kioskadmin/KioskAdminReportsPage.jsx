@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
-  Loader2,
   AlertTriangle,
   CheckCircle,
   Users,
@@ -200,10 +199,13 @@ function StatCard({ title, value, growth, icon, color = "blue", suffix = "", loa
 function LoadingOverlay() {
   return (
     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
-      <div className="text-center">
-        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={32} />
-        <p className="text-gray-600">Loading data...</p>
-      </div>
+      <ContentLoader
+        state={true}
+        loading={true}
+        loadingText="Loading data..."
+        loadedText=""
+        color="#3b82f6"
+      />
     </div>
   );
 }
@@ -1324,8 +1326,13 @@ export default function KioskAdminReportsPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Loader2 className="animate-spin mx-auto mb-4" style={{ color: theme.primaryColor }} size={48} />
-            <p className="text-gray-600">Loading dashboard data...</p>
+            <ContentLoader
+              state={true}
+              loading={true}
+              loadingText="Loading dashboard data..."
+              loadedText=""
+              color={theme.primaryColor}
+            />
             <button
               onClick={() => {
                 setContentLoaded(true);

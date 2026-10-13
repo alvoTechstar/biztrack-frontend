@@ -262,28 +262,14 @@
 .MuiMenuItem-root {
   font-family: inherit !important;
   font-size: 12px !important;
-  border-bottom: 1px solid #e1e6ed !important;
+  border-bottom: none !important;
   padding-top: 10px !important;
   padding-bottom: 10px !important;
-  background-color: transparent !important;
+  background-color: transparent;
 }
 
-.MuiMenuItem-root:hover {
-  background-color: transparent !important;
-}
-
-.MuiMenuItem-root:first-child {
-  background-color: rgba(25, 118, 210, 0.08) !important;
-  color: inherit !important;
-}
-
-.MuiMenuItem-root:last-child {
-  border-bottom: none !important ;
-}
-
-.Mui-selected {
-  background-color: transparent !important;
-}
+/* Hover / selected backgrounds are driven by SelectInput's sx (primary
+   color) — no !important here or the white Menu paper wins and labels vanish. */
 
 .MuiMenu-list {
   padding: 0 !important;
@@ -299,6 +285,10 @@
   color: #353f50 !important;
   font-family: "Averta-Bold", sans-serif !important;
   font-size: 12px !important;
+}
+
+.MuiOutlinedInput-notchedOutline legend {
+  display: none !important;
 }
 
 .MuiCheckbox-root {
@@ -506,9 +496,8 @@
 .MuiStack-root {
   overflow: hidden !important;
 }
-.MuiIconButton-root:hover{
-  background-color: transparent !important;
-}
+/* No transparent !important on IconButton hover — it wipes the primary
+   hover fill on modal close buttons, leaving a white-on-white icon. */
 .MuiDateCalendar-root {
   max-height: 150px !important;
 }

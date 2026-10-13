@@ -1,6 +1,6 @@
 // src/views/main-app/reports/super-admin/components/BusinessPerformanceCharts.jsx
 import React, { useMemo, useState } from "react";
-import { Paper, Typography, Chip, Box, CircularProgress } from "@mui/material";
+import { Paper, Typography, Chip, Box } from "@mui/material";
 import {
   BarChart,
   Bar,
@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import { Building, Award, Trophy, Users, Tag } from "lucide-react";
 import BusinessCommissionTable from "./BusinessCommissionTable";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
+import { useTheme as useAppTheme } from "../../../../components/theme/ThemeContext";
 
 const formatKSh = (amount) => {
   if (!amount || isNaN(amount)) return "KSh 0.00";
@@ -30,6 +32,7 @@ const BAR_COLORS = [
 ];
 
 const BusinessPerformanceChart = ({ data = [], typeData = [], loading = false, title = "Business Performance" }) => {
+  const { primaryColor } = useAppTheme();
   // State for table selection
   const [selectedItems, setSelectedItems] = useState([]);
 
@@ -80,7 +83,13 @@ const BusinessPerformanceChart = ({ data = [], typeData = [], loading = false, t
           </div>
         </div>
         <Box className="h-[350px] flex items-center justify-center">
-          <CircularProgress />
+          <ContentLoader
+            state={true}
+            loading={true}
+            loadingText="Loading business performance data..."
+            loadedText=""
+            color={primaryColor}
+          />
         </Box>
       </Paper>
     );

@@ -3,12 +3,13 @@ import { useSelector } from "react-redux";
 import { Box, Typography } from "@mui/material";
 import {
   ShoppingCart as ShoppingCartIcon,
-  AttachMoney as AttachMoneyIcon,
-  People as PeopleIcon,
-  Restaurant as RestaurantIcon,
-  Warning as WarningIcon,
-} from "@mui/icons-material";
+  DollarSign as RevenueIcon,
+  Users as StaffIcon,
+  UtensilsCrossed as MenuIcon,
+  TriangleAlert as AlertIcon,
+} from "lucide-react";
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 
 import KpiCard from "./KpiCard";
 import RevenueChartCard from "./RevenueChartCard";
@@ -16,8 +17,12 @@ import OrdersByCategoryChartCard from "./OrdersByCategoryChartCard";
 import RecentOrdersTable from "./recentOrdersTable";
 import DateRangeInput from "../../../../../components/Input/DateRangeInput";
 import SearchInput from "../../../../../components/Input/SearchInput";
+import ContentLoader from "../../../../../components/Loader/ContentLoader";
+import { useTheme } from "../../../../../components/theme/ThemeContext";
 import { GET } from "../../../../../services/DatabaseServiceImp";
 import URLS from "../../../../../utilities/Endpoints";
+
+dayjs.extend(customParseFormat);
 
 // ── Helpers ────────────────────────────────────────────────────
 const isToday = (iso) => {
@@ -29,43 +34,66 @@ const isToday = (iso) => {
     d.getDate() === n.getDate();
 };
 
+const isYesterday = (iso) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  return d.getFullYear() === y.getFullYear() &&
+    d.getMonth() === y.getMonth() &&
+    d.getDate() === y.getDate();
+};
+
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// Backend stores the amount as `totalAmount` (kiosk convention) on some
+// orders and `total` on others — every hotel view normalises with ??.
+const getTxTotal = (t) => Number(t.totalAmount ?? t.total) || 0;
+const getTxDate = (t) => t.createdAt || t.timestamp || t.date || null;
+// Revenue counts ONLY completed (paid, closed) orders — open orders
+// (pending → served) must never inflate revenue figures.
+const isClosed = (t) => String(t.status || "").toLowerCase() === "completed";
+
 function buildDailyChartData(transactions) {
-  // Last 7 days, keyed by day name
+  // Current week, Monday → Sunday
+  const WEEK_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const totals = {};
-  DAY_NAMES.forEach((d) => (totals[d] = 0));
+  WEEK_ORDER.forEach((d) => (totals[d] = 0));
   const now = new Date();
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const nextMonday = new Date(monday);
+  nextMonday.setDate(monday.getDate() + 7);
   transactions.forEach((t) => {
-    if (!t.createdAt) return;
-    const d = new Date(t.createdAt);
-    const diffDays = Math.floor((now - d) / 86400000);
-    if (diffDays < 7) {
-      totals[DAY_NAMES[d.getDay()]] += Number(t.total) || 0;
+    if (!isClosed(t)) return;
+    const iso = getTxDate(t);
+    if (!iso) return;
+    const d = new Date(iso);
+    if (d >= monday && d < nextMonday) {
+      totals[DAY_NAMES[d.getDay()]] += getTxTotal(t);
     }
   });
-  // Return in order starting from 7 days ago → today
-  const result = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const name = DAY_NAMES[d.getDay()];
-    result.push({ name, value: totals[name] });
-  }
-  return result;
+  return WEEK_ORDER.map((name) => ({ name, value: totals[name] }));
 }
 
 function buildMonthlyChartData(transactions) {
+  // Full Jan–Dec axis, always: months with no revenue stay 0 instead of the
+  // line starting/ending mid-year. Current year only — without the year guard
+  // every year's September/October stacked into the same buckets.
+  const year = new Date().getFullYear();
   const totals = {};
   MONTH_NAMES.forEach((m) => (totals[m] = 0));
   transactions.forEach((t) => {
-    if (!t.createdAt) return;
-    const m = MONTH_NAMES[new Date(t.createdAt).getMonth()];
-    totals[m] += Number(t.total) || 0;
+    if (!isClosed(t)) return;
+    const iso = getTxDate(t);
+    if (!iso) return;
+    const d = new Date(iso);
+    if (d.getFullYear() !== year) return;
+    totals[MONTH_NAMES[d.getMonth()]] += getTxTotal(t);
   });
-  return MONTH_NAMES.map((name) => ({ name, value: totals[name] }))
-    .filter((_, i) => i <= new Date().getMonth()); // Only up to current month
+  return MONTH_NAMES.map((name) => ({ name, value: totals[name] }));
 }
 
 function buildCategoryData(transactions) {
@@ -73,34 +101,33 @@ function buildCategoryData(transactions) {
   transactions.forEach((t) => {
     (t.items || []).forEach((item) => {
       const cat = item.category || "Food";
-      counts[cat] = (counts[cat] || 0) + item.quantity;
+      counts[cat] = (counts[cat] || 0) + (item.quantity || 1);
     });
   });
-  const total = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
-  return Object.entries(counts).map(([name, v]) => ({
-    name,
-    value: Math.round((v / total) * 100),
-  }));
+  // Raw counts — the card derives percentages, like the kiosk payment donut
+  return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
 function toRecentOrder(t) {
-  const dt = t.createdAt ? new Date(t.createdAt) : new Date();
+  const iso = getTxDate(t);
+  const dt = iso ? new Date(iso) : new Date();
   return {
-    id:        t.orderId || t.orderNumber || t._id,
-    waiter:    t.waiter || "—",
-    amount:    Number(t.total) || 0,
+    id:        t.transactionId || t.orderId || t.orderNumber || t._id,
+    waiter:    t.waiter || t.shopkeeperName || "—",
+    amount:    getTxTotal(t),
     date:      dt.toISOString().split("T")[0],
     time:      dt.toTimeString().slice(0, 8),
     status:    t.status
       ? t.status.charAt(0).toUpperCase() + t.status.slice(1)
       : "Pending",
-    foodItems: (t.items || []).map((i) => i.name),
+    foodItems: (t.items || []).map((i) => i.name || i.productName || "").filter(Boolean),
   };
 }
 
 // ── Component ──────────────────────────────────────────────────
 function HotelAdminDashboard() {
   const currentUser = useSelector((s) => s.auth?.value);
+  const { primaryColor } = useTheme();
   const businessId  = String(
     currentUser?.businessId || currentUser?.institutionId ||
     currentUser?.associatedBusinessId || ""
@@ -117,11 +144,12 @@ function HotelAdminDashboard() {
   const [transactions, setTransactions] = useState([]);
   const [staffCount, setStaffCount]     = useState(0);
   const [menuCount, setMenuCount]       = useState(0);
-  const [lowStockCount, setLowStockCount] = useState(0);
+  const [unavailableCount, setUnavailableCount] = useState(0);
+  const [loading, setLoading]           = useState(true);
 
   // ── Fetch all dashboard data ──────────────────────────────────
   const fetchData = useCallback(async () => {
-    if (!businessId) return;
+    if (!businessId) { setLoading(false); return; }
     try {
       // Transactions (orders)
       const txEndpoint = URLS.TRANSACTIONS.GET_TRANSACTIONS_BY_BUSINESS
@@ -136,30 +164,42 @@ function HotelAdminDashboard() {
     } catch (_) {}
 
     try {
-      // Products (menu)
-      const pEndpoint = URLS.PRODUCTS.GET_PRODUCTS_BY_BUSINESS
+      // Menu items — hotel menus live under MENU, not kiosk PRODUCTS
+      const mEndpoint = URLS.MENU.GET_ITEMS_BY_BUSINESS
         .replace(":businessId", businessId);
-      const pRes = await GET(pEndpoint);
-      if (pRes?.success) {
-        const products = pRes.products || pRes.data || [];
-        setMenuCount(products.filter((p) => p.available !== false).length);
-        setLowStockCount(products.filter((p) =>
-          p.stock !== undefined && p.stock <= (p.lowStockThreshold || 5)
-        ).length);
+      const mRes = await GET(mEndpoint);
+      if (mRes?.success) {
+        const items = mRes.items || mRes.data || [];
+        setMenuCount(items.filter((p) => p.available !== false).length);
+        setUnavailableCount(items.filter((p) => p.available === false).length);
       }
     } catch (_) {}
 
     try {
-      // Staff (users for this business)
-      const uEndpoint = `/api/users/business/${businessId}`;
-      const uRes = await GET(uEndpoint);
-      if (uRes?.success) {
-        const users = uRes.data || [];
-        setStaffCount(users.filter((u) =>
-          (u.status || "").toUpperCase() === "ACTIVE"
-        ).length);
+      // Staff (users for this business) — business endpoint first,
+      // then all-users filtered client-side (same as User-Management)
+      let users = [];
+      try {
+        const uRes = await GET(`/api/users/business/${businessId}`);
+        if (uRes?.success && Array.isArray(uRes.data)) users = uRes.data;
+      } catch (_) {}
+      if (users.length === 0) {
+        try {
+          const allRes = await GET(URLS.USERS.GET_ALL_USERS);
+          if (allRes?.success && Array.isArray(allRes.data)) {
+            users = allRes.data.filter((u) => {
+              if (!u) return false;
+              return [u.businessId, u.businessUUID, u.associatedBusinessId, u.institutionId]
+                .some((v) => String(v || "").trim() === businessId);
+            });
+          }
+        } catch (_) {}
       }
+      setStaffCount(users.filter((u) =>
+        String(u.status || "").toUpperCase() === "ACTIVE" || u.isActive === true
+      ).length);
     } catch (_) {}
+    setLoading(false);
   }, [businessId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -170,10 +210,25 @@ function HotelAdminDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // ── Derived KPI values ────────────────────────────────────────
-  const todayTx     = useMemo(() => transactions.filter((t) => isToday(t.createdAt)), [transactions]);
+  // ── Derived KPI values (today vs yesterday, like kiosk) ─────
+  // Revenue KPIs count completed orders only — open orders are not revenue.
+  const todayTx     = useMemo(() => transactions.filter((t) => isToday(getTxDate(t))), [transactions]);
+  const yesterdayTx = useMemo(() => transactions.filter((t) => isYesterday(getTxDate(t))), [transactions]);
   const todayOrders = todayTx.length;
-  const todayRev    = useMemo(() => todayTx.reduce((s, t) => s + Number(t.total || 0), 0), [todayTx]);
+  const todayRev    = useMemo(() => todayTx.filter(isClosed).reduce((s, t) => s + getTxTotal(t), 0), [todayTx]);
+  const yesterdayOrders = yesterdayTx.length;
+  const yesterdayRev = useMemo(
+    () => yesterdayTx.filter(isClosed).reduce((s, t) => s + getTxTotal(t), 0),
+    [yesterdayTx]
+  );
+
+  const pctChange = (today, yesterday) => {
+    if (yesterday > 0) return ((today - yesterday) / yesterday) * 100;
+    return today > 0 ? 100 : 0;
+  };
+  const formatChange = (pct) => `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+  const ordersChange = formatChange(pctChange(todayOrders, yesterdayOrders));
+  const revenueChange = formatChange(pctChange(todayRev, yesterdayRev));
 
   // ── Chart data ────────────────────────────────────────────────
   const revenueChartData = useMemo(
@@ -191,7 +246,7 @@ function HotelAdminDashboard() {
   // ── Recent orders ─────────────────────────────────────────────
   const allRecentOrders = useMemo(
     () => [...transactions]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .sort((a, b) => new Date(getTxDate(b)) - new Date(getTxDate(a)))
       .slice(0, 50)
       .map(toRecentOrder),
     [transactions]
@@ -203,10 +258,10 @@ function HotelAdminDashboard() {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (o) =>
-          o.id.toLowerCase().includes(term) ||
-          o.waiter.toLowerCase().includes(term) ||
-          (o.foodItems || []).some((i) => i.toLowerCase().includes(term)) ||
-          o.status.toLowerCase().includes(term)
+          String(o.id ?? "").toLowerCase().includes(term) ||
+          String(o.waiter ?? "").toLowerCase().includes(term) ||
+          (o.foodItems || []).some((i) => String(i).toLowerCase().includes(term)) ||
+          String(o.status ?? "").toLowerCase().includes(term)
       );
     }
     if (dateFilter && selectedDates?.startDate && selectedDates?.endDate) {
@@ -243,7 +298,27 @@ function HotelAdminDashboard() {
       weekday: "long", year: "numeric", month: "long", day: "numeric",
     });
 
-  // ── Render — JSX identical to original ───────────────────────
+  // ── Render ───────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="main-app-view">
+            <div className="main-app-content-container">
+              <ContentLoader
+                state={true}
+                loading={true}
+                loadingText="Loading dashboard..."
+                loadedText=""
+                color={primaryColor}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-2 pb-20">
       {/* Header */}
@@ -259,63 +334,56 @@ function HotelAdminDashboard() {
         </Box>
       </Box>
 
-      {/* KPI Cards */}
-      <div className="flex flex-wrap gap-4 mb-8">
-        <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
-          <KpiCard
-            icon={<ShoppingCartIcon />}
-            title="Total Orders Today"
-            value={todayOrders}
-            color="#3f51b5"
-          />
-        </div>
-        <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
-          <KpiCard
-            icon={<AttachMoneyIcon />}
-            title="Total Revenue Today"
-            value={`KSh ${todayRev.toLocaleString()}`}
-            color="#f44336"
-          />
-        </div>
-        <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
-          <KpiCard
-            icon={<PeopleIcon />}
-            title="Active Staff"
-            value={staffCount}
-            color="#4caf50"
-          />
-        </div>
-        <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
-          <KpiCard
-            icon={<RestaurantIcon />}
-            title="Menu Items Available"
-            value={menuCount}
-            color="#ff9800"
-          />
-        </div>
-        <div className="w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)]">
-          <KpiCard
-            icon={<WarningIcon />}
-            title="Low Stock Alerts"
-            value={lowStockCount}
-            color="#e91e63"
-          />
-        </div>
+      {/* KPI Cards — same card language as kiosk StatsCard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
+        <KpiCard
+          icon={<ShoppingCartIcon size={22} />}
+          title="Orders Today"
+          value={todayOrders}
+          change={ordersChange}
+          color="blue"
+        />
+        <KpiCard
+          icon={<RevenueIcon size={22} />}
+          title="Revenue Today"
+          value={`KSh ${todayRev.toLocaleString()}`}
+          change={revenueChange}
+          color="green"
+        />
+        <KpiCard
+          icon={<StaffIcon size={22} />}
+          title="Active Staff"
+          value={staffCount}
+          color="purple"
+          footer="Active right now"
+        />
+        <KpiCard
+          icon={<MenuIcon size={22} />}
+          title="Menu Items"
+          value={menuCount}
+          color="amber"
+          footer="Ready to serve"
+        />
+        <KpiCard
+          icon={<AlertIcon size={22} />}
+          title="Unavailable"
+          value={unavailableCount}
+          color="red"
+          footer="Hidden from waiters"
+        />
       </div>
 
-      {/* Charts */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="w-full md:w-3/4">
+      {/* Charts — same card language as kiosk charts */}
+      <div className="flex flex-col md:flex-row gap-6 mb-8 items-stretch">
+        <div className="w-full md:w-2/3">
           <RevenueChartCard
             data={revenueChartData}
             dateRange={revenueDateRange}
             onDateRangeChange={handleRevenueDateRangeChange}
           />
         </div>
-        <div className="w-full md:w-1/4">
-          <OrdersByCategoryChartCard
-            data={categoryChartData.length > 0 ? categoryChartData : [{ name: "No data", value: 100 }]}
-          />
+        <div className="w-full md:w-1/3">
+          <OrdersByCategoryChartCard data={categoryChartData} />
         </div>
       </div>
 
@@ -348,6 +416,7 @@ function HotelAdminDashboard() {
           <RecentOrdersTable
             orders={filteredRecentOrders}
             onActionClick={handleOrderAction}
+            dates={dateFilter ? selectedDates : null}
           />
         </Box>
       </div>

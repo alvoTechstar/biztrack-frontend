@@ -1,6 +1,6 @@
 // src/views/main-app/reports/super-admin/components/RevenueTrendChart.jsx
 import React, { useMemo } from "react";
-import { Paper, Typography, Box, CircularProgress } from "@mui/material";
+import { Paper, Typography, Box } from "@mui/material";
 import {
   AreaChart,
   Area,
@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TrendingUp } from "lucide-react";
+import ContentLoader from "../../../../components/Loader/ContentLoader";
+import { useTheme as useAppTheme } from "../../../../components/theme/ThemeContext";
 
 const formatKSh = (amount) => {
   if (!amount || isNaN(amount)) return "KSh 0.00";
@@ -21,6 +23,7 @@ const formatKSh = (amount) => {
 };
 
 const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend", year }) => {
+  const { primaryColor } = useAppTheme();
   // `data` arrives already aggregated into a fixed Jan-Dec series (12 entries,
   // months with no revenue filled with 0) by processSalesData in the parent page -
   // just reshape the field name here.
@@ -92,7 +95,13 @@ const RevenueTrendChart = ({ data = [], loading = false, title = "Revenue Trend"
           </div>
         </div>
         <Box className="h-[350px] flex items-center justify-center">
-          <CircularProgress />
+          <ContentLoader
+            state={true}
+            loading={true}
+            loadingText={`Loading ${year}'s monthly revenue...`}
+            loadedText=""
+            color={primaryColor}
+          />
         </Box>
       </Paper>
     );
